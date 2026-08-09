@@ -87,12 +87,32 @@ resource "unifi_network" "ceph_storage" {
   dhcp_stop     = "10.10.40.254"
   dhcp_enabled  = true
   domain_name   = "ceph.homelab.local"
+  
+  # IPv6 Prefix Delegation (Google Fiber UDM-Pro)
+  ipv6_interface_type = "pd"
+  ipv6_pd_start       = "::2"
+  ipv6_pd_stop        = "::7d1"
+  dhcp_v6_enabled     = true
 }
 
 resource "unifi_user" "sm_node_01" {
-  mac  = "00:25:90:xx:xx:xx"
-  name = "sm-node-01-10g"
-  fixed_ip = "10.10.40.11"
+  mac        = "00:25:90:xx:xx:xx"
+  name       = "sm-node-01-10g"
+  fixed_ip   = "10.10.40.11"
   network_id = unifi_network.ceph_storage.id
 }
+
+---
+
+## 🌐 Dual-Stack IPv4 / IPv6 Architecture
+
+Having **Google Fiber IPv6 Prefix Delegation (DHCPv6-PD)** enabled on your UDM-Pro unlocks native **Dual-Stack Kubernetes networking**:
+
+1. **Native IPv6 Routing (No NAT Overhead)**:
+   - Google Fiber delegates a public IPv6 `/56` or `/64` prefix to your UDM-Pro.
+   - Pods running inside Cilium CNI can receive globally-routable IPv6 addresses or ULA (Unique Local Address) prefixes, enabling direct end-to-end IPv6 routing without Network Address Translation (NAT64/NAT44).
+2. **Talos Linux Dual-Stack Support**:
+   - Talos Linux natively supports dual-stack `ip` configurations in machine specs. Node interfaces automatically pick up IPv6 SLAAC / DHCPv6 addresses.
+3. **AWS Route53 & ExternalDNS IPv6 (AAAA Records)**:
+   - ExternalDNS and AWS ACK can publish both `A` (IPv4) and `AAAA` (IPv6) records to AWS Route53 for external cluster endpoints.
 ```
