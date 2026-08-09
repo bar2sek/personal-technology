@@ -68,3 +68,31 @@ To ensure maximum security, QOS, and high storage performance for Rook-Ceph, we 
 
 1. **Jumbo Frames (MTU 9000)**: Enable Jumbo Frames on the `CEPH-STORAGE` VLAN and USW-Aggregation switch ports connected to the nodes to maximize 10GbE Ceph throughput and lower CPU overhead.
 2. **BGP Routing (Optional)**: If using Cilium for CNI, UniFi Dream Machine Pro / USW-Aggregation supports BGP routing to dynamically advertise Kubernetes LoadBalancer IPs directly into the network.
+
+---
+
+## 🤖 Infrastructure as Code (Terraform UniFi Provider)
+
+All UniFi networks, VLANs, static DHCP reservations, and firewall rules can be declaratively managed using Terraform via the [UniFi Terraform Provider](https://registry.terraform.io/providers/paultag/unifi/latest/docs).
+
+### Example `unifi_network` Terraform Resource:
+
+```hcl
+resource "unifi_network" "ceph_storage" {
+  name          = "CEPH-STORAGE"
+  purpose       = "corporate"
+  vlan_id       = 40
+  subnet        = "10.10.40.1/24"
+  dhcp_start    = "10.10.40.10"
+  dhcp_stop     = "10.10.40.254"
+  dhcp_enabled  = true
+  domain_name   = "ceph.homelab.local"
+}
+
+resource "unifi_user" "sm_node_01" {
+  mac  = "00:25:90:xx:xx:xx"
+  name = "sm-node-01-10g"
+  fixed_ip = "10.10.40.11"
+  network_id = unifi_network.ceph_storage.id
+}
+```

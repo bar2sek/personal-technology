@@ -13,6 +13,7 @@ This document outlines the architectural blueprint, storage engine, networking t
 | **Container Storage** | [Rook-Ceph](https://rook.io/) | Cloud-native storage orchestrator providing block (`RBD`), shared file system (`CephFS`), and object storage across the 8x 2TB SATA SSDs + NVMe tiers. |
 | **Network Stack** | Ubiquiti UniFi | Managed L2/L3 networking, VLAN separation, DNS, and BGP/L2 integration for Kubernetes LoadBalancers (MetalLB or Cilium BGP). |
 | **GPU Workloads** | [NVIDIA GPU Operator](https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/index.html) | Native NVIDIA container runtime integration on Talos for RTX 4070 (Ollama AI models, CUDA, PyTorch, NVENC media encoding). |
+| **Network Automation** | [UniFi Terraform Provider](https://registry.terraform.io/providers/paultag/unifi/latest/docs) | Declaratively manage UniFi networks, VLANs, switch port profiles, static DHCP leases, and firewall rules in Terraform code. |
 | **AWS Integration** | [AWS Controllers for K8s (ACK)](https://aws-controllers-k8s.github.io/community/) | Provision and manage native AWS resources (S3, Route53, RDS, IAM) directly using `kubectl` / GitOps manifests on-prem. |
 | **AWS Observability** | [AWS EKS Connector](https://docs.aws.amazon.com/eks/latest/userguide/eks-connector.html) | Registers the on-prem Talos cluster into the AWS Management Console for unified observability, health monitoring, and governance. |
 
