@@ -27,6 +27,18 @@ This document tracks the physical hardware available in the homelab and their in
 | `pc-node-04` | AMD Ryzen 7 3800X PC | Ryzen 7 3800X (8C/16T) / 64GB RAM / 27.0TB HDD Array (11 HDDs) + 490GB SATA SSDs | Intel Dual 10G SFP+ + Dual 1GbE NIC + Onboard 1GbE (5 Ports) | 80GB Intel 320 SSD (OS) | Storage & Compute Worker |
 | `pc-node-05` | Mini-ITX PC (B650I EDGE) | Ryzen 5 7600 (6C/12T) / 32GB RAM / 2x 1TB NVMe SSD / NVIDIA RTX 4070 | 2.5GbE SFP+ + 1GbE USB Adapter | 2GB NVMe Partition (1.998TB Data) | GPU Worker (AI/ML & Transcoding) |
 
+### 3. Networking & Wireless Infrastructure (UniFi Stack)
+
+| Device | Model / Type | Uplink / Connections | Role & Location |
+| :--- | :--- | :--- | :--- |
+| **Router / Gateway** | UniFi Dream Machine Pro (UDM-Pro) | 3.5 Gbps Google Fiber WAN via SFP+ | Core L3 Gateway, DHCP, Firewall & UniFi Controller |
+| **Aggregation Switch 1** | UniFi USW-Aggregation | 10G SFP+ Links (20G LAG to Agg 2) | Core 10G SFP+ Switch Backbone |
+| **Aggregation Switch 2** | UniFi USW-Aggregation | 10G SFP+ Links (20G LAG to Agg 1) | Core 10G SFP+ Storage & Node Backbone |
+| **Access Switch (Core)** | UniFi USW-24-G2 | 1GbE RJ45 Ports | Core 1GbE Node & Management Network Switch |
+| **Access Switch (Garage)** | UniFi USW-Lite-8-PoE | 1GbE RJ45 + 802.3at PoE | Garage Network Switch & AP Power |
+| **Home Wireless AP** | UniFi U7 Pro WAP | Connected to UDM-Pro / USW Switch | Primary Home Wi-Fi 7 Access Point |
+| **Garage Wireless AP** | UniFi U6-Lite WAP | PoE Powered via USW-Lite-8-PoE | Garage Wi-Fi 6 Access Point |
+
 ---
 
 ## Key Architecture & Design Considerations
