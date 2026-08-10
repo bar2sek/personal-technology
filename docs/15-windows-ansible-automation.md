@@ -4,7 +4,7 @@ This guide outlines how to use **Ansible** (via WinRM / OpenSSH) and **Chocolate
 
 ---
 
-## 🤖 Does Ansible Work on Windows?
+## 🤖 Ansible on Windows
 
 **YES! Absolutely.** 
 

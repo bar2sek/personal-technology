@@ -19,3 +19,4 @@ Hybrid Kubernetes homelab infrastructure powered by **Talos Linux**, **Sidero Om
 - [13 - Home Assistant Smart Home & IoT Automation Platform](docs/13-home-assistant-smart-home.md)
 - [14 - Single Sign-On (SSO) & AWS SAML 2.0 Identity Federation](docs/14-identity-sso-authentik-aws.md)
 - [15 - Automated Windows Gaming VM Provisioning with Ansible & Chocolatey](docs/15-windows-ansible-automation.md)
+- [16 - KubeVirt Arch / Omarchy Linux Testing Virtual Machine](docs/16-kubevirt-arch-linux-vm.md)
