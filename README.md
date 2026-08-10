@@ -13,3 +13,5 @@ Hybrid Kubernetes homelab infrastructure powered by **Talos Linux**, **Sidero Om
 - [07 - Self-Hosted Personal Finance & Budgeting Apps](docs/07-personal-finance-apps.md)
 - [08 - Mealie Recipe Manager & Meal Planner](docs/08-mealie-recipe-planner.md)
 - [09 - GitHub Actions CI/CD & Actions Runner Controller (ARC)](docs/09-github-actions-runner-controller.md)
+- [10 - Cloudflare Tunnel & Zero Trust Remote Access Architecture](docs/10-cloudflare-tunnel-zero-trust.md)
+- [11 - Tailscale Kubernetes Operator & Private Mesh Network](docs/11-tailscale-mesh-vpn.md)
