@@ -62,6 +62,44 @@ All public web services are routed via Cloudflare Tunnels using CNAME DNS record
 
 ---
 
+## ✉️ Cloudflare Email Routing (100% Free Domain Email Forwarding)
+
+Using **Cloudflare Email Routing**, we manage unlimited custom `@bar2sek.com` email aliases (e.g. `aws-prod@bar2sek.com`, `aws-logs@bar2sek.com`, `aws-security@bar2sek.com`) without hosting an email server or paying monthly inbox fees. All emails forward automatically to a personal destination inbox.
+
+---
+
+## 🤖 Infrastructure as Code (Cloudflare Terraform Provider)
+
+All Cloudflare Tunnels, DNS records, and Email Routing rules are declaratively managed using Terraform in [`terraform/cloudflare/main.tf`](./terraform/cloudflare/main.tf):
+
+```hcl
+# Cloudflare Email Routing Enabled for bar2sek.com
+resource "cloudflare_email_routing_settings" "email_routing" {
+  zone_id = var.cloudflare_zone_id
+  enabled = true
+}
+
+# Forwarding Rule for AWS Production Homelab Account
+resource "cloudflare_email_routing_rule" "aws_prod_email" {
+  zone_id = var.cloudflare_zone_id
+  name    = "AWS Production Homelab Email Forward"
+  enabled = true
+
+  matcher {
+    type  = "literal"
+    field = "to"
+    value = "aws-prod@bar2sek.com"
+  }
+
+  action {
+    type  = "forward"
+    value = [var.destination_email]
+  }
+}
+```
+
+---
+
 ## ⚠️ Streaming & Video Guidelines (Cloudflare TOS)
 
 - **Web Applications**: Ideal for web apps like **TeslaMate**, **Actual Budget**, **Mealie**, **Grafana**, and **ACK/Kubernetes Dashboards**.
