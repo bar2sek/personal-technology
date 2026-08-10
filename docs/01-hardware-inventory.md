@@ -31,9 +31,9 @@ This document tracks the physical hardware available in the homelab and their in
 
 ## Key Architecture & Design Considerations
 
-1. **Control Plane Strategy**: 
-   - Option A: 3-Node Control Plane (using the 3 Supermicro servers for high availability) + 2 Worker Nodes (Gaming PCs).
-   - Option B: Single Control Plane + 4 Workers (less recommended for HA).
+1. **Control Plane & Worker Scheduling Strategy**: 
+   - **3-Node HA Control Plane + Workers**: The 3 Supermicro servers (`sm-node-01`, `sm-node-02`, `sm-node-03`) form the 3-node High-Availability Control Plane (running `etcd` and Kubernetes control plane services).
+   - **`allowSchedulingOnControlPlanes: true`**: In Talos Linux, we enable workload scheduling on control plane nodes. This allows **all 5 nodes to act as worker nodes** and run container workloads/pods, utilizing 100% of your 320 GB RAM and 72 vCPU threads!
 2. **Omni Provisioning**:
    - Omni manages bare-metal Talos nodes via PXE / boot media / API.
 3. **Storage & Networking**:
