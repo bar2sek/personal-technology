@@ -30,10 +30,14 @@ Connecting an on-premise Kubernetes cluster to AWS via EKS Connector incurs **$0
 | **AWS EKS Connector** | **100% Free**. AWS charges $0 to register external Kubernetes clusters. | **$0.00** |
 | **AWS SSM Agent (Systems Manager)** | **100% Free** for on-premise instance management. | **$0.00** |
 | **AWS ACK Controllers** | **100% Free**. ACK pods run inside local cluster hardware. | **$0.00** |
+| **AWS Organizations** | **100% Free**. Zero charges for multi-account management & OUs. | **$0.00** |
+| **AWS IAM Identity Center (SSO)** | **100% Free**. Zero charges for SAML 2.0 federation & permission sets. | **$0.00** |
+| **AWS Account GitOps Pipeline** | **100% Free**. Runs Terraform via self-hosted ARC runner pods. | **$0.00** |
+| **AWS Control Tower & Config Rules**| **Service Free**. Automated SCP Guardrails, Config rules & Log Vault. | **~$2.00 - $5.00 / mo** |
 | **AWS Route53 Hosted Zone** | Fixed rate for `bar2sek.com` public DNS zone. | **$0.50 / month** |
 | **AWS S3 Offsite Backups** | AWS Free Tier includes 5 GB free. 50GB of Velero backups costs ~$0.01/GB. | **~$0.50 / month** |
 | **AWS CloudWatch Metrics/Logs** | AWS Free Tier includes 5 GB ingestion & 5 GB storage per month. | **$0.00** (Free Tier) |
-| **TOTAL ESTIMATED AWS BILL** | | **~$1.00 / month** |
+| **TOTAL ESTIMATED AWS BILL** | | **~$3.00 - $8.00 / month** |
 
 ---
 

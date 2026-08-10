@@ -34,12 +34,14 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 - [302 - GitHub Actions ARC Self-Hosted CI/CD](docs/302-github-actions-runner-controller.md)
 - [303 - KubeVirt Windows 11 Gaming VM (RTX 4070 Passthrough)](docs/303-kubevirt-windows-gpu-vm.md)
 - [304 - Automated Windows VM Setup with Ansible & Chocolatey](docs/304-windows-ansible-automation.md)
-- [305 - KubeVirt `omarchy-vm` Arch Linux VM](docs/305-kubevirt-arch-linux-vm.md)
+- [305 - KubeVirt Omarchy VM Arch Linux VM](docs/305-kubevirt-arch-linux-vm.md)
 
 ### ☁️ Section 4: AWS Hybrid Integration & Cloud Security
 - [401 - AWS Controllers for Kubernetes (ACK) Architecture](docs/401-aws-ack-hybrid-architecture.md)
 - [402 - AWS EKS Connector & Unified AWS Console Management](docs/402-aws-eks-connector.md)
 - [403 - Authentik Master IdP & AWS SAML 2.0 Identity Federation](docs/403-identity-sso-authentik-aws.md)
+- [404 - AWS Multi-Account Landing Zone (Organizations, IAM Identity Center & Terraform)](docs/404-aws-landing-zone-organizations-terraform.md)
+- [405 - AWS Account Factory for Terraform (AFT) vs GitHub Actions GitOps](docs/405-aws-account-factory-terraform.md)
 
 ### 📦 Section 5: Self-Hosted Application Suite
 - [501 - TeslaMate Vehicle Telemetry & Analytics Platform](docs/501-teslamate-telemetry-deployment.md)
