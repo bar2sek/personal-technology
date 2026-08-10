@@ -94,11 +94,11 @@ acct-aws-<product/category>-<env>-<root-id>
 <aws-resource-abbreviation>-aws-<product>-<env>-<region-code>-<three-character-iteration>
 ```
 
-- `region-code` (e.g. `use1`) and `three-character-iteration` (e.g. `001`) are mandatory.
+- `region-code` (e.g. `use2`) and `three-character-iteration` (e.g. `001`) are mandatory.
 
 ### Resource Examples:
-- `s3-aws-backups-prod-use1-001`
-- `r53-aws-primary-prod-use1-001`
+- `s3-aws-backups-prod-use2-001`
+- `r53-aws-primary-prod-use2-001`
 - `role-aws-eks-connector-prod-admin`
 
 ### Access Naming Examples:

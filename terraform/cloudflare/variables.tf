@@ -12,8 +12,8 @@ variable "env" {
 
 variable "region_code" {
   type        = string
-  description = "Shortened Region Code"
-  default     = "use1"
+  description = "Shortened Region Code for Ohio"
+  default     = "use2"
 }
 
 variable "iteration" {

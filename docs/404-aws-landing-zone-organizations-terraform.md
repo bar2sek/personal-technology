@@ -28,7 +28,7 @@ Guardrails are automated governance rules that enforce security and operational 
 - **Preventative Guardrails (Service Control Policies - SCPs)**: Hard blocks that physically **prevent** unauthorized actions before they happen.
   - *Examples*:
     - Block anyone from deleting offsite S3 backup buckets.
-    - Restrict AWS resource creation exclusively to `us-east-1` (blocking accidental deployments in other regions).
+    - Restrict AWS resource creation exclusively to `us-east-2` (blocking accidental deployments in other regions).
     - Block root user logins on member accounts.
     - Disallow disabling CloudTrail or AWS Config logging.
 - **Detective Guardrails (AWS Config Rules)**: Continuous compliance monitors that flag policy violations in your dashboard.

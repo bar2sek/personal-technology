@@ -18,14 +18,14 @@ variable "env" {
 
 variable "aws_region" {
   type        = string
-  description = "Target AWS Region"
-  default     = "us-east-1"
+  description = "Target AWS Region (US East - Ohio)"
+  default     = "us-east-2"
 }
 
 variable "region_code" {
   type        = string
-  description = "Shortened AWS Region Code"
-  default     = "use1"
+  description = "Shortened AWS Region Code for Ohio"
+  default     = "use2"
 }
 
 variable "iteration" {

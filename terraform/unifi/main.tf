@@ -1,23 +1,3 @@
-# UniFi Network Infrastructure Terraform Module
-# Dynamic Naming Construction Following Global Conventions Specification
-
-terraform {
-  required_version = ">= 1.5.0"
-  required_providers {
-    unifi = {
-      source  = "paultag/unifi"
-      version = "~> 0.38.0"
-    }
-  }
-}
-
-provider "unifi" {
-  username       = var.unifi_username
-  password       = var.unifi_password
-  api_url        = var.unifi_api_url
-  allow_insecure = true
-}
-
 # 1. VLAN 10: MGMT-IPMI (Out-of-Band Management & Omni Server)
 resource "unifi_network" "mgmt_ipmi" {
   name         = "MGMT-IPMI"

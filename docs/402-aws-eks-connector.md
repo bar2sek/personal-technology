@@ -91,7 +91,7 @@ spec:
           image: public.ecr.aws/amazon-ssm-agent/amazon-ssm-agent:latest
           env:
             - name: AWS_REGION
-              value: "us-east-1"
+              value: "us-east-2"
             - name: ACTIVATION_CODE
               valueFrom:
                 secretKeyRef:

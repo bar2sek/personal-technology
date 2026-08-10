@@ -1,29 +1,3 @@
-# Cloudflare Infrastructure Terraform Module
-# Dynamic Tunnel Naming Pattern: tunnel-<platform>-homelab-<env>-<region>-<iteration>
-
-terraform {
-  required_version = ">= 1.5.0"
-  required_providers {
-    cloudflare = {
-      source  = "cloudflare/cloudflare"
-      version = "~> 4.0"
-    }
-    random = {
-      source  = "hashicorp/random"
-      version = "~> 3.0"
-    }
-  }
-}
-
-provider "cloudflare" {
-  api_token = var.cloudflare_api_token
-}
-
-locals {
-  # Pattern: tunnel-<platform>-homelab-<env>-<region-code>-<iteration>
-  tunnel_name = "tunnel-${var.platform}-homelab-${var.env}-${var.region_code}-${var.iteration}"
-}
-
 # Random secret for Cloudflare Tunnel encryption
 resource "random_id" "tunnel_secret" {
   byte_length = 35
@@ -90,7 +64,7 @@ resource "cloudflare_record" "recipes_dns" {
   proxied = true
 }
 
-# 4. Cloudflare Email Routing Configuration (100% Free Email Forwarding)
+# 4. Cloudflare Email Routing Configuration
 resource "cloudflare_email_routing_settings" "email_routing" {
   zone_id = var.cloudflare_zone_id
   enabled = true

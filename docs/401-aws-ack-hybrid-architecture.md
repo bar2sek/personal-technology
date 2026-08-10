@@ -40,10 +40,10 @@ AWS Controllers for Kubernetes (ACK) is an official AWS open-source system that 
 apiVersion: s3.services.k8s.aws/v1alpha1
 kind: Bucket
 metadata:
-  name: s3-aws-backups-prod-use1-001
+  name: s3-aws-backups-prod-use2-001
   namespace: kube-system
 spec:
-  name: s3-aws-backups-prod-use1-001
+  name: s3-aws-backups-prod-use2-001
   sseConfiguration:
     rules:
       - applyServerSideEncryptionByDefault:
