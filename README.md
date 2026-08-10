@@ -15,3 +15,6 @@ Hybrid Kubernetes homelab infrastructure powered by **Talos Linux**, **Sidero Om
 - [09 - GitHub Actions CI/CD & Actions Runner Controller (ARC)](docs/09-github-actions-runner-controller.md)
 - [10 - Cloudflare Tunnel & Zero Trust Remote Access Architecture](docs/10-cloudflare-tunnel-zero-trust.md)
 - [11 - Tailscale Kubernetes Operator & Private Mesh Network](docs/11-tailscale-mesh-vpn.md)
+- [12 - Immich Self-Hosted Photo & Video Backup Platform](docs/12-immich-photo-backup.md)
+- [13 - Home Assistant Smart Home & IoT Automation Platform](docs/13-home-assistant-smart-home.md)
+- [14 - Single Sign-On (SSO) & AWS SAML 2.0 Identity Federation](docs/14-identity-sso-authentik-aws.md)
