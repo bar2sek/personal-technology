@@ -37,3 +37,4 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 - [17 - Network PXE Boot & Node Provisioning Instruction Manual](docs/17-pxe-boot-node-provisioning.md)
 - [18 - AWS Controllers for Kubernetes (ACK) Hybrid Architecture](docs/18-aws-ack-hybrid-architecture.md)
 - [19 - Phase 2: Rook-Ceph 3-Tier Distributed Storage Cluster](docs/19-phase2-rook-ceph-storage.md)
+- [20 - AWS EKS Connector & Unified AWS Console Management](docs/20-aws-eks-connector.md)
