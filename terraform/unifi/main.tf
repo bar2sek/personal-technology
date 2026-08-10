@@ -1,5 +1,5 @@
 # UniFi Network Infrastructure Terraform Module
-# Manages Networks, VLANs, Switch Port Profiles, and Static DHCP Reservations
+# Dynamic Naming Construction Following Global Conventions Specification
 
 terraform {
   required_version = ">= 1.5.0"
@@ -12,9 +12,9 @@ terraform {
 }
 
 provider "unifi" {
-  username = var.unifi_username
-  password = var.unifi_password
-  api_url  = var.unifi_api_url
+  username       = var.unifi_username
+  password       = var.unifi_password
+  api_url        = var.unifi_api_url
   allow_insecure = true
 }
 
@@ -27,7 +27,7 @@ resource "unifi_network" "mgmt_ipmi" {
   dhcp_start   = "10.10.10.10"
   dhcp_stop    = "10.10.10.254"
   dhcp_enabled = true
-  domain_name  = "mgmt.homelab.local"
+  domain_name  = "mgmt.${var.domain_suffix}"
 }
 
 # 2. VLAN 20: K8S-CONTROL (Talos API, Kubelet, etcd)
@@ -39,7 +39,7 @@ resource "unifi_network" "k8s_control" {
   dhcp_start   = "10.10.20.10"
   dhcp_stop    = "10.10.20.254"
   dhcp_enabled = true
-  domain_name  = "k8s.homelab.local"
+  domain_name  = "k8s.${var.domain_suffix}"
 
   # IPv6 Prefix Delegation (Google Fiber UDM-Pro)
   ipv6_interface_type = "pd"
@@ -57,7 +57,7 @@ resource "unifi_network" "ceph_storage" {
   dhcp_start   = "10.10.40.10"
   dhcp_stop    = "10.10.40.254"
   dhcp_enabled = true
-  domain_name  = "ceph.homelab.local"
+  domain_name  = "ceph.${var.domain_suffix}"
 }
 
 # Static DHCP Reservation: Omni Server

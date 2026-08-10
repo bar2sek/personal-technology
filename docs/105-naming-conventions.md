@@ -55,8 +55,8 @@ ou-<platform>-<product/org-category>-[<#description#>-]<env>-<root-id>
 - `root-id` is taken from AWS Organizations `r-****` value in the management account.
 
 ### Foundation OUs:
-- `ou-bar2sek-aws-infrastructure-prod-73t0`
-- `ou-bar2sek-aws-security-tooling-nonprod-73t0`
+- `ou-aws-infrastructure-prod-73t0`
+- `ou-aws-security-tooling-nonprod-73t0`
 
 ### Workload OUs:
 - `ou-aws-immich-prod-73t0`
@@ -67,7 +67,7 @@ ou-<platform>-<product/org-category>-[<#description#>-]<env>-<root-id>
 ## ☁️ Account Pattern
 
 ```html
-acct-<agency>-[<division>-]aws-<product/category>-<env>-<root-id>
+acct-aws-<product/category>-<env>-<root-id>
 ```
 
 - Must be 3–63 characters long.
@@ -77,29 +77,28 @@ acct-<agency>-[<division>-]aws-<product/category>-<env>-<root-id>
 - `root-id` is taken from AWS Organizations `r-****` value in the management account.
 
 ### Foundation Accounts:
-- `acct-bar2sek-aws-security-logarchive-infra-prod-73t0`
-- `acct-bar2sek-aws-mgmt-payer-infra-prod-73t0`
-- `acct-bar2sek-aws-security-tooling-infra-prod-73t0`
-- `acct-bar2sek-aws-network-infra-prod-73t0`
+- `acct-aws-security-logarchive-infra-prod-73t0`
+- `acct-aws-mgmt-payer-infra-prod-73t0`
+- `acct-aws-security-tooling-infra-prod-73t0`
+- `acct-aws-network-infra-prod-73t0`
 
 ### Workload Accounts:
-- `acct-bar2sek-aws-homelab-prod-73t0`
-- `acct-bar2sek-aws-immich-prod-73t0`
+- `acct-aws-homelab-prod-73t0`
+- `acct-aws-immich-prod-73t0`
 
 ---
 
 ## 🛠 AWS Resource Pattern
 
 ```html
-<aws-resource-abbreviation>-<agency>-aws-<product>-<env>-<region-code>-<three-character-iteration>
+<aws-resource-abbreviation>-aws-<product>-<env>-<region-code>-<three-character-iteration>
 ```
 
-- No `division` or `root-id`.
 - `region-code` (e.g. `use1`) and `three-character-iteration` (e.g. `001`) are mandatory.
 
 ### Resource Examples:
-- `s3-bar2sek-aws-backups-prod-use1-001`
-- `r53-bar2sek-aws-primary-prod-use1-001`
+- `s3-aws-backups-prod-use1-001`
+- `r53-aws-primary-prod-use1-001`
 - `role-aws-eks-connector-prod-admin`
 
 ### Access Naming Examples:

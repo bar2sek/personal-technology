@@ -1,5 +1,5 @@
 # Cloudflare Infrastructure Terraform Module
-# Strictly Enforces Global Resource Naming Conventions
+# Dynamic Tunnel Naming Pattern: tunnel-<platform>-homelab-<env>-<region>-<iteration>
 
 terraform {
   required_version = ">= 1.5.0"
@@ -19,15 +19,20 @@ provider "cloudflare" {
   api_token = var.cloudflare_api_token
 }
 
+locals {
+  # Pattern: tunnel-<platform>-homelab-<env>-<region-code>-<iteration>
+  tunnel_name = "tunnel-${var.platform}-homelab-${var.env}-${var.region_code}-${var.iteration}"
+}
+
 # Random secret for Cloudflare Tunnel encryption
 resource "random_id" "tunnel_secret" {
   byte_length = 35
 }
 
-# 1. Cloudflare Tunnel Creation following pattern: tunnel-clf-bar2sek-prod-use1-001
+# 1. Cloudflare Tunnel Creation
 resource "cloudflare_zero_trust_tunnel_cloudflared" "homelab_tunnel" {
   account_id = var.cloudflare_account_id
-  name       = "tunnel-clf-bar2sek-prod-use1-001"
+  name       = local.tunnel_name
   secret     = random_id.tunnel_secret.b64_std
 }
 

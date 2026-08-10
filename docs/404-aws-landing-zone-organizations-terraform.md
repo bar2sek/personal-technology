@@ -66,28 +66,45 @@ Guardrails are automated governance rules that enforce security and operational 
 ## 📦 Terraform Module (`terraform/aws_organization/main.tf`)
 
 ```hcl
+# Dynamic Naming Construction Following Global Conventions Specification (Without Agency Node)
+locals {
+  # OU Patterns: ou-<platform>-<category>-<env>-<root-id>
+  ou_infrastructure = "ou-${var.platform}-infrastructure-${var.env}-${var.root_id}"
+  ou_security       = "ou-${var.platform}-security-${var.env}-${var.root_id}"
+
+  # Account Patterns: acct-<platform>-<category>-<env>-<root-id>
+  acct_homelab_prod   = "acct-${var.platform}-${var.product}-${var.env}-${var.root_id}"
+  acct_log_archive    = "acct-${var.platform}-security-logarchive-infra-${var.env}-${var.root_id}"
+  acct_security_audit = "acct-${var.platform}-security-tooling-infra-${var.env}-${var.root_id}"
+
+  # Permission Set Pattern: pset-<platform>-<product>-<env>-<permission>
+  pset_admin = "pset-${var.platform}-${var.product}-${var.env}-admin"
+}
+
 # 1. AWS Organization Setup
 resource "aws_organizations_organization" "org" {
   aws_service_access_principals = [
     "sso.amazonaws.com",
     "cloudtrail.amazonaws.com",
-    "config.amazonaws.com"
+    "config.amazonaws.com",
+    "controltower.amazonaws.com"
   ]
   feature_set = "ALL"
 }
 
 # 2. Organizational Units (OUs)
 resource "aws_organizations_organizational_unit" "infrastructure" {
-  name      = "Infrastructure"
+  name      = local.ou_infrastructure
   parent_id = aws_organizations_organization.org.roots[0].id
 }
 
-# 3. AWS Member Account: Production Homelab
+# 3. AWS Member Account
 resource "aws_organizations_account" "homelab_prod" {
-  name      = "bar2sek-homelab-prod"
-  email     = "aws-prod@bar2sek.com"
+  name      = local.acct_homelab_prod
+  email     = "aws-prod@${var.destination_email_domain}"
   parent_id = aws_organizations_organizational_unit.infrastructure.id
 }
+```
 
 # 4. AWS Control Tower Landing Zone Deployment
 resource "aws_controltower_landing_zone" "homelab_lz" {

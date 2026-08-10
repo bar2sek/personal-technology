@@ -1,5 +1,5 @@
 # AWS Hybrid Cloud Infrastructure Terraform Module
-# Strictly Enforces Global Resource Naming Conventions
+# Dynamic Resource Naming Pattern: <abbrev>-aws-<product>-<env>-<region>-<iteration>
 
 terraform {
   required_version = ">= 1.5.0"
@@ -15,21 +15,29 @@ provider "aws" {
   region = var.aws_region
 }
 
-# 1. AWS Route53 Hosted Zone following pattern: r53-bar2sek-aws-primary-prod-use1-001
-resource "aws_route53_zone" "primary" {
-  name    = var.domain_name
-  comment = "Primary DNS zone for homelab cluster services and Cloudflare Tunnels"
+locals {
+  # AWS Resource Pattern: <abbrev>-aws-<product>-<env>-<region-code>-<iteration>
+  s3_backup_bucket_name = "s3-${var.platform}-${var.product}-${var.env}-${var.region_code}-${var.iteration}"
+  r53_zone_name          = "r53-${var.platform}-primary-${var.env}-${var.region_code}-${var.iteration}"
+  iam_role_eks_connector = "role-${var.platform}-eks-connector-${var.env}-admin"
 }
 
-# 2. Encrypted Offsite Backup S3 Bucket following pattern: s3-bar2sek-aws-backups-prod-use1-001
+# 1. AWS Route53 Hosted Zone
+resource "aws_route53_zone" "primary" {
+  name    = var.domain_name
+  comment = "Primary DNS zone for homelab cluster services and Cloudflare Tunnels (${local.r53_zone_name})"
+}
+
+# 2. Encrypted Offsite Backup S3 Bucket
 resource "aws_s3_bucket" "backups" {
-  bucket        = "s3-bar2sek-aws-backups-prod-use1-001"
+  bucket        = local.s3_backup_bucket_name
   force_destroy = false
 
   tags = {
-    Environment = "prod"
+    Name        = local.s3_backup_bucket_name
+    Environment = var.env
     ManagedBy   = "Terraform"
-    Project     = "bar2sek-aws-homelab"
+    Project     = "${var.platform}-${var.product}"
   }
 }
 
@@ -53,9 +61,9 @@ resource "aws_s3_bucket_public_access_block" "backups_privacy" {
   restrict_public_buckets = true
 }
 
-# 3. AWS EKS Connector IAM Role following pattern: role-aws-eks-connector-prod-admin
+# 3. AWS EKS Connector IAM Role
 resource "aws_iam_role" "eks_connector" {
-  name = "role-aws-eks-connector-prod-admin"
+  name = local.iam_role_eks_connector
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
