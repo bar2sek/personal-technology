@@ -16,25 +16,34 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 
 ---
 
-## 📚 Documentation Index
+## 📚 Categorized Documentation Index
 
-- [01 - Hardware Inventory](docs/01-hardware-inventory.md)
-- [02 - Architecture & Technology Stack](docs/02-architecture-design.md)
-- [03 - UniFi Network Topology & Mermaid Diagrams](docs/03-unifi-network-topology.md)
-- [04 - Phase 1: Sidero Omni & Talos Bootstrap Guide](docs/04-phase1-omni-talos-bootstrap.md)
-- [05 - KubeVirt Windows Gaming VM (RTX 4070 GPU Passthrough)](docs/05-kubevirt-windows-gpu-vm.md)
-- [06 - TeslaMate Vehicle Telemetry & Analytics Platform](docs/06-teslamate-telemetry-deployment.md)
-- [07 - Self-Hosted Personal Finance & Budgeting Apps](docs/07-personal-finance-apps.md)
-- [08 - Mealie Recipe Manager & Meal Planner](docs/08-mealie-recipe-planner.md)
-- [09 - GitHub Actions CI/CD & Actions Runner Controller (ARC)](docs/09-github-actions-runner-controller.md)
-- [10 - Cloudflare Tunnel & Zero Trust Remote Access Architecture](docs/10-cloudflare-tunnel-zero-trust.md)
-- [11 - Tailscale Kubernetes Operator & Private Mesh Network](docs/11-tailscale-mesh-vpn.md)
-- [12 - Immich Self-Hosted Photo & Video Backup Platform](docs/12-immich-photo-backup.md)
-- [13 - Home Assistant Smart Home & IoT Automation Platform](docs/13-home-assistant-smart-home.md)
-- [14 - Single Sign-On (SSO) & AWS SAML 2.0 Identity Federation](docs/14-identity-sso-authentik-aws.md)
-- [15 - Automated Windows Gaming VM Provisioning with Ansible & Chocolatey](docs/15-windows-ansible-automation.md)
-- [16 - KubeVirt Arch / Omarchy Linux Virtual Machine](docs/16-kubevirt-arch-linux-vm.md)
-- [17 - Network PXE Boot & Node Provisioning Instruction Manual](docs/17-pxe-boot-node-provisioning.md)
-- [18 - AWS Controllers for Kubernetes (ACK) Hybrid Architecture](docs/18-aws-ack-hybrid-architecture.md)
-- [19 - Phase 2: Rook-Ceph 3-Tier Distributed Storage Cluster](docs/19-phase2-rook-ceph-storage.md)
-- [20 - AWS EKS Connector & Unified AWS Console Management](docs/20-aws-eks-connector.md)
+### 🏗 Section 1: Hardware Architecture & Deployment Phases
+- [101 - Hardware Inventory & Resource Breakdown](docs/101-hardware-inventory.md)
+- [102 - Architecture Blueprint & Technology Stack](docs/102-architecture-design.md)
+- [103 - Phase 1: Sidero Omni & Talos Bootstrap Guide](docs/103-phase1-omni-talos-bootstrap.md)
+- [104 - Phase 2: Rook-Ceph 3-Tier Storage Cluster](docs/104-phase2-rook-ceph-storage.md)
+
+### 🌐 Section 2: UniFi Networking & Infrastructure
+- [201 - UniFi Physical Cabling & Logical Topology Diagrams](docs/201-unifi-network-topology.md)
+- [202 - Cloudflare Tunnel & Zero Trust Remote Access](docs/202-cloudflare-tunnel-zero-trust.md)
+- [203 - Tailscale Kubernetes Operator & Mesh VPN](docs/203-tailscale-mesh-vpn.md)
+
+### ⚙️ Section 3: Talos Linux & Cluster Administration
+- [301 - Network PXE Boot & Node Provisioning Instruction Manual](docs/301-pxe-boot-node-provisioning.md)
+- [302 - GitHub Actions ARC Self-Hosted CI/CD](docs/302-github-actions-runner-controller.md)
+- [303 - KubeVirt Windows 11 Gaming VM (RTX 4070 Passthrough)](docs/303-kubevirt-windows-gpu-vm.md)
+- [304 - Automated Windows VM Setup with Ansible & Chocolatey](docs/304-windows-ansible-automation.md)
+- [305 - KubeVirt `omarchy-vm` Arch Linux VM](docs/305-kubevirt-arch-linux-vm.md)
+
+### ☁️ Section 4: AWS Hybrid Integration & Cloud Security
+- [401 - AWS Controllers for Kubernetes (ACK) Architecture](docs/401-aws-ack-hybrid-architecture.md)
+- [402 - AWS EKS Connector & Unified AWS Console Management](docs/402-aws-eks-connector.md)
+- [403 - Authentik Master IdP & AWS SAML 2.0 Identity Federation](docs/403-identity-sso-authentik-aws.md)
+
+### 📦 Section 5: Self-Hosted Application Suite
+- [501 - TeslaMate Vehicle Telemetry & Analytics Platform](docs/501-teslamate-telemetry-deployment.md)
+- [502 - Actual Budget Self-Hosted Personal Finance Platform](docs/502-personal-finance-apps.md)
+- [503 - Mealie Recipe Manager & Meal Planner](docs/503-mealie-recipe-planner.md)
+- [504 - Immich Self-Hosted Photo & Video Backup Platform](docs/504-immich-photo-backup.md)
+- [505 - Home Assistant Smart Home & IoT Automation Platform](docs/505-home-assistant-smart-home.md)
