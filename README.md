@@ -12,3 +12,4 @@ Hybrid Kubernetes homelab infrastructure powered by **Talos Linux**, **Sidero Om
 - [06 - TeslaMate Vehicle Telemetry & Analytics Platform](docs/06-teslamate-telemetry-deployment.md)
 - [07 - Self-Hosted Personal Finance & Budgeting Apps](docs/07-personal-finance-apps.md)
 - [08 - Mealie Recipe Manager & Meal Planner](docs/08-mealie-recipe-planner.md)
+- [09 - GitHub Actions CI/CD & Actions Runner Controller (ARC)](docs/09-github-actions-runner-controller.md)
