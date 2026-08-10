@@ -23,6 +23,7 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 - [102 - Architecture Blueprint & Technology Stack](docs/102-architecture-design.md)
 - [103 - Phase 1: Sidero Omni & Talos Bootstrap Guide](docs/103-phase1-omni-talos-bootstrap.md)
 - [104 - Phase 2: Rook-Ceph 3-Tier Storage Cluster](docs/104-phase2-rook-ceph-storage.md)
+- [105 - Global Resource Naming Conventions](docs/105-naming-conventions.md)
 
 ### 🌐 Section 2: UniFi Networking & Infrastructure
 - [201 - UniFi Physical Cabling & Logical Topology Diagrams](docs/201-unifi-network-topology.md)

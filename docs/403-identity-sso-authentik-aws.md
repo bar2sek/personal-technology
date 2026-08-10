@@ -43,6 +43,19 @@ In our architecture, **Authentik** operates as the master External IdP, issuing 
 
 ---
 
+## 🔐 Standardized IdP Access Group Mapping
+
+All Authentik groups and AWS IAM Identity Center permission sets follow the global naming standard:
+
+```html
+<idp-source>-<platform>-<product>-<env>-<resource-id>-<permission-set>
+```
+
+### Examples:
+- **`authentik-aws-homelab-prod-73t0-admin`**: Maps to AWS Permission Set `pset-aws-homelab-prod-admin` (Full Administrator Access).
+- **`authentik-aws-homelab-prod-73t0-read`**: Maps to AWS Permission Set `pset-aws-homelab-prod-read` (ReadOnly Access).
+- **`authentik-aws-immich-prod-73t0-admin`**: Immich Photo Manager Administrator Group.
+
 ## 📚 AWS Certification Exam Topics Mastered with this Architecture
 
 - **AWS Solutions Architect (Associate & Professional)**: *Federated Single Sign-On using SAML 2.0 / OIDC External Identity Providers*.

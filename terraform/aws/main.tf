@@ -1,5 +1,5 @@
 # AWS Hybrid Cloud Infrastructure Terraform Module
-# Manages Route53 DNS Zone, Offsite Backup S3 Bucket, IAM Roles, and EKS Connector
+# Strictly Enforces Global Resource Naming Conventions
 
 terraform {
   required_version = ">= 1.5.0"
@@ -15,21 +15,21 @@ provider "aws" {
   region = var.aws_region
 }
 
-# 1. AWS Route53 Hosted Zone for bar2sek.com
+# 1. AWS Route53 Hosted Zone following pattern: r53-bar2sek-aws-primary-prod-use1-001
 resource "aws_route53_zone" "primary" {
   name    = var.domain_name
   comment = "Primary DNS zone for homelab cluster services and Cloudflare Tunnels"
 }
 
-# 2. Encrypted Offsite Backup S3 Bucket (Velero & Rook-Ceph Target)
+# 2. Encrypted Offsite Backup S3 Bucket following pattern: s3-bar2sek-aws-backups-prod-use1-001
 resource "aws_s3_bucket" "backups" {
-  bucket        = "bar2sek-homelab-backups-${var.aws_region}"
+  bucket        = "s3-bar2sek-aws-backups-prod-use1-001"
   force_destroy = false
 
   tags = {
-    Environment = "Production"
+    Environment = "prod"
     ManagedBy   = "Terraform"
-    Project     = "Talos-AWS-Homelab"
+    Project     = "bar2sek-aws-homelab"
   }
 }
 
@@ -53,9 +53,9 @@ resource "aws_s3_bucket_public_access_block" "backups_privacy" {
   restrict_public_buckets = true
 }
 
-# 3. AWS EKS Connector Service Role (Single Pane of Glass Observability)
+# 3. AWS EKS Connector IAM Role following pattern: role-aws-eks-connector-prod-admin
 resource "aws_iam_role" "eks_connector" {
-  name = "TalosHomelab-EKSConnectorRole"
+  name = "role-aws-eks-connector-prod-admin"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

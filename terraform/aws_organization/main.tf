@@ -1,5 +1,5 @@
 # AWS Multi-Account Landing Zone & Control Tower Terraform Module
-# Manages AWS Organizations, Control Tower Landing Zone, Guardrails, and IAM Identity Center
+# Strictly Enforces Global Resource Naming Conventions
 
 terraform {
   required_version = ">= 1.5.0"
@@ -26,22 +26,34 @@ resource "aws_organizations_organization" "org" {
   feature_set = "ALL"
 }
 
-# 2. Organizational Units (OUs)
+# 2. Organizational Units (OUs) following pattern: ou-bar2sek-aws-<category>-<env>-<root-id>
 resource "aws_organizations_organizational_unit" "infrastructure" {
-  name      = "Infrastructure"
+  name      = "ou-bar2sek-aws-infrastructure-prod-73t0"
   parent_id = aws_organizations_organization.org.roots[0].id
 }
 
 resource "aws_organizations_organizational_unit" "security" {
-  name      = "Security"
+  name      = "ou-bar2sek-aws-security-prod-73t0"
   parent_id = aws_organizations_organization.org.roots[0].id
 }
 
-# 3. AWS Member Account: Production Homelab Cluster
+# 3. AWS Accounts following pattern: acct-bar2sek-aws-<category>-<env>-<root-id>
 resource "aws_organizations_account" "homelab_prod" {
-  name      = "bar2sek-homelab-prod"
+  name      = "acct-bar2sek-aws-homelab-prod-73t0"
   email     = "aws-prod@bar2sek.com"
   parent_id = aws_organizations_organizational_unit.infrastructure.id
+}
+
+resource "aws_organizations_account" "log_archive" {
+  name      = "acct-bar2sek-aws-security-logarchive-infra-prod-73t0"
+  email     = "aws-logs@bar2sek.com"
+  parent_id = aws_organizations_organizational_unit.security.id
+}
+
+resource "aws_organizations_account" "security_audit" {
+  name      = "acct-bar2sek-aws-security-tooling-infra-prod-73t0"
+  email     = "aws-security@bar2sek.com"
+  parent_id = aws_organizations_organizational_unit.security.id
 }
 
 # 4. AWS Control Tower Landing Zone Deployment
@@ -70,11 +82,11 @@ resource "aws_controltower_control" "prevent_s3_public" {
   target_identifier  = aws_organizations_organizational_unit.infrastructure.arn
 }
 
-# 6. AWS IAM Identity Center Administrator Permission Set
+# 6. AWS IAM Identity Center Permission Set following pattern: pset-aws-<product>-<env>-<permission>
 data "aws_ssoadmin_instances" "org" {}
 
 resource "aws_ssoadmin_permission_set" "admin" {
-  name             = "AdministratorAccess"
+  name             = "pset-aws-homelab-prod-admin"
   description      = "Full Administrator Access for Authentik SAML Federated Users"
   instance_arn     = tolist(data.aws_ssoadmin_instances.org.arns)[0]
   session_duration = "PT8H"

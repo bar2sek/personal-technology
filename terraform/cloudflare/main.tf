@@ -1,5 +1,5 @@
 # Cloudflare Infrastructure Terraform Module
-# Manages Cloudflare Tunnels, Zero Trust Access, DNS Records, and Email Routing
+# Strictly Enforces Global Resource Naming Conventions
 
 terraform {
   required_version = ">= 1.5.0"
@@ -24,10 +24,10 @@ resource "random_id" "tunnel_secret" {
   byte_length = 35
 }
 
-# 1. Cloudflare Tunnel Creation
+# 1. Cloudflare Tunnel Creation following pattern: tunnel-clf-bar2sek-prod-use1-001
 resource "cloudflare_zero_trust_tunnel_cloudflared" "homelab_tunnel" {
   account_id = var.cloudflare_account_id
-  name       = "talos-homelab-tunnel"
+  name       = "tunnel-clf-bar2sek-prod-use1-001"
   secret     = random_id.tunnel_secret.b64_std
 }
 
@@ -91,7 +91,7 @@ resource "cloudflare_email_routing_settings" "email_routing" {
   enabled = true
 }
 
-# AWS Sub-Account Email Forwarding Rules (Routes to Destination Inbox)
+# Forwarding Rules for AWS Sub-Accounts
 resource "cloudflare_email_routing_rule" "aws_prod_email" {
   zone_id = var.cloudflare_zone_id
   name    = "AWS Production Homelab Email Forward"
