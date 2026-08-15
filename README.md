@@ -35,7 +35,8 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 - [302 - GitHub Actions ARC Self-Hosted CI/CD](docs/302-github-actions-runner-controller.md)
 - [303 - KubeVirt Windows 11 Gaming VM (RTX 4070 Passthrough)](docs/303-kubevirt-windows-gpu-vm.md)
 - [304 - Automated Windows VM Setup with Ansible & Chocolatey](docs/304-windows-ansible-automation.md)
-- [305 - KubeVirt Omarchy VM Arch Linux VM](docs/305-kubevirt-arch-linux-vm.md)
+- [305 - KubeVirt `omarchy-vm` Arch Linux VM](docs/305-kubevirt-arch-linux-vm.md)
+- [306 - Mac Studio Native MLX Local LLM & Hybrid K8s Integration](docs/306-mac-studio-mlx-llm-integration.md)
 
 ### ☁️ Section 4: AWS Hybrid Integration & Cloud Security
 - [401 - AWS Controllers for Kubernetes (ACK) Architecture](docs/401-aws-ack-hybrid-architecture.md)
