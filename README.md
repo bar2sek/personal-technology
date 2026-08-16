@@ -11,7 +11,7 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 | **Physical Nodes** | **6 Nodes**: `omni-server` (Dell OptiPlex), `sm-node-01/02` (Supermicro Xeon D), `sm-node-03` (Supermicro 1U Xeon E5), `pc-node-04` (Ryzen 3800X 27TB Storage PC), `pc-node-05` (Ryzen 7600 RTX 4070 GPU PC). |
 | **Total Compute** | **36 Physical Cores / 72 vCPU Threads** (`allowSchedulingOnControlPlanes: true` across all 5 cluster nodes). |
 | **Total Memory** | **320 GB DDR4 RAM**. |
-| **Total Storage** | **48.5 TB Raw Storage**: **6TB High-IOPS NVMe Pool** + **16TB Replicated SATA SSD Pool** + **27.0TB Bulk Mechanical HDD Array** (11 HDDs). |
+| **Total Storage** | **47.5 TB Raw Storage**: **5TB High-IOPS NVMe Pool** + **16TB Replicated SATA SSD Pool** + **27.0TB Bulk Mechanical HDD Array** (11 HDDs). |
 | **Network Fabric** | **3.5 Gbps Google Fiber WAN**, **20 Gbps LAG SFP+ Switch Backbone**, **Dual 10G SFP+ Server Uplinks**, **2.5G Multi-Gig Node Uplink**, MTU 9000 Jumbo Frames, Dual-Stack IPv4/IPv6, UniFi U7 Pro (Wi-Fi 7) & U6-Lite (Wi-Fi 6). |
 
 ---
@@ -37,6 +37,7 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 - [304 - Automated Windows VM Setup with Ansible & Chocolatey](docs/304-windows-ansible-automation.md)
 - [305 - KubeVirt `omarchy-vm` Arch Linux VM](docs/305-kubevirt-arch-linux-vm.md)
 - [306 - Mac Studio Native MLX Local LLM & Hybrid K8s Integration](docs/306-mac-studio-mlx-llm-integration.md)
+- [307 - Omarchy Framework & Apple Ecosystem Bridge (BlueBubbles & KDE Connect)](docs/307-omarchy-framework-apple-ecosystem-bridge.md)
 
 ### ☁️ Section 4: AWS Hybrid Integration & Cloud Security
 - [401 - AWS Controllers for Kubernetes (ACK) Architecture](docs/401-aws-ack-hybrid-architecture.md)

@@ -39,8 +39,8 @@ This document outlines the architectural blueprint, storage engine, networking t
 
 ### Storage Device Assignment (3-Tier Rook-Ceph Architecture):
 
-1. **Tier 1 (NVMe High-IOPS Pool - 6TB)**:
-   - **Devices**: 2x 2TB NVMe (`sm-node-01`/`02`) + 2x 1TB NVMe (`pc-node-05`).
+1. **Tier 1 (NVMe High-IOPS Pool - 5TB)**:
+   - **Devices**: 2x 2TB NVMe (`sm-node-01`/`02`) + 1x 1TB NVMe (`pc-node-05`).
    - **Role**: `etcd` WAL, high-speed database PVCs (PostgreSQL/Redis), Ceph RocksDB/WAL metadata acceleration, and Ollama AI model caching.
 2. **Tier 2 (SATA SSD Replicated Pool - 16TB)**:
    - **Devices**: 8x 2TB Crucial MX500 SATA SSDs (`sm-node-01`, `02`, `03`).
