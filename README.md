@@ -36,8 +36,6 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 - [303 - KubeVirt Windows 11 Gaming VM (RTX 4070 Passthrough)](docs/303-kubevirt-windows-gpu-vm.md)
 - [304 - Automated Windows VM Setup with Ansible & Chocolatey](docs/304-windows-ansible-automation.md)
 - [305 - KubeVirt `omarchy-vm` Arch Linux VM](docs/305-kubevirt-arch-linux-vm.md)
-- [306 - Mac mini (M4 Pro 48GB) Native MLX Local LLM & 10GbE Cluster Mesh](docs/306-mac-mini-m4-pro-mlx-llm-integration.md)
-- [307 - Omarchy Framework & Apple Ecosystem Bridge (BlueBubbles & KDE Connect)](docs/307-omarchy-framework-apple-ecosystem-bridge.md)
 
 ### ☁️ Section 4: AWS Hybrid Integration & Cloud Security
 - [401 - AWS Controllers for Kubernetes (ACK) Architecture](docs/401-aws-ack-hybrid-architecture.md)
