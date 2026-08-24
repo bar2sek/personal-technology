@@ -43,6 +43,7 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 - [403 - Authentik Master IdP & AWS SAML 2.0 Identity Federation](docs/403-identity-sso-authentik-aws.md)
 - [404 - AWS Multi-Account Landing Zone (Organizations, IAM Identity Center & Terraform)](docs/404-aws-landing-zone-organizations-terraform.md)
 - [405 - AWS Account Factory for Terraform (AFT) vs GitHub Actions GitOps](docs/405-aws-account-factory-terraform.md)
+- [406 - Floci: In-Cluster Local AWS Cloud Emulator for Terraform & CI/CD](docs/406-floci-local-aws-emulator.md)
 
 ### 📦 Section 5: Self-Hosted Application Suite
 - [501 - TeslaMate Vehicle Telemetry & Analytics Platform](docs/501-teslamate-telemetry-deployment.md)
