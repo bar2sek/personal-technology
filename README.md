@@ -29,6 +29,7 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 - [201 - UniFi Physical Cabling & Logical Topology Diagrams](docs/201-unifi-network-topology.md)
 - [202 - Cloudflare Tunnel & Zero Trust Remote Access](docs/202-cloudflare-tunnel-zero-trust.md)
 - [203 - Tailscale Kubernetes Operator & Mesh VPN](docs/203-tailscale-mesh-vpn.md)
+- [204 - UDM-Pro Network & VLAN Setup Guide (Step-by-Step)](docs/204-udm-pro-network-creation-guide.md)
 
 ### ⚙️ Section 3: Talos Linux & Cluster Administration
 - [301 - Network PXE Boot & Node Provisioning Instruction Manual](docs/301-pxe-boot-node-provisioning.md)
