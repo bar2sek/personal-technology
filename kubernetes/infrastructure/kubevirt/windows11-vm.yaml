@@ -1,0 +1,82 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: vms
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: windows-gaming-nvme-pvc
+  namespace: vms
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: rook-ceph-block-nvme
+  resources:
+    requests:
+      storage: 250Gi
+---
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: windows11-gaming-vm
+  namespace: vms
+  labels:
+    special: windows11-gaming
+spec:
+  running: true
+  template:
+    metadata:
+      labels:
+        kubevirt.io/domain: windows11-gaming-vm
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: pc-node-05
+      domain:
+        cpu:
+          cores: 6
+          threads: 2
+        resources:
+          requests:
+            memory: 24Gi
+          limits:
+            memory: 24Gi
+        devices:
+          disks:
+            - name: rootdisk
+              disk:
+                bus: virtio
+          interfaces:
+            - name: default
+              masquerade: {}
+          gpus:
+            - name: rtx4070
+              deviceName: nvidia.com/GA104_GeForce_RTX_4070 # Or PCI host-device mapping
+          inputs:
+            - type: tablet
+              bus: usb
+              name: tablet
+        features:
+          acpi: {}
+          apic: {}
+          hyperv:
+            relaxed: {}
+            vapic: {}
+            spinlocks:
+              spinlocks: 8191
+            synic: {}
+            synictimer:
+              direct: {}
+            reset: {}
+            frequencies: {}
+            reenlightenment: {}
+            tlbflush: {}
+            ipi: {}
+            evmcs: {}
+      networks:
+        - name: default
+          pod: {}
+      volumes:
+        - name: rootdisk
+          persistentVolumeClaim:
+            claimName: windows-gaming-nvme-pvc

@@ -1,0 +1,38 @@
+apiVersion: route53.services.k8s.aws/v1alpha1
+kind: RecordSet
+metadata:
+  name: teslamate-dns-record
+  namespace: teslamate
+spec:
+  hostedZoneID: "Z0123456789ABCDEF" # Managed via terraform aws_route53_zone output
+  name: teslamate.bar2sek.com
+  type: CNAME
+  ttl: 300
+  resourceRecords:
+    - value: "tunnel.bar2sek.com"
+---
+apiVersion: route53.services.k8s.aws/v1alpha1
+kind: RecordSet
+metadata:
+  name: finance-dns-record
+  namespace: finance
+spec:
+  hostedZoneID: "Z0123456789ABCDEF"
+  name: finance.bar2sek.com
+  type: CNAME
+  ttl: 300
+  resourceRecords:
+    - value: "tunnel.bar2sek.com"
+---
+apiVersion: route53.services.k8s.aws/v1alpha1
+kind: RecordSet
+metadata:
+  name: recipes-dns-record
+  namespace: mealie
+spec:
+  hostedZoneID: "Z0123456789ABCDEF"
+  name: recipes.bar2sek.com
+  type: CNAME
+  ttl: 300
+  resourceRecords:
+    - value: "tunnel.bar2sek.com"

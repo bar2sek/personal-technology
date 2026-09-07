@@ -1,0 +1,75 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: aws-emulator
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: floci-data-pvc
+  namespace: aws-emulator
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: rook-ceph-block
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: floci
+  namespace: aws-emulator
+  labels:
+    app: floci
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: floci
+  template:
+    metadata:
+      labels:
+        app: floci
+    spec:
+      containers:
+        - name: floci
+          image: ghcr.io/floci-io/floci:latest
+          ports:
+            - name: aws-api
+              containerPort: 4566
+          env:
+            - name: FLOCI_DATA_DIR
+              value: "/data"
+            - name: SERVICES
+              value: "s3,dynamodb,sqs,sns,iam,route53,kms,ssm,cloudwatch"
+            - name: AWS_DEFAULT_REGION
+              value: "us-east-2"
+          volumeMounts:
+            - name: floci-storage
+              mountPath: /data
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: floci-storage
+          persistentVolumeClaim:
+            claimName: floci-data-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: floci
+  namespace: aws-emulator
+spec:
+  selector:
+    app: floci
+  ports:
+    - name: aws-api
+      port: 4566
+      targetPort: 4566

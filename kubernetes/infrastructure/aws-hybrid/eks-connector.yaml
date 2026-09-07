@@ -1,0 +1,75 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: eks-connector
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: eks-connector-activation
+  namespace: eks-connector
+type: Opaque
+stringData:
+  id: "REPLACE_WITH_EKS_ACTIVATION_ID"
+  code: "REPLACE_WITH_EKS_ACTIVATION_CODE"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: eks-connector
+  namespace: eks-connector
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: eks-connector-binding
+subjects:
+  - kind: ServiceAccount
+    name: eks-connector
+    namespace: eks-connector
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: eks-connector
+  namespace: eks-connector
+  labels:
+    app: eks-connector
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: eks-connector
+  template:
+    metadata:
+      labels:
+        app: eks-connector
+    spec:
+      serviceAccountName: eks-connector
+      containers:
+        - name: connector
+          image: public.ecr.aws/amazon-ssm-agent/amazon-ssm-agent:latest
+          env:
+            - name: AWS_REGION
+              value: "us-east-2"
+            - name: ACTIVATION_CODE
+              valueFrom:
+                secretKeyRef:
+                  name: eks-connector-activation
+                  key: code
+            - name: ACTIVATION_ID
+              valueFrom:
+                secretKeyRef:
+                  name: eks-connector-activation
+                  key: id
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi

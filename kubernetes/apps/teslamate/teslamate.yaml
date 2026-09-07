@@ -1,0 +1,218 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: teslamate
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: teslamate-secrets
+  namespace: teslamate
+type: Opaque
+stringData:
+  db-password: "teslamate_secure_db_password"
+  encryption-key: "REPLACE_WITH_TESLAMATE_ENCRYPTION_KEY"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: teslamate-db-pvc
+  namespace: teslamate
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: rook-ceph-block
+  resources:
+    requests:
+      storage: 10Gi
+---
+# PostgreSQL Database
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: teslamate-db
+  namespace: teslamate
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: teslamate-db
+  template:
+    metadata:
+      labels:
+        app: teslamate-db
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          env:
+            - name: POSTGRES_USER
+              value: teslamate
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: teslamate-secrets
+                  key: db-password
+            - name: POSTGRES_DB
+              value: teslamate
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - name: db-storage
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: db-storage
+          persistentVolumeClaim:
+            claimName: teslamate-db-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: teslamate-db
+  namespace: teslamate
+spec:
+  selector:
+    app: teslamate-db
+  ports:
+    - port: 5432
+      targetPort: 5432
+---
+# Mosquitto MQTT Broker
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: teslamate-mqtt
+  namespace: teslamate
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: teslamate-mqtt
+  template:
+    metadata:
+      labels:
+        app: teslamate-mqtt
+    spec:
+      containers:
+        - name: mosquitto
+          image: eclipse-mosquitto:2
+          ports:
+            - containerPort: 1883
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: teslamate-mqtt
+  namespace: teslamate
+spec:
+  selector:
+    app: teslamate-mqtt
+  ports:
+    - port: 1883
+      targetPort: 1883
+---
+# TeslaMate Application
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: teslamate
+  namespace: teslamate
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: teslamate
+  template:
+    metadata:
+      labels:
+        app: teslamate
+    spec:
+      containers:
+        - name: teslamate
+          image: teslamate/teslamate:latest
+          env:
+            - name: ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: teslamate-secrets
+                  key: encryption-key
+            - name: DATABASE_USER
+              value: teslamate
+            - name: DATABASE_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: teslamate-secrets
+                  key: db-password
+            - name: DATABASE_NAME
+              value: teslamate
+            - name: DATABASE_HOST
+              value: teslamate-db
+            - name: MQTT_HOST
+              value: teslamate-mqtt
+          ports:
+            - containerPort: 4000
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: teslamate
+  namespace: teslamate
+spec:
+  selector:
+    app: teslamate
+  ports:
+    - port: 4000
+      targetPort: 4000
+---
+# TeslaMate Grafana Dashboards
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: teslamate-grafana
+  namespace: teslamate
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: teslamate-grafana
+  template:
+    metadata:
+      labels:
+        app: teslamate-grafana
+    spec:
+      containers:
+        - name: grafana
+          image: teslamate/grafana:latest
+          env:
+            - name: DATABASE_USER
+              value: teslamate
+            - name: DATABASE_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: teslamate-secrets
+                  key: db-password
+            - name: DATABASE_NAME
+              value: teslamate
+            - name: DATABASE_HOST
+              value: teslamate-db
+          ports:
+            - containerPort: 3000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: teslamate-grafana
+  namespace: teslamate
+spec:
+  selector:
+    app: teslamate-grafana
+  ports:
+    - port: 3000
+      targetPort: 3000

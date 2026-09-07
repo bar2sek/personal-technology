@@ -1,0 +1,57 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cloudflare-system
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cloudflared-tunnel-token
+  namespace: cloudflare-system
+type: Opaque
+stringData:
+  TUNNEL_TOKEN: "REPLACE_WITH_CLOUDFLARE_TUNNEL_TOKEN" # Injected via SealedSecrets, SOPS or CI/CD
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudflared
+  namespace: cloudflare-system
+  labels:
+    app.kubernetes.io/name: cloudflared
+spec:
+  replicas: 2 # High Availability across cluster nodes
+  selector:
+    matchLabels:
+      app: cloudflared
+  template:
+    metadata:
+      labels:
+        app: cloudflared
+    spec:
+      containers:
+        - name: cloudflared
+          image: cloudflare/cloudflared:latest
+          args:
+            - tunnel
+            - --no-autoupdate
+            - run
+          env:
+            - name: TUNNEL_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: cloudflared-tunnel-token
+                  key: TUNNEL_TOKEN
+          resources:
+            limits:
+              cpu: 500m
+              memory: 256Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          livenessProbe:
+            httpGet:
+              path: /ready
+              port: 2000
+            initialDelaySeconds: 10
+            periodSeconds: 10

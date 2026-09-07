@@ -1,0 +1,71 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: omarchy-nvme-pvc
+  namespace: vms
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: rook-ceph-block
+  resources:
+    requests:
+      storage: 50Gi
+---
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: omarchy-vm
+  namespace: vms
+spec:
+  running: true
+  template:
+    metadata:
+      labels:
+        kubevirt.io/domain: omarchy-vm
+    spec:
+      domain:
+        cpu:
+          cores: 4
+          threads: 2
+        resources:
+          requests:
+            memory: 8Gi
+          limits:
+            memory: 8Gi
+        devices:
+          disks:
+            - name: arch-disk
+              disk:
+                bus: virtio
+            - name: cloudinitdisk
+              cdrom:
+                bus: sata
+          interfaces:
+            - name: default
+              masquerade: {}
+      networks:
+        - name: default
+          pod: {}
+      volumes:
+        - name: arch-disk
+          persistentVolumeClaim:
+            claimName: omarchy-nvme-pvc
+        - name: cloudinitdisk
+          cloudInitNoCloud:
+            userData: |
+              #cloud-config
+              user: bar2sek
+              password: changeme123
+              chpasswd: { expire: False }
+              ssh_pwauth: True
+              sudo: ALL=(ALL) NOPASSWD:ALL
+              packages:
+                - qemu-guest-agent
+                - git
+                - curl
+                - neovim
+                - zsh
+                - htop
+              runcmd:
+                - systemctl start qemu-guest-agent
+                - systemctl enable qemu-guest-agent
