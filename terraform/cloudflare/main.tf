@@ -30,7 +30,11 @@ resource "cloudflare_zero_trust_tunnel_cloudflared_config" "homelab_tunnel_confi
     }
     ingress_rule {
       hostname = "grafana.${var.domain_name}"
-      service  = "http://grafana.monitoring.svc.cluster.local:3000"
+      service  = "http://teslamate-grafana.teslamate.svc.cluster.local:3000"
+    }
+    ingress_rule {
+      hostname = "omni.${var.domain_name}"
+      service  = "http://10.10.10.5:8080"
     }
     # Catch-all rule
     ingress_rule {
@@ -64,7 +68,44 @@ resource "cloudflare_record" "recipes_dns" {
   proxied = true
 }
 
-# 4. Cloudflare Email Routing Configuration
+resource "cloudflare_record" "grafana_dns" {
+  zone_id = var.cloudflare_zone_id
+  name    = "grafana"
+  value   = "${cloudflare_zero_trust_tunnel_cloudflared.homelab_tunnel.id}.cfargotunnel.com"
+  type    = "CNAME"
+  proxied = true
+}
+
+resource "cloudflare_record" "omni_dns" {
+  zone_id = var.cloudflare_zone_id
+  name    = "omni"
+  value   = "${cloudflare_zero_trust_tunnel_cloudflared.homelab_tunnel.id}.cfargotunnel.com"
+  type    = "CNAME"
+  proxied = true
+}
+
+# 4. Cloudflare Zero Trust Access Applications (SSO Protection)
+resource "cloudflare_zero_trust_access_application" "admin_apps" {
+  zone_id          = var.cloudflare_zone_id
+  name             = "Homelab Admin Applications"
+  domain           = "grafana.${var.domain_name}"
+  type             = "self_hosted"
+  session_duration = "24h"
+}
+
+resource "cloudflare_zero_trust_access_policy" "admin_apps_policy" {
+  application_id = cloudflare_zero_trust_access_application.admin_apps.id
+  zone_id        = var.cloudflare_zone_id
+  name           = "Allow Authorized Homelab Admin"
+  precedence     = "1"
+  decision       = "allow"
+
+  include {
+    email = [var.destination_email]
+  }
+}
+
+# 5. Cloudflare Email Routing Configuration
 resource "cloudflare_email_routing_settings" "email_routing" {
   zone_id = var.cloudflare_zone_id
   enabled = true
