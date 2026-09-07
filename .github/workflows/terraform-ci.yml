@@ -1,0 +1,46 @@
+name: "Terraform Lint & Validate CI"
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "terraform/**"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "terraform/**"
+
+jobs:
+  validate:
+    name: "Validate Terraform Configurations"
+    runs-on: talos-homelab-runner
+    strategy:
+      fail-fast: false
+      matrix:
+        dir:
+          - "terraform/aws"
+          - "terraform/aws_organization"
+          - "terraform/cloudflare"
+          - "terraform/unifi"
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.0
+
+      - name: Terraform Format Check
+        run: terraform fmt -check
+        working-directory: ${{ matrix.dir }}
+
+      - name: Terraform Init (Backend disabled for validation)
+        run: terraform init -backend=false
+        working-directory: ${{ matrix.dir }}
+
+      - name: Terraform Validate
+        run: terraform validate
+        working-directory: ${{ matrix.dir }}

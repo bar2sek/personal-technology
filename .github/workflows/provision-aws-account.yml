@@ -1,0 +1,43 @@
+name: "Provision AWS Account via Terraform & ARC"
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "terraform/aws_organization/**"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "terraform/aws_organization/**"
+
+jobs:
+  terraform:
+    name: "Terraform AWS Account Provisioning"
+    runs-on: talos-homelab-runner # Executes on self-hosted ARC runner pod inside Talos cluster
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.0
+
+      - name: Terraform Format Check
+        run: terraform fmt -check
+        working-directory: ./terraform/aws_organization
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: ./terraform/aws_organization
+
+      - name: Terraform Plan
+        run: terraform plan -no-color
+        working-directory: ./terraform/aws_organization
+
+      - name: Terraform Apply (Main Branch Only)
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: terraform apply -auto-approve
+        working-directory: ./terraform/aws_organization

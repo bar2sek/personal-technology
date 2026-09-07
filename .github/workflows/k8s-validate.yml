@@ -1,0 +1,33 @@
+name: "Kubernetes Manifests Validation"
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "kubernetes/**"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "kubernetes/**"
+
+jobs:
+  validate:
+    name: "Lint & Validate K8s Manifests"
+    runs-on: talos-homelab-runner
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Yamllint
+        run: pip install yamllint
+
+      - name: Lint YAML Files
+        run: |
+          yamllint -d "{extends: relaxed, rules: {line-length: {max: 180}}}" kubernetes/ talos/
