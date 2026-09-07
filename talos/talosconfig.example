@@ -1,0 +1,20 @@
+# Example Talosctl Client Configuration
+# Generate your production talosconfig via Sidero Omni Console or:
+# talosctl gen config talos-aws-homelab https://10.10.20.10:6443
+
+context: talos-aws-homelab
+contexts:
+  talos-aws-homelab:
+    endpoints:
+      - 10.10.20.10 # sm-node-01
+      - 10.10.20.11 # sm-node-02
+      - 10.10.20.12 # sm-node-03
+    nodes:
+      - 10.10.20.10 # sm-node-01
+      - 10.10.20.11 # sm-node-02
+      - 10.10.20.12 # sm-node-03
+      - 10.10.20.13 # pc-node-04
+      - 10.10.20.14 # pc-node-05
+    ca: LS0tLS1CRUdJTi...EXAMPLE_CA...LS0tLS0=
+    crt: LS0tLS1CRUdJTi...EXAMPLE_CRT...LS0tLS0=
+    key: LS0tLS1CRUdJTi...EXAMPLE_KEY...LS0tLS0=

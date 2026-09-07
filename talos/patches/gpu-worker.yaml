@@ -1,0 +1,33 @@
+# Talos Linux Machine Config Patch: GPU Worker Node 05 (Ryzen 7600 + NVIDIA RTX 4070)
+machine:
+  type: worker
+  install:
+    disk: /dev/nvme0n1 # Tiny 2GB partition 1 for OS, 998GB partition 2 for Ceph & AI model caching
+    wipe: false
+    extensions:
+      - image: ghcr.io/siderolabs/nonfree-kmod-nvidia:latest
+      - image: ghcr.io/siderolabs/nvidia-container-toolkit:latest
+  kernel:
+    args:
+      - amd_iommu=on
+      - iommu=pt
+      - vfio-pci.ids=10de:2786,10de:22bc # RTX 4070 Video & Audio IDs for VFIO PCIe passthrough
+  nodeLabels:
+    node.kubernetes.io/role: gpu-worker
+    topology.kubernetes.io/zone: core-rack
+    nvidia.com/gpu.present: "true"
+    nvidia.com/gpu.family: "ada-lovelace"
+    nvidia.com/gpu.product: "RTX-4070"
+  network:
+    interfaces:
+      # 2.5GbE SFP+ Multi-Gig Uplink (UDM-Pro / USW-Aggregation)
+      - interface: eth0
+        dhcp: true
+        vlans:
+          - vlanId: 20
+            dhcp: true
+          - vlanId: 40
+            dhcp: true
+            mtu: 9000
+  sysctls:
+    vm.nr_hugepages: "12288" # Hugepages for KubeVirt Windows 11 Gaming VM Performance

@@ -1,0 +1,45 @@
+# Talos Linux Machine Config Patch: Supermicro HA Control Planes (sm-node-01, sm-node-02, sm-node-03)
+machine:
+  type: controlplane
+  install:
+    disk: /dev/sda # Target SATA SuperDOM boot drive
+    wipe: false
+  network:
+    interfaces:
+      # Primary 10G SFP+ Interface for Kubernetes API, Kubelet & etcd (VLAN 20)
+      - interface: eth0
+        dhcp: true
+        vlans:
+          - vlanId: 20
+            dhcp: true
+          # Dedicated 10G SFP+ Ceph Storage Replication Network (VLAN 40)
+          - vlanId: 40
+            dhcp: true
+            mtu: 9000 # Jumbo Frames for High-Throughput Ceph East-West Traffic
+  features:
+    rbac: true
+    kubernetesTalosAPIAccess:
+      enabled: true
+      allowedRoles:
+        - os:reader
+      allowedKubernetesNamespaces:
+        - kube-system
+
+cluster:
+  allowSchedulingOnControlPlanes: true # Enables all 5 cluster nodes to run container workloads
+  network:
+    cni:
+      name: flannel
+    podSubnets:
+      - 10.244.0.0/16
+    serviceSubnets:
+      - 10.96.0.0/12
+  apiServer:
+    certSANs:
+      - 10.10.20.1
+      - 10.10.20.10
+      - 10.10.20.11
+      - 10.10.20.12
+      - 10.10.20.13
+      - k8s.bar2sek.com
+      - cluster.local

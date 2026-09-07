@@ -1,0 +1,28 @@
+# Talos Linux Machine Config Patch: Storage PC Node 04 (Ryzen 3800X, 11-Disk HDD Array)
+machine:
+  type: worker
+  install:
+    disk: /dev/sda # 80GB Intel Enterprise 320 SSD Boot Drive
+    wipe: false
+  nodeLabels:
+    node.kubernetes.io/role: storage-worker
+    topology.kubernetes.io/zone: core-rack
+    storage.homelab/tier3-hdd: "true"
+  network:
+    interfaces:
+      # Onboard 1GbE RJ45 for Management / Pod Network
+      - interface: eth0
+        dhcp: true
+        vlans:
+          - vlanId: 20
+            dhcp: true
+      # Dual 10G SFP+ Dedicated Link for Rook-Ceph Storage Traffic (VLAN 40)
+      - interface: eth1
+        dhcp: true
+        vlans:
+          - vlanId: 40
+            dhcp: true
+            mtu: 9000 # Jumbo Frames enabled for high-bandwidth disk replication
+  kubelet:
+    extraArgs:
+      node-labels: "node.kubernetes.io/role=storage-worker"
