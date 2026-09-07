@@ -52,3 +52,48 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 - [503 - Mealie Recipe Manager & Meal Planner](docs/503-mealie-recipe-planner.md)
 - [504 - Immich Self-Hosted Photo & Video Backup Platform](docs/504-immich-photo-backup.md)
 - [505 - Home Assistant Smart Home & IoT Automation Platform](docs/505-home-assistant-smart-home.md)
+
+---
+
+## 📁 Repository Codebase Structure
+
+```
+├── .github/workflows/         # Actions Runner Controller (ARC) CI/CD pipelines
+│   ├── provision-aws-account.yml # Automated AWS account provisioning GitOps
+│   ├── terraform-ci.yml       # Multi-directory Terraform lint/validate CI
+│   └── k8s-validate.yml       # YAML and Kubernetes manifest validation
+├── ansible/                   # Ansible configuration management for VMs
+│   ├── ansible.cfg            # WinRM & connection defaults
+│   ├── inventory/             # Windows 11 Gaming VM hosts
+│   ├── playbooks/             # Automated Chocolatey & Sunshine setup
+│   └── files/                 # Unattend.xml sysprep bootstrap answer file
+├── docs/                      # Comprehensive homelab architecture documentation
+├── kubernetes/                # Declarative Kubernetes manifests
+│   ├── infrastructure/        # Core platform services
+│   │   ├── rook-ceph/         # 3-tier Ceph cluster & StorageClasses
+│   │   ├── cloudflare/        # Cloudflare Tunnel HA deployment
+│   │   ├── tailscale/         # Tailscale operator & subnet router
+│   │   ├── kubevirt/          # Windows 11 (GPU passthrough) & Arch VMs
+│   │   ├── arc/               # Actions Runner Controller AutoscalingRunnerSet
+│   │   ├── floci/             # In-cluster local AWS cloud emulator
+│   │   ├── authentik/         # Authentik master IdP & PostgreSQL/Redis
+│   │   └── aws-hybrid/        # AWS ACK (S3, Route53) & EKS Connector
+│   └── apps/                  # Containerized self-hosted application suite
+│       ├── teslamate/         # Tesla telemetry, MQTT, PostgreSQL, Grafana
+│       ├── finance/           # Actual Budget personal finance
+│       ├── mealie/            # Mealie recipe manager
+│       ├── immich/            # Immich photo backup (pgvector + ML)
+│       └── home-assistant/    # Home Assistant smart home automation
+├── talos/                     # Talos Linux machine configurations & patches
+│   ├── talosconfig.example    # talosctl client configuration template
+│   └── patches/               # Node-specific configuration patches
+│       ├── controlplane.yaml  # Supermicro HA control plane (allowSchedulingOnControlPlanes)
+│       ├── storage-worker.yaml# pc-node-04 11-disk bulk HDD storage worker
+│       └── gpu-worker.yaml    # pc-node-05 AM5 Ryzen 7600 + RTX 4070 VFIO passthrough
+└── terraform/                 # Infrastructure as Code
+    ├── aws/                   # Route53, encrypted S3 backups, EKS Connector role
+    ├── aws_organization/      # Multi-account Landing Zone, Control Tower, SSO
+    ├── cloudflare/            # Zero Trust Tunnels, DNS, Access SSO, Email Routing
+    ├── unifi/                 # UDM-Pro VLANs (10,20,30,40,50,60,90), firewalls, profiles
+    └── backend-config.example.tf # Remote state configuration reference
+```
