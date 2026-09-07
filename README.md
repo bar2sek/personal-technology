@@ -37,6 +37,8 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 - [303 - KubeVirt Windows 11 Gaming VM (RTX 4070 Passthrough)](docs/303-kubevirt-windows-gpu-vm.md)
 - [304 - Automated Windows VM Setup with Ansible & Chocolatey](docs/304-windows-ansible-automation.md)
 - [305 - KubeVirt `omarchy-vm` Arch Linux VM](docs/305-kubevirt-arch-linux-vm.md)
+- [306 - Hybrid Local/Remote AI Development Architecture (MLX + K8s)](docs/306-hybrid-local-remote-ai-dev.md)
+
 
 ### ☁️ Section 4: AWS Hybrid Integration & Cloud Security
 - [401 - AWS Controllers for Kubernetes (ACK) Architecture](docs/401-aws-ack-hybrid-architecture.md)
@@ -67,6 +69,10 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 │   ├── inventory/             # Windows 11 Gaming VM hosts
 │   ├── playbooks/             # Automated Chocolatey & Sunshine setup
 │   └── files/                 # Unattend.xml sysprep bootstrap answer file
+├── client-tools/              # Workstation client configuration & bootstrap scripts
+│   └── ai-dev/                # Apple MLX / oMLX & Continue.dev local setup
+├── docker/                    # Custom container images
+│   └── dev-agent/             # Remote Antigravity dev container & toolchains
 ├── docs/                      # Comprehensive homelab architecture documentation
 ├── kubernetes/                # Declarative Kubernetes manifests
 │   ├── infrastructure/        # Core platform services
@@ -77,7 +83,8 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 │   │   ├── arc/               # Actions Runner Controller AutoscalingRunnerSet
 │   │   ├── floci/             # In-cluster local AWS cloud emulator
 │   │   ├── authentik/         # Authentik master IdP & PostgreSQL/Redis
-│   │   └── aws-hybrid/        # AWS ACK (S3, Route53) & EKS Connector
+│   │   ├── aws-hybrid/        # AWS ACK (S3, Route53) & EKS Connector
+│   │   └── dev-workspace/     # Antigravity persistent remote dev pod & NVMe PVC
 │   └── apps/                  # Containerized self-hosted application suite
 │       ├── teslamate/         # Tesla telemetry, MQTT, PostgreSQL, Grafana
 │       ├── finance/           # Actual Budget personal finance

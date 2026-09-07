@@ -1,0 +1,16 @@
+# ==============================================================================
+# Homelab Antigravity Remote Dev Pod SSH Configuration
+# Append this snippet to ~/.ssh/config on your macOS workstation
+# ==============================================================================
+
+# Connect via Tailscale IP or in-cluster subnet IP (10.10.x.x)
+Host antigravity-dev
+    HostName 10.10.20.75 # Or your Tailscale node IP / hostname
+    User root
+    Port 22
+    IdentityFile ~/.ssh/id_ed25519
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
+    ServerAliveInterval 30
+    ServerAliveCountMax 5
+    ForwardAgent yes

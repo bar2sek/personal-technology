@@ -1,0 +1,32 @@
+{
+  "tabAutocompleteModel": {
+    "title": "Qwen 2.5 Coder 14B (Apple MLX)",
+    "provider": "openai",
+    "model": "mlx-community/Qwen2.5-Coder-14B-Instruct-4bit",
+    "apiBase": "http://localhost:8000/v1",
+    "contextLength": 4096,
+    "apiKey": "EMPTY"
+  },
+  "models": [
+    {
+      "title": "Qwen 2.5 Coder 32B (Apple MLX)",
+      "provider": "openai",
+      "model": "mlx-community/Qwen2.5-Coder-32B-Instruct-4bit",
+      "apiBase": "http://localhost:8000/v1",
+      "contextLength": 32768,
+      "apiKey": "EMPTY"
+    }
+  ],
+  "customCommands": [
+    {
+      "name": "refactor",
+      "prompt": "Review the selected code, optimize it for readability and performance, and provide a unified diff.",
+      "description": "Clean refactor of selected code"
+    },
+    {
+      "name": "test",
+      "prompt": "Generate thorough unit tests with 100% branch coverage for the selected code.",
+      "description": "Generate comprehensive unit tests"
+    }
+  ]
+}

@@ -1,0 +1,100 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dev-workspaces
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: antigravity-dev-workspace-pvc
+  namespace: dev-workspaces
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: rook-ceph-block-nvme
+  resources:
+    requests:
+      storage: 100Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: antigravity-dev
+  namespace: dev-workspaces
+  labels:
+    app: antigravity-dev
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate # Required for ReadWriteOnce PVC attached to persistent storage
+  selector:
+    matchLabels:
+      app: antigravity-dev
+  template:
+    metadata:
+      labels:
+        app: antigravity-dev
+    spec:
+      # Target Supermicro Node 03 to utilize 160GB RAM and 28 vCPUs for builds
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - sm-node-03
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: dev-agent
+          image: ghcr.io/bar2sek/dev-agent:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: ssh
+              containerPort: 22
+          env:
+            - name: WORKSPACE_DIR
+              value: "/workspace"
+            - name: AGY_DAEMON_PORT
+              value: "8080"
+          volumeMounts:
+            - name: workspace-storage
+              mountPath: /workspace
+            - name: workspace-storage
+              mountPath: /root/.config/antigravity
+              subPath: .config/antigravity
+            - name: workspace-storage
+              mountPath: /root/.ssh
+              subPath: .ssh
+          resources:
+            requests:
+              cpu: "2000m"
+              memory: "8Gi"
+            limits:
+              cpu: "16000m"
+              memory: "64Gi"
+      volumes:
+        - name: workspace-storage
+          persistentVolumeClaim:
+            claimName: antigravity-dev-workspace-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: antigravity-dev-ssh
+  namespace: dev-workspaces
+  labels:
+    app: antigravity-dev
+spec:
+  type: ClusterIP
+  ports:
+    - name: ssh
+      port: 22
+      targetPort: 22
+  selector:
+    app: antigravity-dev
