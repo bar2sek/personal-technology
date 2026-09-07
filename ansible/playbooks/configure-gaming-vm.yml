@@ -1,0 +1,65 @@
+---
+- name: Automate Windows 11 Gaming VM Setup
+  hosts: gaming_vms
+  gather_facts: true
+  tasks:
+    - name: Ensure Chocolatey Package Manager is Installed
+      chocolatey.chocolatey.win_chocolatey:
+        name: chocolatey
+        state: present
+
+    - name: Install NVIDIA Display Drivers
+      chocolatey.chocolatey.win_chocolatey:
+        name: nvidia-display-driver
+        state: present
+      register: nvidia_driver_install
+
+    - name: Install Gaming Launchers & Essential Utilities
+      chocolatey.chocolatey.win_chocolatey:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - sunshine       # Moonlight game streaming server
+        - steam          # Steam gaming platform
+        - battle-net     # Blizzard launcher
+        - discord        # Voice and community
+        - 7zip           # Compression utility
+        - vlc            # Media player
+        - git            # Source control
+
+    - name: Configure Windows Firewall Rules for Sunshine Streaming
+      community.windows.win_firewall_rule:
+        name: "{{ item.name }}"
+        localport: "{{ item.port }}"
+        action: allow
+        direction: in
+        protocol: "{{ item.protocol }}"
+        state: present
+        enabled: true
+      loop:
+        - { name: "Sunshine Web UI", port: "47990", protocol: "tcp" }
+        - { name: "Sunshine HTTP", port: "47984", protocol: "tcp" }
+        - { name: "Sunshine HTTPS", port: "47989", protocol: "tcp" }
+        - { name: "Sunshine Control", port: "48010", protocol: "tcp" }
+        - { name: "Sunshine Video Stream", port: "47998", protocol: "udp" }
+        - { name: "Sunshine Control UDP", port: "47999", protocol: "udp" }
+        - { name: "Sunshine Audio Stream", port: "48000", protocol: "udp" }
+        - { name: "Sunshine Mic Stream", port: "48010", protocol: "udp" }
+
+    - name: Ensure Sunshine Remote Gaming Service is Running
+      ansible.windows.win_service:
+        name: SunshineService
+        start_mode: auto
+        state: started
+
+    - name: Set Windows Power Plan to Ultimate / High Performance
+      ansible.windows.win_shell: |
+        powercfg /setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c
+      ignore_errors: true
+
+    - name: Disable Mouse Pointer Precision Acceleration for Gaming
+      ansible.windows.win_regedit:
+        path: HKCU:\Control Panel\Mouse
+        name: MouseSpeed
+        data: "0"
+        type: string
