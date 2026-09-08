@@ -42,3 +42,33 @@ terraform.rc
 # Optional: ignore plan files saved before destroying Terraform configuration
 # Uncomment the line below if you want to ignore planout files.
 # planout
+
+# ------------------------------------------------------------------------------
+# Security & Credentials
+# ------------------------------------------------------------------------------
+
+# Talos Linux & Kubernetes Cluster Credentials
+talosconfig
+kubeconfig
+*.kubeconfig
+
+# Secrets & Environment Configurations
+.env
+.env.*
+*.env
+*.sops.yaml.dec
+
+# Cryptographic Keys & TLS Certificates
+*.pem
+*.key
+*.crt
+
+# ------------------------------------------------------------------------------
+# OS & Editor Artifacts
+# ------------------------------------------------------------------------------
+.DS_Store
+._*
+.AppleDouble
+.LSOverride
+*.swp
+*~

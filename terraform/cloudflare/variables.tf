@@ -30,8 +30,8 @@ variable "domain_name" {
 
 variable "destination_email" {
   type        = string
-  description = "Destination inbox email address for forwarding"
-  default     = "me@bar2sek.com"
+  description = "Destination inbox email address for forwarding (override in private terraform.tfvars)"
+  default     = "user@example.com"
 }
 
 variable "cloudflare_api_token" {

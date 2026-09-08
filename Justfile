@@ -91,3 +91,17 @@ serve-ai:
     @echo "Starting Tab Autocomplete (:8081) and Deep Chat (:8080)..."
     @uvx --from mlx-lm mlx_lm.server --model mlx-community/Qwen2.5-Coder-14B-Instruct-4bit --port 8081 --chat-template-name chatml & \
      uvx --from mlx-lm mlx_lm.server --model mlx-community/Qwen2.5-Coder-32B-Instruct-4bit --port 8080 --chat-template-name chatml
+
+# ------------------------------------------------------------------------------
+# 6. Workstation Management (nix-darwin)
+# ------------------------------------------------------------------------------
+
+# Rebuild and apply the active nix-darwin configuration
+switch:
+    sudo -H darwin-rebuild switch --flake ~/.config/nix-darwin#MacBook-Pro
+
+# Update nix flake lockfile to latest package versions and rebuild
+update:
+    nix flake update --flake ~/.config/nix-darwin
+    sudo -H darwin-rebuild switch --flake ~/.config/nix-darwin#MacBook-Pro
+

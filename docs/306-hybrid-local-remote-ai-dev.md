@@ -103,7 +103,7 @@ iogpu.wired_mem_limit=40960
 ```
 
 ### 2. Automated Installation Script & Justfile Shortcuts
-Run [`client-tools/ai-dev/setup-mac-mlx.sh`](./client-tools/ai-dev/setup-mac-mlx.sh) or execute via `Justfile`:
+Run [`client-tools/ai-dev/setup-mac-mlx.sh`](../client-tools/ai-dev/setup-mac-mlx.sh) or execute via `Justfile`:
 
 ```bash
 # Set up Metal ceiling and pre-cache models via Astral uv
@@ -114,7 +114,7 @@ just serve-ai
 ```
 
 ### 3. VS Code Continue.dev Configuration
-Deploy [`client-tools/ai-dev/continue-config.json`](./client-tools/ai-dev/continue-config.json) to `~/.continue/config.json` (also managed declaratively via `nix-mac`):
+Deploy [`client-tools/ai-dev/continue-config.json`](../client-tools/ai-dev/continue-config.json) to `~/.continue/config.json` (also managed declaratively via `nix-mac`):
 
 ```json
 {
@@ -147,7 +147,7 @@ Deploy [`client-tools/ai-dev/continue-config.json`](./client-tools/ai-dev/contin
    ```
 
 2. **Connect via VS Code Remote - SSH**:
-   Add the snippet from [`client-tools/ai-dev/ssh-config-snippet`](./client-tools/ai-dev/ssh-config-snippet) to `~/.ssh/config`. Open VS Code, select **Remote-SSH: Connect to Host**, and choose `antigravity-dev`.
+   Add the snippet from [`client-tools/ai-dev/ssh-config-snippet`](../client-tools/ai-dev/ssh-config-snippet) to `~/.ssh/config`. Open VS Code, select **Remote-SSH: Connect to Host**, and choose `antigravity-dev`.
 
 3. **Trigger In-Cluster Agent Tasks**:
    Inside the attached VS Code terminal or via `kubectl`:
