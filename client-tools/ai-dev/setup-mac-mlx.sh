@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # setup-mac-mlx.sh
-# Automated Apple Silicon Setup for MLX / oMLX Zero-Latency Local Code Models
+# Zero-Bloat Apple Silicon Setup for MLX / oMLX Local Code Models (via Astral uv)
 # ==============================================================================
 
 set -euo pipefail
 
 echo "============================================================"
-echo "🚀 Setting up Apple MLX / oMLX on Apple Silicon Workstation"
+echo "🚀 Setting up Apple MLX / oMLX (Zero-Bloat via uv/uvx)"
 echo "============================================================"
 
 # 1. Architecture & OS Verification
@@ -33,43 +33,39 @@ else
     echo "✅ Metal wired memory limit already set to 40 GB."
 fi
 
-# 3. Setup Python Virtual Environment for MLX
-MLX_ENV_DIR="$HOME/.mlx-env"
-if [ ! -d "$MLX_ENV_DIR" ]; then
+# 3. Ensure Astral uv is installed
+if ! command -v uv &> /dev/null; then
     echo ""
-    echo "📦 Creating Python virtual environment at $MLX_ENV_DIR..."
-    python3 -m venv "$MLX_ENV_DIR"
+    echo "📦 Installing Astral uv (Zero-Bloat package runner)..."
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    export PATH="$HOME/.local/bin:$PATH"
 fi
 
-echo "📥 Installing / Updating Apple MLX & mlx-lm packages..."
-"$MLX_ENV_DIR/bin/pip" install --upgrade pip
-"$MLX_ENV_DIR/bin/pip" install --upgrade mlx mlx-lm huggingface_hub
+echo "✅ Astral uv is ready ($(uv --version))."
 
-# 4. Download Recommended Quantized Models
+# 4. Pre-download / Cache MLX Community Models
 echo ""
-echo "💾 Pre-caching MLX 4-bit models from mlx-community..."
+echo "💾 Pre-caching MLX 4-bit models from Hugging Face..."
 echo " - Qwen 2.5 Coder 14B (FIM Autocomplete)"
-"$MLX_ENV_DIR/bin/python" -c '
-from huggingface_hub import snapshot_download
-snapshot_download("mlx-community/Qwen2.5-Coder-14B-Instruct-4bit")
-'
+uvx --from huggingface_hub hf download mlx-community/Qwen2.5-Coder-14B-Instruct-4bit
 
 echo " - Qwen 2.5 Coder 32B (In-Editor Chat & Refactor)"
-"$MLX_ENV_DIR/bin/python" -c '
-from huggingface_hub import snapshot_download
-snapshot_download("mlx-community/Qwen2.5-Coder-32B-Instruct-4bit")
-'
+uvx --from huggingface_hub hf download mlx-community/Qwen2.5-Coder-32B-Instruct-4bit
 
 echo ""
 echo "============================================================"
 echo "🎉 Setup Complete!"
 echo "============================================================"
 echo ""
-echo "To start the local OpenAI-compatible MLX API server, run:"
+echo "To launch dual-port serving, use Justfile from nix-mac or homelab:"
 echo ""
-echo "  $MLX_ENV_DIR/bin/python -m mlx_lm.server --model mlx-community/Qwen2.5-Coder-32B-Instruct-4bit --port 8000"
+echo "  just serve-all   # in nix-mac"
+echo "  just serve-ai    # in talos-aws-homelab"
 echo ""
-echo "Or start with the 14B model for autocomplete focus:"
+echo "Or start individual servers via uvx on-demand:"
+echo "  Chat (:8080):"
+echo "    uvx --from mlx-lm mlx_lm.server --model mlx-community/Qwen2.5-Coder-32B-Instruct-4bit --port 8080 --chat-template-name chatml"
 echo ""
-echo "  $MLX_ENV_DIR/bin/python -m mlx_lm.server --model mlx-community/Qwen2.5-Coder-14B-Instruct-4bit --port 8000"
+echo "  Tab Autocomplete (:8081):"
+echo "    uvx --from mlx-lm mlx_lm.server --model mlx-community/Qwen2.5-Coder-14B-Instruct-4bit --port 8081 --chat-template-name chatml"
 echo ""

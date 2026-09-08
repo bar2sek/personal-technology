@@ -1,19 +1,27 @@
 {
   "tabAutocompleteModel": {
-    "title": "Qwen 2.5 Coder 14B (Apple MLX)",
+    "title": "Local Qwen 14B Autocomplete (MLX)",
     "provider": "openai",
     "model": "mlx-community/Qwen2.5-Coder-14B-Instruct-4bit",
-    "apiBase": "http://localhost:8000/v1",
+    "apiBase": "http://localhost:8081/v1",
     "contextLength": 4096,
     "apiKey": "EMPTY"
   },
   "models": [
     {
-      "title": "Qwen 2.5 Coder 32B (Apple MLX)",
+      "title": "Local Qwen 32B Chat (oMLX)",
       "provider": "openai",
       "model": "mlx-community/Qwen2.5-Coder-32B-Instruct-4bit",
-      "apiBase": "http://localhost:8000/v1",
+      "apiBase": "http://localhost:8080/v1",
       "contextLength": 32768,
+      "apiKey": "EMPTY"
+    },
+    {
+      "title": "Local Qwen 14B Chat (MLX)",
+      "provider": "openai",
+      "model": "mlx-community/Qwen2.5-Coder-14B-Instruct-4bit",
+      "apiBase": "http://localhost:8080/v1",
+      "contextLength": 16384,
       "apiKey": "EMPTY"
     }
   ],

@@ -60,6 +60,7 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 ## 📁 Repository Codebase Structure
 
 ```
+├── Justfile                   # Central command runner for Talos, K8s, Terraform & MLX
 ├── .github/workflows/         # Actions Runner Controller (ARC) CI/CD pipelines
 │   ├── provision-aws-account.yml # Automated AWS account provisioning GitOps
 │   ├── terraform-ci.yml       # Multi-directory Terraform lint/validate CI

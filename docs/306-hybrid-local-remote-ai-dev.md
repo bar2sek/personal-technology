@@ -28,8 +28,8 @@ The system separates concerns into three distinct layers:
  |                                                                                   |
  |  +--------------------+                     +----------------------------------+  |
  |  | VS Code            |                     | Apple MLX / oMLX Local Server    |  |
- |  | (Continue.dev UI)  |--- IPC (Port 8000)->| - Qwen 2.5 Coder 14B (4-bit FIM) |  |
- |  |                    |                     | - Qwen 2.5 Coder 32B (4-bit Chat)|  |
+ |  | (Continue.dev UI)  |--- IPC (:8081) ---->| - Tab Autocomplete (Qwen 14B)    |  |
+ |  |                    |--- IPC (:8080) ---->| - Deep Chat & Refactor (Qwen 32B)|  |
  |  +--------------------+                     +----------------------------------+  |
  +-----------------------------------------------------------------------------------+
            |                                                    
@@ -102,32 +102,35 @@ To persist this across reboots, add to `/etc/sysctl.conf`:
 iogpu.wired_mem_limit=40960
 ```
 
-### 2. Automated Installation Script
-Run [`client-tools/ai-dev/setup-mac-mlx.sh`](./client-tools/ai-dev/setup-mac-mlx.sh) to set up the MLX virtualenv, download models, and start the local API server:
+### 2. Automated Installation Script & Justfile Shortcuts
+Run [`client-tools/ai-dev/setup-mac-mlx.sh`](./client-tools/ai-dev/setup-mac-mlx.sh) or execute via `Justfile`:
 
 ```bash
-chmod +x client-tools/ai-dev/setup-mac-mlx.sh
+# Set up Metal ceiling and pre-cache models via Astral uv
 ./client-tools/ai-dev/setup-mac-mlx.sh
+
+# Launch dual-port MLX servers (:8081 Tab Autocomplete + :8080 Deep Chat)
+just serve-ai
 ```
 
 ### 3. VS Code Continue.dev Configuration
-Copy [`client-tools/ai-dev/continue-config.json`](./client-tools/ai-dev/continue-config.json) to `~/.continue/config.json`:
+Deploy [`client-tools/ai-dev/continue-config.json`](./client-tools/ai-dev/continue-config.json) to `~/.continue/config.json` (also managed declaratively via `nix-mac`):
 
 ```json
 {
   "tabAutocompleteModel": {
-    "title": "Qwen 2.5 Coder 14B (MLX)",
+    "title": "Local Qwen 14B Autocomplete (MLX)",
     "provider": "openai",
     "model": "mlx-community/Qwen2.5-Coder-14B-Instruct-4bit",
-    "apiBase": "http://localhost:8000/v1",
+    "apiBase": "http://localhost:8081/v1",
     "contextLength": 4096
   },
   "models": [
     {
-      "title": "Qwen 2.5 Coder 32B (MLX)",
+      "title": "Local Qwen 32B Chat (oMLX)",
       "provider": "openai",
       "model": "mlx-community/Qwen2.5-Coder-32B-Instruct-4bit",
-      "apiBase": "http://localhost:8000/v1",
+      "apiBase": "http://localhost:8080/v1",
       "contextLength": 32768
     }
   ]
