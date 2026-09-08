@@ -56,3 +56,11 @@ When proposing commit messages to the user, follow the repository's established 
   - **Port 8080**: Qwen 2.5 Coder 32B (4-bit) for Deep Chat & Scoped Refactor.
   - **Port 8081**: Qwen 2.5 Coder 14B / 1.5B (4-bit) for Instant Tab Autocomplete (FIM).
 * **Package Parity**: CLI tools (`talosctl`, `kubectl`, `helm`, `ansible`, `sops`, `age`, `k9s`) are managed declaratively on the Mac via `nix-mac` (`templates/flake.nix`).
+
+---
+
+## 6. 📝 Documentation & Linking Rules (Obsidian & GitHub Scope)
+
+* **Strict Repository Self-Containment**: All links within this repository MUST resolve exclusively to notes and files inside `talos-aws-homelab`. Never generate relative links that traverse out to sibling directories or other repositories (e.g., do NOT write `[[../nix-mac/...]]` or `[...](../3d-printing/...)`).
+* **Obsidian Wikilinks Standard**: Use standard Obsidian Wikilinks `[[Note Name]]` (or `[[Folder/Note Name|Display Text]]`) for all internal note cross-references, architecture docs, and runbooks.
+* **External Cross-References**: If you need to reference an external project, tool, or sibling repository, mention it in plain text or provide the full canonical GitHub URL—never a relative local file path.
