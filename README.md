@@ -1,3 +1,21 @@
+---
+title: "Enterprise Hybrid Homelab (Talos Linux + UniFi + AWS Cloud)"
+date: 2026-09-07
+tags:
+  - talos
+  - kubernetes
+  - unifi
+  - ceph
+  - aws
+  - terraform
+  - homelab
+  - hub
+status: evergreen
+aliases:
+  - "Homelab Hub"
+  - "Talos Cluster"
+---
+
 # 🚀 Enterprise Hybrid Homelab (Talos Linux + UniFi + AWS Cloud)
 
 A production-grade, declarative hybrid Kubernetes infrastructure powered by **Talos Linux**, **Sidero Omni**, **Ubiquiti UniFi**, **Rook-Ceph**, **KubeVirt**, **Authentik**, and **AWS Cloud**.
