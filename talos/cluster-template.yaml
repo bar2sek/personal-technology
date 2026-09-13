@@ -5,9 +5,7 @@ kubernetes:
 talos:
   version: v1.13.10
 patches:
-  - idOverride: 500-c514e06a-db93-457d-b95c-14811ff6f698
-    annotations:
-      name: User defined patch
+  - name: cluster-common
     inline: |-
       cluster:
         allowSchedulingOnControlPlanes: true
@@ -18,36 +16,82 @@ patches:
             - 10.10.20.11
             - 10.10.20.12
             - 10.10.20.13
+            - 10.10.20.20
+            - 10.10.20.111
+            - 10.10.20.120
+            - 10.10.20.131
+            - 10.10.20.199
+            - sm-node-01
+            - sm-node-02
+            - sm-node-03
+            - pc-node-04
+            - pc-node-05
             - k8s.bar2sek.com
             - cluster.local
 ---
 kind: ControlPlane
 machines:
-  - 00000000-0000-0000-0000-3cecef58ed64
-  - 9983ae00-e364-11ea-8000-3cecef6fd61e
   - da165a00-3e5d-11ea-8000-3cecef44a132
+  - 9983ae00-e364-11ea-8000-3cecef6fd61e
+  - 00000000-0000-0000-0000-3cecef58ed64
 ---
 kind: Workers
 machines:
-  - 7a7d25b8-0dfc-c810-a348-047c1680b262
   - 927ef8ab-872a-f416-acb4-2cf05d577ea4
----
-kind: Machine
-name: 00000000-0000-0000-0000-3cecef58ed64
-kernelArgs: []
----
-kind: Machine
-name: 7a7d25b8-0dfc-c810-a348-047c1680b262
-kernelArgs: []
----
-kind: Machine
-name: 927ef8ab-872a-f416-acb4-2cf05d577ea4
-kernelArgs: []
----
-kind: Machine
-name: 9983ae00-e364-11ea-8000-3cecef6fd61e
-kernelArgs: []
+  - 7a7d25b8-0dfc-c810-a348-047c1680b262
 ---
 kind: Machine
 name: da165a00-3e5d-11ea-8000-3cecef44a132
-kernelArgs: []
+patches:
+  - name: hostname-sm-node-01
+    inline: |-
+      machine:
+        network:
+          hostname: sm-node-01
+---
+kind: Machine
+name: 9983ae00-e364-11ea-8000-3cecef6fd61e
+patches:
+  - name: hostname-sm-node-02
+    inline: |-
+      machine:
+        network:
+          hostname: sm-node-02
+---
+kind: Machine
+name: 00000000-0000-0000-0000-3cecef58ed64
+patches:
+  - name: hostname-sm-node-03
+    inline: |-
+      machine:
+        network:
+          hostname: sm-node-03
+---
+kind: Machine
+name: 927ef8ab-872a-f416-acb4-2cf05d577ea4
+patches:
+  - name: storage-worker
+    inline: |-
+      machine:
+        network:
+          hostname: pc-node-04
+        nodeLabels:
+          node.kubernetes.io/role: storage-worker
+          storage.homelab/tier3-hdd: "true"
+---
+kind: Machine
+name: 7a7d25b8-0dfc-c810-a348-047c1680b262
+patches:
+  - name: gpu-worker
+    inline: |-
+      machine:
+        network:
+          hostname: pc-node-05
+        install:
+          extraKernelArgs:
+            - amd_iommu=on
+            - iommu=pt
+            - vfio-pci.ids=10de:2786,10de:22bc
+        nodeLabels:
+          node.kubernetes.io/role: gpu-worker
+          nvidia.com/gpu.present: "true"

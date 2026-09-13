@@ -288,17 +288,39 @@ Any AI agent or human operator can review this document to pick up exactly where
       - Injected Omni Root CA into `~/.talos/config` and symlinked PGP identity for out-of-band `talosctl` management through the Omni proxy.
       - Updated root `Justfile` recipes (`talos-health`, `talos-members`, `talos-etcd`, `talos-uptime`) with active node IPs.
 
+27. **Clean-Slate Cluster Teardown for Plan-Conforming Node Hostnames**:
+    - **Motivation**: The initial cluster bootstrap assigned default generated hostnames (`talos-1r0-2ub`, `talos-jii-ilt`, `talos-ppt-1fx`, `talos-qnd-0ta`, `talos-z5y-e03`). When applying config patches to set literal hostnames (`sm-node-01` .. `pc-node-05`), Talos v1alpha1 rejected the change with `* static hostname is already set in v1alpha1 config`.
+    - **Teardown Executed**:
+      - Deleted `homelab-k8s` cluster via `omnictl cluster delete homelab-k8s`.
+      - All 5 physical nodes returned cleanly to Sidero Omni's unallocated machine pool in `Maintenance` mode.
+    - **Declarative Template Prepared (`talos/cluster-template.yaml`)**:
+      - Pre-bakes literal hostnames into initial machine config patches:
+        - `da165a00-3e5d-11ea-8000-3cecef44a132` -> `sm-node-01` (Control Plane, SuperDOM `/dev/sda`)
+        - `9983ae00-e364-11ea-8000-3cecef6fd61e` -> `sm-node-02` (Control Plane, SuperDOM `/dev/sda`)
+        - `00000000-0000-0000-0000-3cecef58ed64` -> `sm-node-03` (Control Plane, SuperDOM `/dev/sde`)
+        - `927ef8ab-872a-f416-acb4-2cf05d577ea4` -> `pc-node-04` (Storage Worker, 80GB Intel SSD `/dev/sdc`)
+        - `7a7d25b8-0dfc-c810-a348-047c1680b262` -> `pc-node-05` (GPU Worker, NVMe `/dev/nvme1n1`)
+      - Preserves all VFIO kernel args (`amd_iommu=on`, `vfio-pci.ids`) and Kubernetes node labels.
+    - **Current Readiness**:
+      - 5/5 physical machines connected, healthy, and awaiting fresh cluster formation.
+
 ---
 
 ## 🎯 Immediate Next Actions
 
-1. **Deploy Rook-Ceph Distributed Storage**:
+1. **Bootstrap `homelab-k8s` with Plan Hostnames**:
+   - Form cluster in Omni (`https://10.10.10.5/clusters` -> **Create Cluster**).
+   - Control Planes: Assign `sm-node-01`, `sm-node-02`, `sm-node-03` (selecting respective SuperDOMs).
+   - Workers: Assign `pc-node-04` (Intel SSD `/dev/sdc`) and `pc-node-05` (NVMe `/dev/nvme1n1`).
+   - Confirm `kubectl get nodes -o wide` shows `sm-node-01` .. `pc-node-05` in `Ready` state.
+2. **Deploy Rook-Ceph Distributed Storage**:
    - Apply Rook-Ceph operator and cluster manifests targeting raw HDDs and NVMe on `pc-node-04` and nodes.
    - Establish CephBlockPool, CephFilesystem (CephFS), and CephObjectStore.
-2. **Deploy Core Addons & GitOps Pipeline**:
+3. **Deploy Core Addons & GitOps Pipeline**:
    - Provision ArgoCD / Flux for declarative GitOps application delivery.
    - Configure Cert-Manager, Gateway API / Envoy Gateway / Ingress Controller, and ExternalDNS.
-3. **Configure GPU Worker & Workload Partitioning**:
+4. **Configure GPU Worker & Workload Partitioning**:
    - Deploy NVIDIA GPU Operator or configure KubeVirt VFIO passthrough for Windows 11 Gaming VM and LLM inference.
+
 
 
