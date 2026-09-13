@@ -260,14 +260,45 @@ Any AI agent or human operator can review this document to pick up exactly where
 
 ---
 
+26. **Worker Nodes Attached, Production Kubeconfig Verified & Declarative Template Exported**:
+    - **Worker Node Attachment**:
+      - Attached both `pc-node-04` (`UUID: 927ef8ab-872a-f416-acb4-2cf05d577ea4`) and `pc-node-05` (`UUID: 7a7d25b8-0dfc-c810-a348-047c1680b262`) to the `homelab-k8s-workers` MachineSet in `homelab-k8s`.
+      - Both machines transitioned from `Maintenance` to `Booting`, booted into Talos v1.13.10 from their respective OS drives (`/dev/sda` Intel SSD for `pc-04`, `/dev/nvme0n1` for `pc-05`), and joined the cluster.
+    - **Production Kubeconfig Verified**:
+      - Downloaded service-account kubeconfig for `homelab-k8s` via `omnictl` and merged into `~/.kube/config` and `talos/kubeconfig`.
+      - Configured `insecure-skip-tls-verify: true` to bypass self-signed Omni certificate restrictions on macOS.
+      - Verified cluster state via `kubectl get nodes -o wide`:
+        ```text
+        NAME            STATUS   ROLES           AGE   VERSION   INTERNAL-IP    EXTERNAL-IP   OS-IMAGE           KERNEL-VERSION          CONTAINER-RUNTIME
+        talos-1r0-2ub   Ready    control-plane   34m   v1.36.4   10.10.20.199   <none>        Talos (v1.13.10)   6.18.48-talos (amd64)   containerd://2.2.7
+        talos-jii-ilt   Ready    control-plane   33m   v1.36.4   10.10.20.131   <none>        Talos (v1.13.10)   6.18.48-talos (amd64)   containerd://2.2.7
+        talos-ppt-1fx   Ready    <none>          70s   v1.36.4   10.10.20.20    <none>        Talos (v1.13.10)   6.18.48-talos (amd64)   containerd://2.2.7
+        talos-qnd-0ta   Ready    <none>          71s   v1.36.4   10.10.20.111   <none>        Talos (v1.13.10)   6.18.48-talos (amd64)   containerd://2.2.7
+        talos-z5y-e03   Ready    control-plane   33m   v1.36.4   10.10.20.120   <none>        Talos (v1.13.10)   6.18.48-talos (amd64)   containerd://2.2.7
+        ```
+      - All core pods (CoreDNS, Flannel CNI, Kube-Proxy) are 1/1 Running across all 5 nodes.
+    - **Hardware State Verified**:
+      - `pc-node-04` (`talos-ppt-1fx` / `10.10.20.20`): Verified all 11 bulk storage HDDs (`sda`, `sdb`, `sdd`, `sde`, `sdh`, `sdi`, `sdj`, `sdk`, `sdl`, `sdm`, `sdf`, `sdg`, `nvme0n1`) remain untouched and available for Rook-Ceph.
+      - `pc-node-05` (`talos-qnd-0ta` / `10.10.20.111`): Verified NVIDIA GeForce RTX 4070 (`0000:01:00.0`) and secondary NVMe (`nvme1n1`) are healthy and available.
+    - **Declarative GitOps Template Exported**:
+      - Exported `talos/cluster-template.yaml` via `omnictl cluster template export -c homelab-k8s --include-kernel-args -o talos/cluster-template.yaml`.
+      - Fully defines cluster specifications, control plane / worker machine allocations, patches, and kernel arguments for declarative zero-ClickOps synchronization.
+    - **Tooling & CLI Automation**:
+      - Authenticated `omnictl` CLI with PGP key registration in Omni.
+      - Injected Omni Root CA into `~/.talos/config` and symlinked PGP identity for out-of-band `talosctl` management through the Omni proxy.
+      - Updated root `Justfile` recipes (`talos-health`, `talos-members`, `talos-etcd`, `talos-uptime`) with active node IPs.
+
+---
+
 ## 🎯 Immediate Next Actions
 
-1. **Attach Workers to `homelab-k8s`**:
-   - In Sidero Omni Web UI (`https://10.10.10.5`) under **Clusters** ➔ **`homelab-k8s`**, create a Worker MachineSet (or assign available machines `pc-node-04` and `pc-node-05` to workers).
-   - Alternatively, use `omnictl` CLI once authenticated to link the machines.
-2. **Download Production Kubeconfig & Verify Nodes**:
-   - Download kubeconfig via Omni Web UI (or `omnictl cluster kubeconfig homelab-k8s`).
-   - Run `kubectl get nodes -o wide` to verify all 5 nodes report `Ready`.
-3. **Export Declarative Cluster Template (Zero-ClickOps)**:
-   - Export cluster template via `omnictl cluster template export homelab-k8s > talos/cluster-template.yaml` for declarative GitOps tracking.
+1. **Deploy Rook-Ceph Distributed Storage**:
+   - Apply Rook-Ceph operator and cluster manifests targeting raw HDDs and NVMe on `pc-node-04` and nodes.
+   - Establish CephBlockPool, CephFilesystem (CephFS), and CephObjectStore.
+2. **Deploy Core Addons & GitOps Pipeline**:
+   - Provision ArgoCD / Flux for declarative GitOps application delivery.
+   - Configure Cert-Manager, Gateway API / Envoy Gateway / Ingress Controller, and ExternalDNS.
+3. **Configure GPU Worker & Workload Partitioning**:
+   - Deploy NVIDIA GPU Operator or configure KubeVirt VFIO passthrough for Windows 11 Gaming VM and LLM inference.
+
 

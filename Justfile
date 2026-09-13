@@ -12,19 +12,19 @@ default:
 
 # Check health of the Talos Linux control plane (sm-node-01, sm-node-02, sm-node-03)
 talos-health:
-    talosctl --nodes 10.10.20.10,10.10.20.11,10.10.20.12 health
+    talosctl --nodes 10.10.20.131 health
 
 # List all Talos cluster members and roles
 talos-members:
-    talosctl --nodes 10.10.20.10 get members
+    talosctl --nodes 10.10.20.131 get members
 
 # Check etcd cluster status and quorum
 talos-etcd:
-    talosctl --nodes 10.10.20.10 service etcd
+    talosctl --nodes 10.10.20.131 service etcd
 
 # Inspect physical node reboot / uptime statistics
 talos-uptime:
-    talosctl --nodes 10.10.20.10,10.10.20.11,10.10.20.12,10.10.20.13,10.10.20.14 version
+    talosctl --nodes 10.10.20.131,10.10.20.120,10.10.20.199,10.10.20.20,10.10.20.111 version
 
 # ------------------------------------------------------------------------------
 # 2. Kubernetes Cluster Operations
