@@ -169,23 +169,27 @@ Any AI agent or human operator can review this document to pick up exactly where
     - **Live Dry-Run Validation**:
       - Executed `talosctl apply-config --dry-run` against live node `10.10.10.253`—passed with 0 errors.
 
+15. **Dell OptiPlex Micro Single-Node Talos Seed Cluster Bootstrapped (`omni-server`)**:
+    - **Internal SSD Installation Verified**: Dell OptiPlex rebooted cleanly from internal Samsung 860 EVO SSD at fixed static IP **`10.10.10.5`** on VLAN 10 (`MGMT-IPMI`).
+    - **Control Plane Initialized**: Executed `talosctl bootstrap` targeting `10.10.10.5:50000`.
+    - **Health Check Validated**: All `talosctl health` checks passed (etcd healthy, apid ready, memory/disk checks OK, kubelet healthy, boot sequence completed).
+    - **Kubernetes Node Registered**: `omni-server` reached `Ready` status (`v1.36.2`, Talos `v1.13.8`, containerd `2.2.6`).
+    - **Core Workloads Active**: `coredns`, `kube-flannel`, `kube-apiserver`, `kube-controller-manager`, `kube-scheduler`, and `kube-proxy` running healthy (`1/1 Running`).
+    - **Tooling Staged**: `omnictl v1.12.0` installed at `~/.local/bin/omnictl`.
+
 ---
 
 ## 🎯 Immediate Next Actions
 
-1. **Apply Configuration to Dell OptiPlex Micro**:
-   - Apply config via `talosctl apply-config --insecure` to write Talos OS to internal Samsung 860 EVO SSD (`/dev/sda`) and reboot.
-   - Unplug USB installer drive during reboot.
-2. **Bootstrap Single-Node Seed Cluster**:
-   - Bootstrap etcd once node boots at `10.10.10.5`:
-     `talosctl bootstrap --nodes 10.10.10.5 --endpoints 10.10.10.5 --talosconfig talos/omni-server/talosconfig`
-   - Retrieve kubeconfig and verify node readiness: `kubectl get nodes -o wide`.
-3. **Deploy Sidero Omni & Dex Stack**:
-   - Deploy Omni and Dex manifests to the single-node seed cluster.
+1. **Deploy Sidero Omni & Dex Stack on Seed Cluster**:
+   - Generate GPG encryption key (`omni.asc`) for etcd and SideroLink tokens.
+   - Generate SAN TLS certificates for `10.10.10.5` / `omni-server`.
+   - Deploy Dex OIDC service (Port 5556) and Omni management service (Port 443, 8090, 8100, 50180/udp).
    - Verify Omni Web Console at `https://10.10.10.5`.
-4. **Configure UniFi DHCP PXE & Onboard Nodes**:
+2. **Configure UniFi DHCP PXE & Onboard Nodes**:
    - Enable network boot on VLAN 20 (`K8S-CONTROL`) pointing to `10.10.10.5` (`ipxe.efi`).
    - PXE boot the 5 bare-metal nodes into Omni.
+
 
 
 
