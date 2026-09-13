@@ -118,17 +118,34 @@ Any AI agent or human operator can review this document to pick up exactly where
     - **Resolution**: Enforce sequential execution via `-parallelism=1`. This eliminates the race condition and is also the hardware-safe best practice against UniFi controllers.
     - Updated root `Justfile` to automatically append `-parallelism=1` for `just tf-plan unifi` and `just tf-apply unifi`.
 
+11. **UniFi Network 8.x Architectural Realignment & Network Provisioning Complete**:
+    - **100% Provisioned**: All 7 homelab networks are live and active on the UDM-Pro:
+      - `MGMT-IPMI` (VLAN 10, `10.10.10.1/24`)
+      - `K8S-CONTROL` (VLAN 20, `10.10.20.1/24`)
+      - `K8S-APPS` (VLAN 30, `10.10.30.1/24`)
+      - `CEPH-STORAGE` (VLAN 40, `10.10.40.1/24`)
+      - `K8S-METALLB` (VLAN 50, `10.10.50.1/24`)
+      - `TRUSTED-LAN` (VLAN 60, `192.168.60.1/24`)
+      - `IOT-SMART-HOME` (VLAN 90, `10.10.90.1/24`)
+    - **Observed UniFi Network 8.x / UniFi OS 3.x Deprecations**:
+      - `unifi_port_profile`: Network 8.x dropped custom tagged port profiles in favor of native switch port VLAN management. Custom profiles are forced to `forward: "all"`.
+      - `unifi_firewall_rule`: Legacy index-based firewall rule endpoint returns `FirewallRuleIndexOutOfRange` under the new Zone-Based Firewall engine.
+      - `unifi_client`: Existing client records with `local_dns_record_enabled: true` conflict with Terraform PUT updates (`LocalDnsRecordRequiresFixedIp`).
+    - **Design Decision**: Streamlined [`terraform/unifi/main.tf`](file:///terraform/unifi/main.tf) to focus cleanly on the foundational L2/L3 network fabric (the 7 VLANs, subnets, and DHCP scopes). Switch port VLAN tagging and zone firewall rules are managed directly via UniFi OS UI.
+
 ---
 
 ## 🎯 Immediate Next Actions
 
-1. **Complete UniFi Network Apply (`just tf-apply unifi`)**:
-   - Run `just tf-apply unifi` (or `terraform -chdir=terraform/unifi apply -parallelism=1`) to provision the remaining resources sequentially.
+1. **Run Clean Apply (`just tf-apply unifi`)**:
+   - Run `just tf-apply unifi` to remove transient tainted resources; outputs final stable network IDs.
 2. **Sidero Omni Installation (`omni-server`)**:
-   - Flash Sidero Omni boot media to USB drive for the Dell OptiPlex Micro.
+   - Write Sidero Omni boot media to USB drive for the Dell OptiPlex Micro.
    - Boot Dell OptiPlex into Omni installer and access web console at `10.10.10.5`.
-3. **UniFi PXE Configuration**:
-   - Enable DHCP boot option (`boot { enabled = true, server = "10.10.10.5", filename = "ipxe.efi" }`) on VLAN 20 pointing to `omni-server`.
+3. **UniFi Switch Port & PXE Configuration**:
+   - Assign switch ports to VLAN 20 (`K8S-CONTROL`) with Tagged VLANs (30, 40, 50).
+   - Configure DHCP boot option pointing to `omni-server` (`10.10.10.5`).
+
 
 
 
