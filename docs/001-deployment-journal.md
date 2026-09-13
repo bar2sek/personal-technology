@@ -195,19 +195,45 @@ Any AI agent or human operator can review this document to pick up exactly where
 
 ---
 
+17. **Homelab Switchport & Physical Cabling Matrix Mapped Across Aggregation Switches**:
+    - **Physical Mapping**:
+      - `sm-node-01` (`edge01`): `USW-Aggregation #1` Ports 1 & 2 (10G SFP+)
+      - `sm-node-02` (`edge02`): `USW-Aggregation #1` Ports 3 & 4 (10G SFP+)
+      - `sm-node-03` (`main01`): `Ceph-USW-Aggregation` Ports 3 & 4 (10G SFP+)
+      - `pc-node-04` (`stor01`): `Ceph-USW-Aggregation` Ports 5 & 6 (10G SFP+)
+      - `pc-node-05` (4070 GPU): `USW-Aggregation #1` Port 6 (2.5GbE onboard via SFP+ multi-gig copper adapter)
+    - **Port Profiles**: Configured with Native Network `K8S-CONTROL (VLAN 20)` and Tagged VLAN Management `Allow All`.
+
+18. **UniFi Network Boot (PXE) Configured for VLAN 20**:
+    - Enabled **Network Boot** under **Settings > Networks > K8S-CONTROL (VLAN 20)**.
+    - Set Next-Server to **`10.10.10.5`** (Omni seed cluster).
+    - Set Boot Filename to **`ipxe.efi`**.
+
+19. **Omni Machine API Architecture & Booter Deployment Streamlined**:
+    - **SideroLink gRPC Discovery**: Updated Omni machine API to serve plain gRPC (`grpc://10.10.10.5:8090/`) without TLS certs, resolving `x509: certificate signed by unknown authority` during bare-metal discovery in RAM. WireGuard tunnel (UDP 50180) continues to provide end-to-end encryption.
+    - **Image Factory Schematic**: Generated schematic `5cd745a060945934ac9f118483db0d1b2e405b934c07716d583060cc30fa899f` embedding `siderolink.api=grpc://10.10.10.5:8090/?jointoken=...`.
+    - **Sidero Booter Deployed**: Running `ghcr.io/siderolabs/booter:v0.3.0` on `omni-server` with hostNetwork, serving TFTP on port 69, HTTP on :50084, and DHCP proxy on `enp2s0`.
+
+20. **First Bare-Metal Node Successfully Discovered (`pc-node-05`)**:
+    - **Node Hardware**: AMD Ryzen 5 7600 (12 vCPU), 32 GiB RAM, NVIDIA RTX 4070, onboard 2.5GbE Realtek (`04:7c:16:80:b2:62`).
+    - **Discovery Flow**: Machine UEFI PXE booted over 2.5G SFP+ adapter -> downloaded `ipxe.efi` from `10.10.10.5` -> streamed Talos v1.13.10 kernel + initramfs into RAM -> connected to Omni over SideroLink WireGuard.
+    - **Omni Status**: Node registered in Omni web console under **Machines** (`UUID: 7a7d25b8-0dfc-c810-a348-047c1680b262`) with live console/kernel telemetry streaming.
+
+---
+
 ## 🎯 Immediate Next Actions
 
-1. **Log into Omni Web Console**:
-   - Access `https://10.10.10.5` in browser.
-   - Log in using `admin@omni.internal`.
-2. **Configure UniFi DHCP PXE Boot Server**:
-   - In UniFi Network (**Settings > Networks > K8S-CONTROL (VLAN 20)**):
-     - Enable Network Boot / PXE.
-     - Set Boot Server to `10.10.10.5` (`ipxe.efi`).
-3. **Onboard Bare-Metal Cluster Nodes**:
-   - Power on Supermicro servers (`sm-node-01`, `02`, `03`) via IPMI with PXE enabled.
-   - Power on Gaming PC workers (`pc-node-04`, `05`) with UEFI PXE enabled.
-   - Watch nodes register in the Omni dashboard.
+1. **Boot Supermicro Control Plane Nodes via IPMI**:
+   - `sm-node-01` (`edge01`): `https://10.10.10.11` -> Power Control -> Next Boot: PXE -> Power On / Reset.
+   - `sm-node-02` (`edge02`): `https://10.10.10.12` -> Power Control -> Next Boot: PXE -> Power On / Reset.
+   - `sm-node-03` (`main01`): `https://10.10.10.13` -> Power Control -> Next Boot: PXE -> Power On / Reset.
+2. **Boot Storage PC (`pc-node-04` / `stor01`)**:
+   - Power on and select UEFI IPv4 Network Boot.
+3. **Assemble the 5-Node Kubernetes Cluster in Omni**:
+   - Create cluster `homelab-k8s`.
+   - Assign 3 Control Planes (`sm-node-01`, `02`, `03`) and 2 Workers (`pc-node-04`, `05`).
+   - Add NVIDIA GPU extension patch for `pc-node-05`.
+   - Deploy cluster and download production `kubeconfig`.
 
 
 

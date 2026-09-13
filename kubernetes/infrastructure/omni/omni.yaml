@@ -33,7 +33,7 @@ spec:
             - --k8s-proxy-bind-addr=0.0.0.0:8100
             - --advertised-api-url=https://10.10.10.5/
             - --advertised-kubernetes-proxy-url=https://10.10.10.5:8100/
-            - --siderolink-api-advertised-url=https://10.10.10.5:8090/
+            - --machine-api-advertised-url=grpc://10.10.10.5:8090/
             - --siderolink-wireguard-advertised-addr=10.10.10.5:50180
             - --auth-oidc-enabled
             - --auth-oidc-provider-url=https://10.10.10.5:5556
@@ -46,8 +46,6 @@ spec:
             - --initial-users=admin@omni.internal
             - --cert=/etc/omni/tls/tls.crt
             - --key=/etc/omni/tls/tls.key
-            - --machine-api-cert=/etc/omni/tls/tls.crt
-            - --machine-api-key=/etc/omni/tls/tls.key
           env:
             - name: OIDC_CLIENT_SECRET
               valueFrom:
