@@ -101,19 +101,26 @@ Any AI agent or human operator can review this document to pick up exactly where
      - Migrated `unifi_port_profile` forward mode to `forward = "customize"`.
    - Successfully initialized (`terraform init`) with `ubiquiti-community/unifi v0.41.25` and verified valid syntax via `terraform validate`.
 
+8. **Successful Live Terraform Plan**:
+   - Authenticated against UDM-Pro at `https://10.0.1.1` via `terraform-admin`.
+   - Dry-run plan output: `Plan: 14 to add, 0 to change, 0 to destroy`.
+   - Planned Resources:
+     - 7x Networks: VLAN 10 (`MGMT-IPMI`), VLAN 20 (`K8S-CONTROL`), VLAN 30 (`K8S-APPS`), VLAN 40 (`CEPH-STORAGE`), VLAN 50 (`K8S-METALLB`), VLAN 60 (`TRUSTED-LAN`), VLAN 90 (`IOT-SMART-HOME`).
+     - 3x Client DHCP Reservations: `sm-node-01-ipmi` (`10.10.10.11`), `sm-node-02-ipmi` (`10.10.10.12`), `sm-node-03-ipmi` (`10.10.10.13`).
+     - 2x Switch Port Profiles: `K8S-Node-Trunk` (Native VLAN 20, Tagged 30/40/50), `Ceph-Storage-Access` (Native VLAN 40).
+     - 2x Firewall Isolation Rules: Drop IoT traffic to K8s Control and Out-of-band IPMI subnets.
+   - Household `Default` network (`10.0.1.1/24`) verified completely untouched and preserved.
+
 ---
 
 ## 🎯 Immediate Next Actions
 
-1. **Populate Local Credentials**:
-   - Populate local password for `terraform-admin` in `terraform/unifi/terraform.tfvars` (ignored by git).
-2. **Execute UniFi Terraform Plan & Review**:
-   - Run `just tf-plan unifi` (or `terraform -chdir=terraform/unifi plan`) to preview provisioning of 7 VLANs, 3 IPMI DHCP reservations, 2 port profiles, and 2 firewall isolation rules.
-3. **Apply UniFi Homelab Networks**:
-   - Apply Terraform configuration to provision VLANs 10, 20, 30, 40, 50, 60, 90.
-4. **Sidero Omni Installation (`omni-server`)**:
-   - Write Sidero Omni boot media to USB drive for the Dell OptiPlex Micro.
+1. **Apply UniFi Homelab Networks (`terraform apply`)**:
+   - Execute `terraform -chdir=terraform/unifi apply` to provision the 14 homelab network resources on the UDM-Pro.
+2. **Sidero Omni Installation (`omni-server`)**:
+   - Flash Sidero Omni boot media to USB drive for the Dell OptiPlex Micro.
    - Boot Dell OptiPlex into Omni installer and access web console at `10.10.10.5`.
-5. **UniFi PXE Configuration**:
+3. **UniFi PXE Configuration**:
    - Enable DHCP boot option (`boot { enabled = true, server = "10.10.10.5", filename = "ipxe.efi" }`) on VLAN 20 pointing to `omni-server`.
+
 
