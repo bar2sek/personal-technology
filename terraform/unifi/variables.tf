@@ -30,7 +30,7 @@ variable "unifi_password" {
 variable "unifi_api_url" {
   type        = string
   description = "UniFi Controller API URL"
-  default     = "https://10.10.10.1"
+  default     = "https://10.0.1.1"
 }
 
 variable "omni_mac_address" {

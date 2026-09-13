@@ -1,3 +1,16 @@
+---
+title: "UniFi Network Topology & VLAN Architecture"
+date: 2026-09-12
+tags:
+  - unifi/topology
+  - networking
+  - vlan
+status: evergreen
+aliases:
+  - "Network Topology"
+  - "UniFi Fabric"
+---
+
 # UniFi Network Topology & VLAN Architecture
 
 This document details the physical network topology, switch interconnects, WAN configuration, and VLAN layout for the Talos Linux homelab cluster.
@@ -6,22 +19,24 @@ This document details the physical network topology, switch interconnects, WAN c
 
 ## 🌐 Physical Network Infrastructure
 
-### Core Hardware
+### Core Hardware & Discovered MACs
 
-- **Gateway / Router**: Ubiquiti UniFi Dream Machine Pro (UDM-Pro)
-- **WAN Interface**: 3.5 Gbps Google Fiber connected to **UDM-Pro Port 11 (SFP+)** via TP-Link `TL-SM5310-T` SFP+ to 10GBASE-T Transceiver (negotiated at 10G).
+- **Gateway / Router**: Ubiquiti UniFi Dream Machine Pro (UDM-Pro) (`68:d7:9a:50:ee:2d` - `10.0.1.1`)
+- **WAN Interface**: 3.5 Gbps Google Fiber connected to **UDM-Pro Port 11 (SFP+ WAN2)** via TP-Link `TL-SM5310-T` SFP+ to 10GBASE-T Transceiver (negotiated at 10G; IPv6 Prefix Delegation `/56`).
 - **Core Switches**: 2x **UniFi Switch Aggregation (USW-Aggregation)**
-  - Inter-Switch Backbone: **20 Gbps LAG (2-Port 10G SFP+ Link Aggregation)** between Aggregation Switch 1 and Aggregation Switch 2.
+  - **USW-Aggregation #1** (`f4:92:bf:a3:37:65` - `10.0.1.224`)
+  - **Ceph-USW-Aggregation (#2)** (`f4:e2:c6:5d:d6:f8` - `10.0.1.59`)
+  - Inter-Switch Backbone: **20 Gbps LAG (2-Port 10G SFP+ Link Aggregation)** on Ports 7 & 8 between Aggregation Switch 1 and Aggregation Switch 2.
   - Uplink: UDM-Pro Port 10 (SFP+ 10G) connected to USW-Aggregation fabric.
-- **Access Switch (Core)**: 1x **UniFi Switch 24 (USW-24-G2)** (24x 1GbE RJ45 + 2x 1G SFP)
+- **Access Switch (Core)**: 1x **UniFi Switch 24 (USW-24-G2)** (`24:5a:4c:60:bb:09` - `10.0.1.30`) (24x 1GbE RJ45 + 2x 1G SFP)
   - Dedicated access switch for Out-of-Band IPMI/BMC ports, Omni Mini PC 1GbE NIC, and 1GbE management interfaces.
-  - Uplink: SFP 1G link to USW-Aggregation fabric.
-- **Access Switch (Garage)**: 1x **UniFi Switch Lite 8 PoE (USW-Lite-8-PoE)**
+  - Uplink: Port 8 connected to UDM-Pro / USW-Aggregation.
+- **Access Switch (Garage)**: 1x **UniFi Switch Lite 8 PoE (USW-Lite-8-PoE)** (`78:45:58:82:8a:39` - `10.0.1.40`)
   - 8-port Gigabit switch with 802.3at PoE+ located in the garage to power garage AP and peripheral hardware.
-  - Uplink: 1GbE RJ45 connection to core network fabric.
+  - Uplink: 1GbE RJ45 connection (Port 8) to core USW-24-G2 (Port 24).
 - **Wireless Infrastructure (Access Points)**:
-  - **Home Wi-Fi 7 AP**: 1x **UniFi U7 Pro WAP** (2.4 GHz / 5 GHz / 6 GHz Wi-Fi 7) connected to core network for primary household wireless coverage.
-  - **Garage Wi-Fi 6 AP**: 1x **UniFi U6-Lite WAP** connected to USW-Lite-8-PoE switch for garage/outdoor IoT and vehicle wireless coverage.
+  - **Home Wi-Fi 7 AP**: 1x **UniFi U7 Pro WAP** (`94:2a:6f:c4:ec:04` - `10.0.1.214`) connected to USW-24-G2 Port 6 for primary household wireless coverage.
+  - **Garage Wi-Fi 6 AP**: 1x **UniFi U6-Lite WAP** (`24:5a:4c:13:ae:3c` - `10.0.1.45`) connected to USW-Lite-8-PoE Port 1 for garage/outdoor IoT and vehicle wireless coverage.
 - **Node 05 Multi-Gig Uplink**: `pc-node-05` 2.5GbE Onboard RJ45 connected to **USW-Aggregation** SFP+ port via TP-Link Multi-Gig SFP+ 10GBASE-T Transceiver (auto-negotiated at **2.5 Gbps**).
 
 ---

@@ -36,6 +36,9 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 
 ## 📚 Categorized Documentation Index
 
+### 📋 Live Operations & State Handover
+- [001 - Homelab Deployment Journal & Handover Runbook](docs/001-deployment-journal.md)
+
 ### 🏗 Section 1: Hardware Architecture & Deployment Phases
 - [101 - Hardware Inventory & Resource Breakdown](docs/101-hardware-inventory.md)
 - [102 - Architecture Blueprint & Technology Stack](docs/102-architecture-design.md)
