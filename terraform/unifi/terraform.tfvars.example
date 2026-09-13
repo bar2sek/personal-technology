@@ -1,0 +1,12 @@
+# ==============================================================================
+# UniFi Controller Terraform Variables (Example)
+# Copy this file to terraform.tfvars and populate with your credentials.
+# terraform.tfvars is strictly ignored by git to protect credentials.
+# ==============================================================================
+
+unifi_api_url  = "https://10.0.1.1"
+unifi_username = "terraform-admin"
+unifi_password = "your-secure-local-password"
+
+# Optional: MAC address for Sidero Omni server static DHCP reservation (10.10.10.5)
+# omni_mac_address = "xx:xx:xx:xx:xx:xx"

@@ -167,26 +167,25 @@ All UniFi networks, VLANs, static DHCP reservations, and firewall rules can be d
 resource "unifi_network" "ceph_storage" {
   name          = "CEPH-STORAGE"
   purpose       = "corporate"
-  vlan_id       = 40
-  subnet        = "10.10.40.1/24"
-  dhcp_start    = "10.10.40.10"
-  dhcp_stop     = "10.10.40.254"
-  dhcp_enabled  = true
-  domain_name   = "ceph.homelab.local"
-  
-  # IPv6 Prefix Delegation (Google Fiber UDM-Pro)
-  ipv6_interface_type = "pd"
-  ipv6_pd_start       = "::2"
-  ipv6_pd_stop        = "::7d1"
-  dhcp_v6_enabled     = true
+  vlan        = 40
+  subnet      = "10.10.40.1/24"
+  domain_name = "ceph.homelab.local"
+
+  dhcp_server = {
+    enabled = true
+    start   = "10.10.40.10"
+    stop    = "10.10.40.254"
+  }
 }
 
-resource "unifi_user" "sm_node_01" {
-  mac        = "00:25:90:xx:xx:xx"
-  name       = "sm-node-01-10g"
-  fixed_ip   = "10.10.40.11"
-  network_id = unifi_network.ceph_storage.id
+resource "unifi_client" "sm_node_01" {
+  mac            = "00:25:90:xx:xx:xx"
+  name           = "sm-node-01-10g"
+  fixed_ip       = "10.10.40.11"
+  network_id     = unifi_network.ceph_storage.id
+  allow_existing = true
 }
+
 
 ---
 

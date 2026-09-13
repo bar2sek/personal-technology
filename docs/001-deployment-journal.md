@@ -87,19 +87,33 @@ Any AI agent or human operator can review this document to pick up exactly where
 5. **Headless PC & IPMI Strategy**:
    - Confirmed 3 Supermicro servers possess live HTML5 KVM consoles over IPMI without physical monitors.
    - Confirmed consumer PCs are headless and will be wiped and flashed via zero-touch Sidero Omni PXE booting.
+6. **UniFi Terraform Code Alignment**:
+   - Made `omni_mac_address` optional via conditional `count` in [`terraform/unifi/main.tf`](file:///terraform/unifi/main.tf).
+   - Added declarative static DHCP reservations for the 3 Supermicro IPMI BMC interfaces (`10.10.10.11`, `10.10.10.12`, `10.10.10.13`) using discovered MAC addresses.
+   - Created [`terraform/unifi/terraform.tfvars.example`](file:///terraform/unifi/terraform.tfvars.example).
+   - Updated [`terraform/unifi/outputs.tf`](file:///terraform/unifi/outputs.tf) with IPMI static IP outputs.
+7. **Terraform Provider Migration & Schema Modernization**:
+   - Upgraded UniFi provider in [`terraform/unifi/providers.tf`](file:///terraform/unifi/providers.tf) from deprecated `paultag/unifi` to `ubiquiti-community/unifi` (`~> 0.41.0`).
+   - Refactored [`terraform/unifi/main.tf`](file:///terraform/unifi/main.tf) to match modern provider schema:
+     - Migrated `vlan_id` to `vlan`.
+     - Migrated standalone DHCP flags (`dhcp_enabled`, `dhcp_start`, `dhcp_stop`) to nested `dhcp_server = { enabled = true, start = "...", stop = "..." }` blocks.
+     - Migrated `unifi_user` to `unifi_client` with `allow_existing = true` for idempotent device adoption.
+     - Migrated `unifi_port_profile` forward mode to `forward = "customize"`.
+   - Successfully initialized (`terraform init`) with `ubiquiti-community/unifi v0.41.25` and verified valid syntax via `terraform validate`.
 
 ---
 
 ## 🎯 Immediate Next Actions
 
-1. **UniFi Terraform Main Alignment**:
-   - Update [`terraform/unifi/main.tf`](file:///terraform/unifi/main.tf) to preserve the live `10.0.1.1/24` Default network and apply homelab VLANs 10, 20, 30, 40, 50, 90.
-   - Add static DHCP reservations for Supermicro IPMIs (`10.10.10.11`, `10.10.10.12`, `10.10.10.13`).
-   - Run dry-run plan (`just tf-plan unifi`).
-2. **Sidero Omni Installation (`omni-server`)**:
+1. **Populate Local Credentials**:
+   - Populate local password for `terraform-admin` in `terraform/unifi/terraform.tfvars` (ignored by git).
+2. **Execute UniFi Terraform Plan & Review**:
+   - Run `just tf-plan unifi` (or `terraform -chdir=terraform/unifi plan`) to preview provisioning of 7 VLANs, 3 IPMI DHCP reservations, 2 port profiles, and 2 firewall isolation rules.
+3. **Apply UniFi Homelab Networks**:
+   - Apply Terraform configuration to provision VLANs 10, 20, 30, 40, 50, 60, 90.
+4. **Sidero Omni Installation (`omni-server`)**:
    - Write Sidero Omni boot media to USB drive for the Dell OptiPlex Micro.
-   - Boot Dell OptiPlex into Omni installer and access web console.
-3. **UniFi PXE Configuration**:
-   - Enable DHCP Option 66/67 on VLAN 20 pointing to `omni-server`.
-4. **Git Repository Remote Synchronization**:
-   - Ensure changes are tracked and assist user with Conventional Commit staging when requested.
+   - Boot Dell OptiPlex into Omni installer and access web console at `10.10.10.5`.
+5. **UniFi PXE Configuration**:
+   - Enable DHCP boot option (`boot { enabled = true, server = "10.10.10.5", filename = "ipxe.efi" }`) on VLAN 20 pointing to `omni-server`.
+

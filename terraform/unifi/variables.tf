@@ -35,5 +35,24 @@ variable "unifi_api_url" {
 
 variable "omni_mac_address" {
   type        = string
-  description = "MAC address for Omni server static DHCP reservation"
+  description = "MAC address for Omni server static DHCP reservation (optional if not yet known)"
+  default     = ""
+}
+
+variable "sm_node_01_ipmi_mac" {
+  type        = string
+  description = "sm-node-01 (edge01) Supermicro IPMI BMC MAC"
+  default     = "3c:ec:ef:44:a4:2c"
+}
+
+variable "sm_node_02_ipmi_mac" {
+  type        = string
+  description = "sm-node-02 (edge02) Supermicro IPMI BMC MAC"
+  default     = "3c:ec:ef:6f:da:41"
+}
+
+variable "sm_node_03_ipmi_mac" {
+  type        = string
+  description = "sm-node-03 (main01) Supermicro IPMI BMC MAC"
+  default     = "3c:ec:ef:5b:9a:da"
 }

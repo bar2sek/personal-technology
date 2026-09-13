@@ -34,6 +34,21 @@ output "iot_network_id" {
 }
 
 output "omni_server_ip" {
-  value       = unifi_user.omni_server.fixed_ip
+  value       = try(unifi_client.omni_server[0].fixed_ip, "10.10.10.5 (pending MAC)")
   description = "Static IP reserved for Sidero Omni PXE server"
+}
+
+output "sm_node_01_ipmi_ip" {
+  value       = unifi_client.sm_node_01_ipmi.fixed_ip
+  description = "Static IP reserved for sm-node-01 IPMI BMC"
+}
+
+output "sm_node_02_ipmi_ip" {
+  value       = unifi_client.sm_node_02_ipmi.fixed_ip
+  description = "Static IP reserved for sm-node-02 IPMI BMC"
+}
+
+output "sm_node_03_ipmi_ip" {
+  value       = unifi_client.sm_node_03_ipmi.fixed_ip
+  description = "Static IP reserved for sm-node-03 IPMI BMC"
 }
