@@ -195,6 +195,8 @@ Any AI agent or human operator can review this document to pick up exactly where
 
 ---
 
+### 2026-09-13
+
 17. **Homelab Switchport & Physical Cabling Matrix Mapped Across Aggregation Switches**:
     - **Physical Mapping**:
       - `sm-node-01` (`edge01`): `USW-Aggregation #1` Ports 1 & 2 (10G SFP+)
@@ -217,28 +219,55 @@ Any AI agent or human operator can review this document to pick up exactly where
 20. **First Bare-Metal Node Successfully Discovered (`pc-node-05`)**:
     - **Node Hardware**: AMD Ryzen 5 7600 (12 vCPU), 32 GiB RAM, NVIDIA RTX 4070, onboard 2.5GbE Realtek (`04:7c:16:80:b2:62`).
     - **Discovery Flow**: Machine UEFI PXE booted over 2.5G SFP+ adapter -> downloaded `ipxe.efi` from `10.10.10.5` -> streamed Talos v1.13.10 kernel + initramfs into RAM -> connected to Omni over SideroLink WireGuard.
-    - **Omni Status**: Node registered in Omni web console under **Machines** (`UUID: 7a7d25b8-0dfc-c810-a348-047c1680b262`) with live console/kernel telemetry streaming.
+21. **Storage PC Node Discovered & Registered (`pc-node-04` / `stor01`)**:
+    - **Cabling & UniFi Port Provisioning**: Connected onboard 2.5GbE interface to `Ceph-USW-Aggregation` Port 2 via multi-gig SFP+ adapter, alongside existing dual 10G SFP+ links on Ports 5 & 6.
+    - **Automated Switch Port Config**: Programmed UniFi API to label Port 2 as `pc-node-04-2.5G` with Native VLAN 20 (`K8S-CONTROL`) and tagged VLANs allowed.
+    - **Discovery Flow**: Machine booted via UEFI Network Boot on onboard NIC (`MAC: 2c:f0:5d:57:7e:a4`), fetched `ipxe.efi` from `10.10.10.5` via TFTP, and downloaded Talos v1.13.10 kernel into RAM.
+    - **Omni Status**: Node registered in Omni under **Machines** (`UUID: 927ef8ab-872a-f416-acb4-2cf05d577ea4`) with WireGuard peer established.
+
+22. **Supermicro Control Plane 1 Discovered & Registered (`sm-node-01` / `edge01`)**:
+    - **BIOS Option ROM Troubleshooting**: Identified that server was booting into legacy Fedora on SATA SuperDOM because `Onboard LAN Option ROM Type` was set to `[Legacy]`, preventing UEFI boot menu from enumerating 10G SFP+ interfaces.
+    - **Resolution**: Set `Onboard LAN Option ROM Type` to `[EFI]`, verified Network Stack IPv4 PXE enabled, and selected `UEFI: PXE IPv4 Intel(R) Ethernet Connection X722 for 10GbE SFP+` in `<F11>` boot menu.
+    - **Omni Status**: Node pulled `ipxe.efi`, booted Talos v1.13.10 into RAM, and registered in Omni under **Machines** (`UUID: da165a00-3e5d-11ea-8000-3cecef44a132`) in `MAINTENANCE` stage (`ready: true`).
+
+23. **Supermicro Control Plane 2 Discovered & Registered (`sm-node-02` / `edge02`)**:
+    - **BIOS Configuration**: Set `Onboard LAN Option ROM Type` to `[EFI]` and CPU PCIe slots to `[EFI]`.
+    - **Discovery Flow**: Booted via `<F11>` on `UEFI: PXE IPv4 Intel(R) Ethernet Connection X722 for 10GbE SFP+ (MAC: 3cecef6fd4bc)` on `USW-Agg #1` Port 3.
+    - **Omni Status**: Successfully downloaded `ipxe.efi`, streamed Talos v1.13.10 into RAM, established WireGuard peer, and registered in Omni under **Machines** (`UUID: 9983ae00-e364-11ea-8000-3cecef6fd61e`) in `MAINTENANCE` stage (`ready: true`).
+
+---
+
+24. **Supermicro Primary Control Plane Discovered & Registered (`sm-node-03` / `main01`)**:
+    - **Hardware Topology**: Supermicro 813M Xeon E5-2680v4 (14C/28T, 64GB RAM), dual 10G SFP+ Intel X520 PCIe card (`a0:36:9f:3b:0c:f8` / `fa`) connected to `Ceph-USW-Aggregation` Ports 3 & 4.
+    - **BIOS Configuration**: Set `Above 4G Decoding: [Enabled]`, `RSC-RR1U-E16` 1U riser PCIe slots to `[EFI]`, `Onboard LAN OPROM Type: [EFI]`, Network Stack IPv4 PXE `[Enabled]`, and Boot Mode `[UEFI]`.
+    - **Discovery Flow**: Booted via `<F11>` on `UEFI: IP4 Intel(R) Ethernet 10G 2P X520 Adapter`.
+    - **Omni Status**: Downloaded `ipxe.efi` via TFTP -> streamed Talos v1.13.10 kernel into RAM -> established WireGuard connection -> registered in Omni under **Machines** (`UUID: 00000000-0000-0000-0000-3cecef58ed64`) in `MAINTENANCE` stage (`ready: true`).
+    - **🎉 Milestone Achieved**: **100% of the physical homelab nodes (5/5)** are successfully PXE booted into RAM and registered in Sidero Omni!
+
+---
+
+25. **Production Cluster `homelab-k8s` Bootstrapped & Control Planes Running**:
+    - **Cluster Creation**: Created cluster `homelab-k8s` in Sidero Omni targeting Talos `v1.13.10`.
+    - **Control Plane Cluster Formation**:
+      - Assigned all 3 Supermicro nodes (`sm-node-01`, `sm-node-02`, `sm-node-03`) to `homelab-k8s-control-planes`.
+      - Disk selection: 16GB SATA SuperDOM (`/dev/sda`).
+      - Omni triggered automated disk wiping, Talos installation, reboot into disk OS, etcd quorum assembly, and Kubernetes control plane bootstrap.
+      - **Current Status**: All 3 Control Plane nodes are 🟢 **Running** and healthy.
+    - **Worker Node Preparation**:
+      - `pc-node-04` (Storage Worker, Ryzen 3800X + 11 HDDs): Talos installed to 80GB Intel 320 SSD (`/dev/sda`), storage patch applied. All 11 HDDs preserved raw for Rook-Ceph.
+      - `pc-node-05` (GPU Worker, Ryzen 7600 + RTX 4070): Talos installed to NVMe (`/dev/nvme0n1`), GPU patch applied with `machine.install.extraKernelArgs` for IOMMU and VFIO passthrough.
+      - **Current Status**: Both workers are installed, online, and in `Maintenance` mode awaiting attachment to a Worker MachineSet in `homelab-k8s`.
 
 ---
 
 ## 🎯 Immediate Next Actions
 
-1. **Boot Supermicro Control Plane Nodes via IPMI**:
-   - `sm-node-01` (`edge01`): `https://10.10.10.11` -> Power Control -> Next Boot: PXE -> Power On / Reset.
-   - `sm-node-02` (`edge02`): `https://10.10.10.12` -> Power Control -> Next Boot: PXE -> Power On / Reset.
-   - `sm-node-03` (`main01`): `https://10.10.10.13` -> Power Control -> Next Boot: PXE -> Power On / Reset.
-2. **Boot Storage PC (`pc-node-04` / `stor01`)**:
-   - Power on and select UEFI IPv4 Network Boot.
-3. **Assemble the 5-Node Kubernetes Cluster in Omni**:
-   - Create cluster `homelab-k8s`.
-   - Assign 3 Control Planes (`sm-node-01`, `02`, `03`) and 2 Workers (`pc-node-04`, `05`).
-   - Add NVIDIA GPU extension patch for `pc-node-05`.
-   - Deploy cluster and download production `kubeconfig`.
-
-
-
-
-
-
-
+1. **Attach Workers to `homelab-k8s`**:
+   - In Sidero Omni Web UI (`https://10.10.10.5`) under **Clusters** ➔ **`homelab-k8s`**, create a Worker MachineSet (or assign available machines `pc-node-04` and `pc-node-05` to workers).
+   - Alternatively, use `omnictl` CLI once authenticated to link the machines.
+2. **Download Production Kubeconfig & Verify Nodes**:
+   - Download kubeconfig via Omni Web UI (or `omnictl cluster kubeconfig homelab-k8s`).
+   - Run `kubectl get nodes -o wide` to verify all 5 nodes report `Ready`.
+3. **Export Declarative Cluster Template (Zero-ClickOps)**:
+   - Export cluster template via `omnictl cluster template export homelab-k8s > talos/cluster-template.yaml` for declarative GitOps tracking.
 

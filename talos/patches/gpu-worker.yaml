@@ -4,11 +4,7 @@ machine:
   install:
     disk: /dev/nvme0n1 # Tiny 2GB partition 1 for OS, 998GB partition 2 for Ceph & AI model caching
     wipe: false
-    extensions:
-      - image: ghcr.io/siderolabs/nonfree-kmod-nvidia:latest
-      - image: ghcr.io/siderolabs/nvidia-container-toolkit:latest
-  kernel:
-    args:
+    extraKernelArgs:
       - amd_iommu=on
       - iommu=pt
       - vfio-pci.ids=10de:2786,10de:22bc # RTX 4070 Video & Audio IDs for VFIO PCIe passthrough
