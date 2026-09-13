@@ -133,18 +133,31 @@ Any AI agent or human operator can review this document to pick up exactly where
       - `unifi_client`: Existing client records with `local_dns_record_enabled: true` conflict with Terraform PUT updates (`LocalDnsRecordRequiresFixedIp`).
     - **Design Decision**: Streamlined [`terraform/unifi/main.tf`](file:///terraform/unifi/main.tf) to focus cleanly on the foundational L2/L3 network fabric (the 7 VLANs, subnets, and DHCP scopes). Switch port VLAN tagging and zone firewall rules are managed directly via UniFi OS UI.
 
+12. **Supermicro Out-of-Band IPMI Port Isolation & Static Leases Configured**:
+    - Configured physical ports on `USW-24-G2` with `setting_preference: manual`:
+      - **Port 1** (`sm-node-03` / `main01`): Native VLAN `MGMT-IPMI` (VLAN 10), Tagged VLANs `block_all`.
+      - **Port 11** (`sm-node-01` / `edge01`): Native VLAN `MGMT-IPMI` (VLAN 10), Tagged VLANs `block_all`.
+      - **Port 15** (`sm-node-02` / `edge02`): Native VLAN `MGMT-IPMI` (VLAN 10), Tagged VLANs `block_all`.
+    - Created permanent static DHCP fixed IP reservations in UDM-Pro controller:
+      - `sm-node-01-ipmi` (`3c:ec:ef:44:a4:2c`) -> **`10.10.10.11`**
+      - `sm-node-02-ipmi` (`3c:ec:ef:6f:da:41`) -> **`10.10.10.12`**
+      - `sm-node-03-ipmi` (`3c:ec:ef:5b:9a:da`) -> **`10.10.10.13`**
+    - Verified `MGMT-IPMI` gateway (`10.10.10.1`) responsive and routing.
+
 ---
 
 ## 🎯 Immediate Next Actions
 
-1. **Run Clean Apply (`just tf-apply unifi`)**:
-   - Run `just tf-apply unifi` to remove transient tainted resources; outputs final stable network IDs.
-2. **Sidero Omni Installation (`omni-server`)**:
-   - Write Sidero Omni boot media to USB drive for the Dell OptiPlex Micro.
-   - Boot Dell OptiPlex into Omni installer and access web console at `10.10.10.5`.
-3. **UniFi Switch Port & PXE Configuration**:
-   - Assign switch ports to VLAN 20 (`K8S-CONTROL`) with Tagged VLANs (30, 40, 50).
-   - Configure DHCP boot option pointing to `omni-server` (`10.10.10.5`).
+1. **Sidero Omni Boot Media Preparation (`omni-server`)**:
+   - Create Sidero Omni boot media on USB drive for the Dell OptiPlex Micro.
+   - Configure target static IP `10.10.10.5` on VLAN 10.
+2. **Boot Dell OptiPlex into Omni Installer**:
+   - Connect Dell OptiPlex to network and boot from USB.
+   - Access Omni web console.
+3. **UniFi Switch Port & PXE Boot Configuration**:
+   - Configure VLAN 20 (`K8S-CONTROL`) with DHCP boot options pointing to `omni-server` (`10.10.10.5` / `ipxe.efi`).
+   - Configure 10G SFP+ switch ports on `USW-Agg #1` for node provisioning.
+
 
 
 
