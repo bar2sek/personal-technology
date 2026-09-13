@@ -68,7 +68,12 @@ tf-plan-all:
 
 # Run Terraform plan in a specific directory (usage: just tf-plan unifi)
 tf-plan dir:
-    cd terraform/{{ dir }} && terraform plan
+    cd terraform/{{ dir }} && terraform plan {{ if dir == "unifi" { "-parallelism=1" } else { "" } }}
+
+# Run Terraform apply in a specific directory (usage: just tf-apply unifi)
+tf-apply dir:
+    cd terraform/{{ dir }} && terraform apply {{ if dir == "unifi" { "-parallelism=1" } else { "" } }}
+
 
 # ------------------------------------------------------------------------------
 # 4. Ansible Automation

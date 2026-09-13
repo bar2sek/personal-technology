@@ -101,26 +101,35 @@ Any AI agent or human operator can review this document to pick up exactly where
      - Migrated `unifi_port_profile` forward mode to `forward = "customize"`.
    - Successfully initialized (`terraform init`) with `ubiquiti-community/unifi v0.41.25` and verified valid syntax via `terraform validate`.
 
-8. **Successful Live Terraform Plan**:
-   - Authenticated against UDM-Pro at `https://10.0.1.1` via `terraform-admin`.
-   - Dry-run plan output: `Plan: 14 to add, 0 to change, 0 to destroy`.
-   - Planned Resources:
-     - 7x Networks: VLAN 10 (`MGMT-IPMI`), VLAN 20 (`K8S-CONTROL`), VLAN 30 (`K8S-APPS`), VLAN 40 (`CEPH-STORAGE`), VLAN 50 (`K8S-METALLB`), VLAN 60 (`TRUSTED-LAN`), VLAN 90 (`IOT-SMART-HOME`).
-     - 3x Client DHCP Reservations: `sm-node-01-ipmi` (`10.10.10.11`), `sm-node-02-ipmi` (`10.10.10.12`), `sm-node-03-ipmi` (`10.10.10.13`).
-     - 2x Switch Port Profiles: `K8S-Node-Trunk` (Native VLAN 20, Tagged 30/40/50), `Ceph-Storage-Access` (Native VLAN 40).
-     - 2x Firewall Isolation Rules: Drop IoT traffic to K8s Control and Out-of-band IPMI subnets.
-   - Household `Default` network (`10.0.1.1/24`) verified completely untouched and preserved.
+8. **Live Terraform Plan & Initial Apply**:
+   - Initial dry-run plan verified 14 resources to add with 0 to change and 0 to destroy.
+9. **Controller API Nuances & Schema Tuning**:
+   - During initial apply, 5 networks were provisioned on UDM-Pro: `MGMT-IPMI`, `IOT-SMART-HOME`, `CEPH-STORAGE`, `K8S-APPS`, `TRUSTED-LAN`.
+   - Encountered 3 UniFi controller API edge-cases:
+     1. **`setting_preference: auto` Domain Reset**: When set to `auto`, UniFi clears `domain_name` and `multicast_dns`, causing Terraform post-apply inconsistency errors. **Fix**: Explicitly set `setting_preference = "manual"` and `multicast_dns = false` across all networks.
+     2. **`PdRequiresAssignedDhcpv6Wan`**: WAN2 (Google Fiber SFP+) has DHCPv6 PD, but the provider lacks an `ipv6_pd_interface` selector and defaults to WAN1. **Fix**: Omit `ipv6_interface_type = "pd"` from Terraform on `K8S-CONTROL` (IPv6 PD can be toggled directly in UniFi OS UI).
+     3. **DHCP Range on Disabled DHCP Network**: `K8S-METALLB` required explicit `start`/`stop` boundaries even with `enabled = false`.
+   - Cleaned up state via `terraform untaint` for all 5 adopted networks.
+   - Re-verified plan: `Plan: 9 to add, 5 to change (in-place updates), 0 to destroy`.
+
+10. **Provider Concurrency Bug & Hardware-Safe Parallelism**:
+    - During parallel refresh (`-parallelism=10`), the provider plugin crashed with `fatal error: concurrent map iteration and map write`.
+    - **Root Cause**: An unsynchronized map in the provider's sensitive logging/masking filter (`tflog.Debug` / `LoggerOpts.ApplyMask`) panics under concurrent goroutine access.
+    - **Resolution**: Enforce sequential execution via `-parallelism=1`. This eliminates the race condition and is also the hardware-safe best practice against UniFi controllers.
+    - Updated root `Justfile` to automatically append `-parallelism=1` for `just tf-plan unifi` and `just tf-apply unifi`.
 
 ---
 
 ## 🎯 Immediate Next Actions
 
-1. **Apply UniFi Homelab Networks (`terraform apply`)**:
-   - Execute `terraform -chdir=terraform/unifi apply` to provision the 14 homelab network resources on the UDM-Pro.
+1. **Complete UniFi Network Apply (`just tf-apply unifi`)**:
+   - Run `just tf-apply unifi` (or `terraform -chdir=terraform/unifi apply -parallelism=1`) to provision the remaining resources sequentially.
 2. **Sidero Omni Installation (`omni-server`)**:
    - Flash Sidero Omni boot media to USB drive for the Dell OptiPlex Micro.
    - Boot Dell OptiPlex into Omni installer and access web console at `10.10.10.5`.
 3. **UniFi PXE Configuration**:
    - Enable DHCP boot option (`boot { enabled = true, server = "10.10.10.5", filename = "ipxe.efi" }`) on VLAN 20 pointing to `omni-server`.
+
+
 
 
