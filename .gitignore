@@ -51,11 +51,18 @@ terraform.rc
 talosconfig
 kubeconfig
 *.kubeconfig
+talos/omni-server/*.yaml
+!talos/omni-server/patches/*.yaml
+talos/omni-server/talosconfig
+talos/omni-server/kubeconfig
 
 # Secrets & Environment Configurations
 .env
 .env.*
 *.env
+secrets.yaml
+*.secrets.yaml
+*.secret.yaml
 *.sops.yaml.dec
 
 # Cryptographic Keys & TLS Certificates

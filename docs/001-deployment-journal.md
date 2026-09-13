@@ -144,19 +144,49 @@ Any AI agent or human operator can review this document to pick up exactly where
       - `sm-node-03-ipmi` (`3c:ec:ef:5b:9a:da`) -> **`10.10.10.13`**
     - Verified `MGMT-IPMI` gateway (`10.10.10.1`) responsive and routing.
 
+13. **Pure Talos Linux Seed Architecture Selected for Dell OptiPlex Micro (`omni-server`)**:
+    - **Architecture Decision**: Rather than running Ubuntu Linux with Docker, the Dell OptiPlex Micro is designated to run native **Talos Linux v1.13.8** as a single-node seed Kubernetes cluster hosting Sidero Omni and Dex. This establishes an invariant across the homelab: 100% of physical nodes run immutable, API-driven Talos Linux with zero SSH, zero traditional Linux OS maintenance, and declarative state.
+    - **Boot Media Downloaded**: Official Talos Linux `metal-amd64.iso` (v1.13.8, SHA256 verified: `138138bb8a8b52cea250d53120b708dafc29a70ce2f7145789d9a05cf40bb2d9`) staged at `~/Downloads/talos-metal-amd64.iso` (~104 MB).
+    - **Target Device Prepared**: SanDisk Ultra USB 3.0 (`/dev/disk4`, 15.4 GB) unmounted via `diskutil unmountDisk /dev/disk4`.
+
+14. **Dell OptiPlex Micro Hardware Discovery & Seed Config Preparation**:
+    - **Physical Placement**: Connected Dell OptiPlex Micro to `USW-24-G2` Port 2 (configured with Native VLAN 10 `MGMT-IPMI`, tagged `block_all`).
+    - **Maintenance Mode Boot**: Booted via USB into Talos Linux v1.13.8. Node received temporary DHCP IP **`10.10.10.253`** (MAC `f4:8e:38:92:45:4b`).
+    - **Hardware Topology via Talos gRPC API**:
+      - Internal Target Disk: `Samsung SSD 860` 500 GB on **`/dev/sda`** (`naa.5002538e30a327a4`).
+      - Installer USB: `Ultra USB 3.0` 15 GB on `/dev/sdb`.
+      - Physical Network Interface: **`enp2s0`** (MAC `f4:8e:38:92:45:4b`).
+    - **UniFi Static Reservation Created**:
+      - Programmed fixed IP mapping via UniFi API: `omni-server` (`f4:8e:38:92:45:4b`) -> **`10.10.10.5`** on `MGMT-IPMI`.
+    - **Declarative Talos Config & Patch Formulated**:
+      - Base controlplane spec generated at `talos/omni-server/controlplane.yaml` (gitignored to protect cluster CA private keys).
+      - Reusable declarative patch created at [`talos/omni-server/patches/omni-server.yaml`](file:///talos/omni-server/patches/omni-server.yaml):
+        - Install target: `/dev/sda` with `wipe: true`.
+        - Network: static IP `10.10.10.5/24` on `enp2s0`, gateway `10.10.10.1`, DNS `1.1.1.1`.
+        - Single-node Kubernetes scheduling enabled: `allowSchedulingOnControlPlanes: true`.
+        - Hostname: `omni-server` via `HostnameConfig`.
+        - Cert SANs: `10.10.10.5`, `omni-server`, `10.10.10.253`.
+    - **Live Dry-Run Validation**:
+      - Executed `talosctl apply-config --dry-run` against live node `10.10.10.253`—passed with 0 errors.
+
 ---
 
 ## 🎯 Immediate Next Actions
 
-1. **Sidero Omni Boot Media Preparation (`omni-server`)**:
-   - Create Sidero Omni boot media on USB drive for the Dell OptiPlex Micro.
-   - Configure target static IP `10.10.10.5` on VLAN 10.
-2. **Boot Dell OptiPlex into Omni Installer**:
-   - Connect Dell OptiPlex to network and boot from USB.
-   - Access Omni web console.
-3. **UniFi Switch Port & PXE Boot Configuration**:
-   - Configure VLAN 20 (`K8S-CONTROL`) with DHCP boot options pointing to `omni-server` (`10.10.10.5` / `ipxe.efi`).
-   - Configure 10G SFP+ switch ports on `USW-Agg #1` for node provisioning.
+1. **Apply Configuration to Dell OptiPlex Micro**:
+   - Apply config via `talosctl apply-config --insecure` to write Talos OS to internal Samsung 860 EVO SSD (`/dev/sda`) and reboot.
+   - Unplug USB installer drive during reboot.
+2. **Bootstrap Single-Node Seed Cluster**:
+   - Bootstrap etcd once node boots at `10.10.10.5`:
+     `talosctl bootstrap --nodes 10.10.10.5 --endpoints 10.10.10.5 --talosconfig talos/omni-server/talosconfig`
+   - Retrieve kubeconfig and verify node readiness: `kubectl get nodes -o wide`.
+3. **Deploy Sidero Omni & Dex Stack**:
+   - Deploy Omni and Dex manifests to the single-node seed cluster.
+   - Verify Omni Web Console at `https://10.10.10.5`.
+4. **Configure UniFi DHCP PXE & Onboard Nodes**:
+   - Enable network boot on VLAN 20 (`K8S-CONTROL`) pointing to `10.10.10.5` (`ipxe.efi`).
+   - PXE boot the 5 bare-metal nodes into Omni.
+
 
 
 

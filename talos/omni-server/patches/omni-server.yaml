@@ -1,0 +1,28 @@
+machine:
+  install:
+    disk: /dev/sda
+    wipe: true
+  network:
+    interfaces:
+      - interface: enp2s0
+        dhcp: false
+        addresses:
+          - 10.10.10.5/24
+        routes:
+          - network: 0.0.0.0/0
+            gateway: 10.10.10.1
+    nameservers:
+      - 1.1.1.1
+      - 10.10.10.1
+  certSANs:
+    - 10.10.10.5
+    - omni-server
+    - 10.10.10.253
+
+cluster:
+  allowSchedulingOnControlPlanes: true
+  apiServer:
+    certSANs:
+      - 10.10.10.5
+      - omni-server
+      - 10.10.10.253
