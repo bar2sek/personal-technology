@@ -1,0 +1,114 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: omni
+  namespace: omni
+  labels:
+    app.kubernetes.io/name: omni
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: omni
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: omni
+    spec:
+      containers:
+        - name: omni
+          image: ghcr.io/siderolabs/omni:v1.12.0
+          args:
+            - --name=omni-server
+            - --account-id=00000000-0000-0000-0000-000000000001
+            - --private-key-source=file:///omni.asc
+            - --event-sink-port=8091
+            - --etcd-embedded=true
+            - --etcd-embedded-db-path=/_out/etcd/
+            - --sqlite-storage-path=/_out/sqlite.db
+            - --bind-addr=0.0.0.0:443
+            - --machine-api-bind-addr=0.0.0.0:8090
+            - --k8s-proxy-bind-addr=0.0.0.0:8100
+            - --advertised-api-url=https://10.10.10.5/
+            - --advertised-kubernetes-proxy-url=https://10.10.10.5:8100/
+            - --siderolink-api-advertised-url=https://10.10.10.5:8090/
+            - --siderolink-wireguard-advertised-addr=10.10.10.5:50180
+            - --auth-oidc-enabled
+            - --auth-oidc-provider-url=https://10.10.10.5:5556
+            - --auth-oidc-client-id=omni
+            - --auth-oidc-client-secret=$(OIDC_CLIENT_SECRET)
+            - --auth-oidc-scopes=openid
+            - --auth-oidc-scopes=profile
+            - --auth-oidc-scopes=email
+            - --auth-oidc-allow-unverified-email
+            - --initial-users=admin@omni.internal
+            - --cert=/etc/omni/tls/tls.crt
+            - --key=/etc/omni/tls/tls.key
+            - --machine-api-cert=/etc/omni/tls/tls.crt
+            - --machine-api-key=/etc/omni/tls/tls.key
+          env:
+            - name: OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: omni-oidc
+                  key: clientSecret
+          ports:
+            - name: https
+              containerPort: 443
+              hostPort: 443
+              protocol: TCP
+            - name: siderolink
+              containerPort: 8090
+              hostPort: 8090
+              protocol: TCP
+            - name: k8s-proxy
+              containerPort: 8100
+              hostPort: 8100
+              protocol: TCP
+            - name: event-sink
+              containerPort: 8091
+              hostPort: 8091
+              protocol: TCP
+            - name: wireguard
+              containerPort: 50180
+              hostPort: 50180
+              protocol: UDP
+          securityContext:
+            capabilities:
+              add: ["NET_ADMIN"]
+          volumeMounts:
+            - name: tls
+              mountPath: /etc/omni/tls/
+              readOnly: true
+            - name: ca
+              mountPath: /etc/ssl/certs/omni-ca.crt
+              subPath: ca.crt
+              readOnly: true
+            - name: asc
+              mountPath: /omni.asc
+              subPath: omni.asc
+              readOnly: true
+            - name: data
+              mountPath: /_out
+            - name: tun
+              mountPath: /dev/net/tun
+      volumes:
+        - name: tls
+          secret:
+            secretName: omni-tls
+        - name: ca
+          secret:
+            secretName: omni-ca
+        - name: asc
+          secret:
+            secretName: omni-asc
+        - name: data
+          hostPath:
+            path: /var/lib/kubelet/omni-data
+            type: DirectoryOrCreate
+        - name: tun
+          hostPath:
+            path: /dev/net/tun
+            type: CharDevice

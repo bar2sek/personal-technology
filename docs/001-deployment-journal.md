@@ -177,18 +177,37 @@ Any AI agent or human operator can review this document to pick up exactly where
     - **Core Workloads Active**: `coredns`, `kube-flannel`, `kube-apiserver`, `kube-controller-manager`, `kube-scheduler`, and `kube-proxy` running healthy (`1/1 Running`).
     - **Tooling Staged**: `omnictl v1.12.0` installed at `~/.local/bin/omnictl`.
 
+16. **Self-Hosted Sidero Omni & Dex OIDC Stack Deployed on Talos Seed Cluster**:
+    - **Credential Persistence Architecture**:
+      - Generated secure admin credentials for `admin@omni.internal` stored in `talos/omni-server/.credentials.env` (permissions `0600`, strictly gitignored to protect secrets, synced across workstations via Google Drive vault storage).
+      - Added [`talos/omni-server/.credentials.env.example`](file:///talos/omni-server/.credentials.env.example) to git to provide full visibility for future agents and workstation setups.
+    - **Cryptographic Keys & TLS Fabric**:
+      - Generated RSA 4096 GPG key (`omni.asc`) for etcd encryption at rest and machine join token signing.
+      - Generated internal Root CA and multi-SAN TLS certificates covering `10.10.10.5`, `omni-server`, `omni.internal`, and `auth.omni.internal`.
+    - **Pod Security & Kubernetes Deployment**:
+      - Labeled namespace `omni` with `pod-security.kubernetes.io/enforce=privileged` to permit system host bindings (`hostPort`, `NET_ADMIN` capability for WireGuard, and hostPath volume).
+      - Created Kubernetes manifests at [`kubernetes/infrastructure/omni/dex.yaml`](file:///kubernetes/infrastructure/omni/dex.yaml) and [`kubernetes/infrastructure/omni/omni.yaml`](file:///kubernetes/infrastructure/omni/omni.yaml).
+      - Persistent data allocated on Samsung 860 EVO SSD at `/var/lib/kubelet/omni-data/`.
+    - **Service Health Verification**:
+      - **Dex OIDC** (`ghcr.io/dexidp/dex:v2.41.1`): Running (1/1) on port `5556`. Health check passed (`HTTP/2 200`).
+      - **Sidero Omni** (`ghcr.io/siderolabs/omni:v1.12.0`): Running (1/1) on ports `443`, `8090`, `8100`, `50180/udp`.
+      - **Web Console Verified**: Accessible at **`https://10.10.10.5`**.
+
 ---
 
 ## 🎯 Immediate Next Actions
 
-1. **Deploy Sidero Omni & Dex Stack on Seed Cluster**:
-   - Generate GPG encryption key (`omni.asc`) for etcd and SideroLink tokens.
-   - Generate SAN TLS certificates for `10.10.10.5` / `omni-server`.
-   - Deploy Dex OIDC service (Port 5556) and Omni management service (Port 443, 8090, 8100, 50180/udp).
-   - Verify Omni Web Console at `https://10.10.10.5`.
-2. **Configure UniFi DHCP PXE & Onboard Nodes**:
-   - Enable network boot on VLAN 20 (`K8S-CONTROL`) pointing to `10.10.10.5` (`ipxe.efi`).
-   - PXE boot the 5 bare-metal nodes into Omni.
+1. **Log into Omni Web Console**:
+   - Access `https://10.10.10.5` in browser.
+   - Log in using `admin@omni.internal`.
+2. **Configure UniFi DHCP PXE Boot Server**:
+   - In UniFi Network (**Settings > Networks > K8S-CONTROL (VLAN 20)**):
+     - Enable Network Boot / PXE.
+     - Set Boot Server to `10.10.10.5` (`ipxe.efi`).
+3. **Onboard Bare-Metal Cluster Nodes**:
+   - Power on Supermicro servers (`sm-node-01`, `02`, `03`) via IPMI with PXE enabled.
+   - Power on Gaming PC workers (`pc-node-04`, `05`) with UEFI PXE enabled.
+   - Watch nodes register in the Omni dashboard.
 
 
 
