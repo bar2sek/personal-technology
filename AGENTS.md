@@ -140,3 +140,8 @@ To maximize knowledge transfer and keep the user actively engaged without causin
 * **Dual-Artifact Workflow**: Semantic Markdown (`Ryan_Bartusek_Resume_2026vX.md`) paired with compiled single-page vector PDF (`.pdf`).
 * **Automated PDF Engine**: Built via headless Google Chrome using `python3 render_pdf.py`.
 * **Artifact Tracking**: Markdown sources and final `.pdf` files are tracked; `.chrome_profile/` and `resume_preview.html` are strictly gitignored.
+
+### F. Health, Diet & Nutrition (`food-diet-nutrition`)
+* **Evidence-Based Structure**: Organize around macro/micronutrient science, dietary protocols, high-yield recipes, and pantry sourcing.
+* **Biometric & Health Privacy**: Personal lab results, DEXA scans, and private medical markers MUST reside strictly in `private/` (gitignored).
+* **Recipe Standard**: All recipes include standardized ingredient specs, prep workflows, and estimated macronutrient breakdowns (Protein, Fat, Carbs, Calories).
