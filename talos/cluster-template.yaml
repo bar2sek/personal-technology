@@ -28,6 +28,19 @@ patches:
             - pc-node-05
             - k8s.bar2sek.com
             - cluster.local
+      machine:
+        kernel:
+          modules:
+            - name: rbd
+            - name: ceph
+        kubelet:
+          extraMounts:
+            - destination: /var/lib/rook
+              type: bind
+              source: /var/lib/rook
+              options:
+                - bind
+                - rshared
 ---
 kind: ControlPlane
 machines:

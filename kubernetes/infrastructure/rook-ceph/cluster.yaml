@@ -5,7 +5,7 @@ metadata:
   namespace: rook-ceph
 spec:
   cephVersion:
-    image: quay.io/ceph/ceph:v18.2.1
+    image: quay.io/ceph/ceph:v19.2.1
     allowUnsupported: false
   dataDirHostPath: /var/lib/rook
   skipUpgradeChecks: false
@@ -65,31 +65,36 @@ spec:
     useAllNodes: false
     useAllDevices: false
     nodes:
-      # Tier 1 & Tier 2 OSDs on Supermicro Node 01
+      # Tier 1 (NVMe) & Tier 2 (SATA SSD) on Supermicro Node 01
+      # (Boot drive /dev/sda SuperDOM is strictly excluded)
       - name: sm-node-01
         devices:
           - name: "nvme0n1" # Tier 1 NVMe (2TB)
             config:
               deviceType: nvme
-          - name: "sda"     # Tier 2 SATA SSD (2TB)
-            config:
-              deviceType: ssd
           - name: "sdb"     # Tier 2 SATA SSD (2TB)
             config:
               deviceType: ssd
-      # Tier 1 & Tier 2 OSDs on Supermicro Node 02
+          - name: "sdc"     # Tier 2 SATA SSD (2TB)
+            config:
+              deviceType: ssd
+
+      # Tier 1 (NVMe) & Tier 2 (SATA SSD) on Supermicro Node 02
+      # (Boot drive /dev/sda SuperDOM is strictly excluded)
       - name: sm-node-02
         devices:
           - name: "nvme0n1" # Tier 1 NVMe (2TB)
             config:
               deviceType: nvme
-          - name: "sda"     # Tier 2 SATA SSD (2TB)
-            config:
-              deviceType: ssd
           - name: "sdb"     # Tier 2 SATA SSD (2TB)
             config:
               deviceType: ssd
-      # Tier 2 OSDs on Supermicro Node 03
+          - name: "sdc"     # Tier 2 SATA SSD (2TB)
+            config:
+              deviceType: ssd
+
+      # Tier 2 (SATA SSD) on Supermicro Node 03
+      # (Boot drives /dev/sde & /dev/sdf SuperDOMs are strictly excluded)
       - name: sm-node-03
         devices:
           - name: "sda"     # Tier 2 SATA SSD (2TB)
@@ -104,45 +109,47 @@ spec:
           - name: "sdd"     # Tier 2 SATA SSD (2TB)
             config:
               deviceType: ssd
-      # Tier 3 OSDs on Storage PC Node 04 (Bulk HDD Array)
+
+      # Tier 1 (NVMe) & Tier 3 (Bulk HDD Array) on Storage PC Node 04
+      # (Boot drive /dev/sdc Intel SSD is strictly excluded;
+      #  Scratch drives /dev/sdf, /dev/sdg, /dev/sdm are strictly excluded)
       - name: pc-node-04
         devices:
-          - name: "sdb"     # 4TB Seagate IronWolf NAS HDD
+          - name: "nvme0n1" # Tier 1 NVMe (1TB Crucial P3)
+            config:
+              deviceType: nvme
+          - name: "sda"     # Tier 3 4TB Seagate IronWolf NAS HDD
             config:
               deviceType: hdd
-          - name: "sdc"     # 4TB Seagate IronWolf NAS HDD
+          - name: "sdb"     # Tier 3 4TB Seagate IronWolf NAS HDD
             config:
               deviceType: hdd
-          - name: "sdd"     # 4TB Seagate IronWolf NAS HDD
+          - name: "sdd"     # Tier 3 4TB Seagate IronWolf NAS HDD
             config:
               deviceType: hdd
-          - name: "sde"     # 4TB Seagate IronWolf NAS HDD
+          - name: "sde"     # Tier 3 4TB Seagate IronWolf NAS HDD
             config:
               deviceType: hdd
-          - name: "sdf"     # 2TB Seagate Constellation ES.3 Enterprise HDD
+          - name: "sdh"     # Tier 3 2TB Seagate Constellation Enterprise HDD
             config:
               deviceType: hdd
-          - name: "sdg"     # 2TB Seagate Constellation ES.3 Enterprise HDD
+          - name: "sdi"     # Tier 3 1TB Seagate BarraCuda HDD
             config:
               deviceType: hdd
-          - name: "sdh"     # 3TB Seagate BarraCuda HDD
+          - name: "sdj"     # Tier 3 1TB Seagate BarraCuda HDD
             config:
               deviceType: hdd
-          - name: "sdi"     # 1.5TB WD Green HDD
+          - name: "sdk"     # Tier 3 1.5TB WD Green HDD
             config:
               deviceType: hdd
-          - name: "sdj"     # 1TB Seagate Barracuda HDD
+          - name: "sdl"     # Tier 3 3TB Seagate BarraCuda HDD
             config:
               deviceType: hdd
-          - name: "sdk"     # 1TB Seagate Barracuda HDD
-            config:
-              deviceType: hdd
-          - name: "sdl"     # 500GB HGST HDD
-            config:
-              deviceType: hdd
-      # Tier 1 OSD on GPU Worker Node 05
+
+      # Tier 1 (NVMe) on GPU Worker Node 05
+      # (Boot drive /dev/nvme1n1 Sabrent Rocket is strictly excluded)
       - name: pc-node-05
         devices:
-          - name: "nvme0n1p2" # 998GB Unpartitioned NVMe Data Partition
+          - name: "nvme0n1" # Tier 1 NVMe (1TB Crucial P3)
             config:
               deviceType: nvme

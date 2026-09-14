@@ -337,17 +337,50 @@ Any AI agent or human operator can review this document to pick up exactly where
 
 ---
 
+29. **Rook-Ceph 3-Tier Distributed Storage Cluster Deployed & Validated (42 TiB Raw)**:
+    - **Host Preparation & Security Validation**:
+      - Talos Linux kernel verified for in-tree Ceph modules (`CONFIG_CEPH_LIB=y`, `CONFIG_CEPH_FS=y`, `CONFIG_BLK_DEV_RBD=y`).
+      - Verified `/var/lib/rook` is configured with `rshared` mount propagation across all 5 nodes.
+      - Created `rook-ceph` namespace labeled with Pod Security Standard `privileged` (`pod-security.kubernetes.io/enforce=privileged`).
+    - **Operator & Ceph Version**:
+      - Deployed Rook-Ceph Operator `v1.20.7` via Helm using declarative [`kubernetes/infrastructure/rook-ceph/values.yaml`](file:///kubernetes/infrastructure/rook-ceph/values.yaml).
+      - Configured Ceph Squid `v19.2.1` (`quay.io/ceph/ceph:v19.2.1`) across all storage daemons.
+    - **Drive Pre-Flight Hygiene & Label Wiping**:
+      - Strict hardware boundary safeguards: Boot/OS drives completely excluded (`sm-01`/`sm-02`: `/dev/sda` SuperDOM, `sm-03`: `/dev/sde`/`sdf` SuperDOMs, `pc-04`: `/dev/sdc` 80GB Intel SSD, `pc-05`: `/dev/nvme1n1` Sabrent Rocket NVMe).
+      - Three small miscellaneous SATA SSDs on `pc-04` (`sdf` 180GB, `sdg` 250GB, `sdm` 180GB) wiped clean and excluded from Ceph to prevent CRUSH weight skewing, reserved for local scratch/LocalPV.
+      - Executed deep disk wipe on remaining 21 drives: Destroyed GPT partition tables, zeroed primary headers (first 100MB), and cleared trailing ZFS vdev labels (last 100MB) on mechanical HDDs (`sdh`, `sdk`, `sdl`) via `dd seek=$(( $(blockdev --getsz $d) - 204800 ))`.
+    - **Cluster Topology & 21 OSDs Active**:
+      - **MONs (3 daemons)**: In quorum across `pc-04` (mon-a), `sm-03` (mon-b), and `pc-05` (mon-c).
+      - **MGRs (2 daemons)**: Active `mgr-b` (`pc-04`), standby `mgr-a` (`sm-03`).
+      - **MDS (2 daemons)**: Active `mds-a`, standby `mds-b` for shared CephFS filesystem.
+      - **OSDs (21 daemons)**: All 21 drives successfully provisioned with BlueStore, reporting `21 osds: 21 up, 21 in` with 42.3 TiB raw capacity:
+        - *Tier 1 (High-IOPS NVMe, 6.0 TB raw, 4 OSDs)*: `osd.10` (`sm-01`), `osd.9` (`sm-02`), `osd.8` (`pc-04`), `osd.0` (`pc-05`).
+        - *Tier 2 (Fast SATA SSD, 16.0 TB raw, 8 OSDs)*: `osd.2`, `osd.6` (`sm-01`), `osd.1`, `osd.5` (`sm-02`), `osd.4`, `osd.7`, `osd.12`, `osd.13` (`sm-03`).
+        - *Tier 3 (Bulk HDD, 24.5 TB raw, 9 OSDs)*: `osd.3`, `osd.11`, `osd.14`, `osd.15`, `osd.16`, `osd.17`, `osd.18`, `osd.19`, `osd.20` (`pc-04`).
+    - **StorageClasses & Pools Configured**:
+      - `rook-ceph-block` (Default): Replicated 3x on `builtin-ssd-pool` (SATA SSDs, host failure domain).
+      - `rook-ceph-block-nvme`: Replicated 3x on `nvme-high-iops-pool` (NVMe drives, host failure domain).
+      - `rook-ceph-hdd-bulk`: Replicated 2x on `hdd-bulk-pool` (HDDs, osd failure domain).
+      - `rook-ceph-filesystem`: Shared POSIX filesystem (`ceph-filesystem`) with metadata on NVMe and data on SSDs.
+    - **Ceph-CSI v1.20 Driver Architecture**:
+      - Installed `ceph-csi-drivers` Helm chart (`v1.0.5`) with control-plane tolerations.
+      - Verified `csidrivers` registered: `rook-ceph.rbd.csi.ceph.com` and `rook-ceph.cephfs.csi.ceph.com`.
+      - Controller plugins (6/6 and 5/5) and node plugins (3/3 across all 5 nodes) running healthy.
+    - **End-to-End Validation**:
+      - Deployed test PVCs across all 3 tiers (`rook-ceph-block`, `rook-ceph-block-nvme`, `rook-ceph-filesystem`) in `ceph-storage-test` namespace. All bound in < 4 seconds.
+      - Deployed multi-volume test pod mounting all three tiers simultaneously; verified write, fsync, and readback integrity across all mounts.
+    - **Administration & Ceph Dashboard**:
+      - Deployed [`kubernetes/infrastructure/rook-ceph/toolbox.yaml`](file:///kubernetes/infrastructure/rook-ceph/toolbox.yaml) for direct cluster operations (`ceph status`, `ceph osd tree`).
+      - Ceph Management Dashboard active on port 8443 (`svc/rook-ceph-mgr-dashboard`).
+
+---
+
 ## 🎯 Immediate Next Actions
 
-1. **Deploy Rook-Ceph Distributed Storage (Phase 2)**:
-   - Apply Rook-Ceph operator targeting raw bulk HDDs on `pc-node-04` and NVMe/SATA SSDs on `sm-node-01`, `sm-node-02`, `sm-node-03`, and `pc-node-05`.
-   - Establish CephBlockPool (RWO volumes), CephFilesystem / CephFS (RWX shared volumes), and CephObjectStore (S3-compatible bucket storage).
-2. **Deploy Core Addons & Ingress Platform**:
+1. **Deploy Core Addons & Ingress Platform**:
    - Provision Cert-Manager, Gateway API / Envoy Gateway / Ingress Controller, and ExternalDNS.
    - Configure Cloudflare Tunnel integration for zero-trust remote access.
-3. **Configure GPU Worker & Workload Partitioning**:
+2. **Configure GPU Worker & Workload Partitioning**:
    - Deploy NVIDIA GPU Operator or configure KubeVirt VFIO passthrough on `pc-node-05` for Windows 11 Gaming VM and LLM inference.
-
-
-
-
+3. **Deploy Observability Stack**:
+   - Deploy Prometheus Operator / VictoriaMetrics, Grafana, and Ceph exporter dashboards.

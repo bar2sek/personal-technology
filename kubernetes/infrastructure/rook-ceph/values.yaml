@@ -1,0 +1,19 @@
+# Helm values for rook-ceph operator on Talos Linux
+crds:
+  enabled: true
+
+enableDiscoveryDaemon: true
+discoveryDaemonInterval: 60m
+
+# Resources for the operator pod
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 200m
+    memory: 128Mi
+
+csi:
+  enableRbdDriver: true
+  enableCephfsDriver: true
