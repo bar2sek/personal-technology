@@ -16,6 +16,14 @@ Whether operating at the root vault level or inside any child repository, you **
 
 ## 2. 📝 Obsidian & Markdown Documentation Standards
 
+* **Continuous In-Repo Documentation (Document-As-You-Build)**: 
+  * Never leave architectural decisions, new services, custom scripts, or non-trivial configurations undocumented.
+  * As changes are made, proactively write or update co-located documentation (runbooks, setup guides, architecture notes, or troubleshooting logs) inside that repository before declaring a task complete.
+  * Document the *intent*, *verification steps*, and *troubleshooting gotchas*—not just raw syntax.
+* **Keep Documentation Co-Located**:
+  * All project-specific operational knowledge belongs directly inside that repository (e.g., in `docs/`, `notes/`, or project logs). Each child repository must remain fully self-documenting for someone cloning it standalone.
+* **Reflect Milestones in Vault Dashboards**:
+  * Whenever a major new component, service, or architectural milestone is completed in any repository, cross-link and reflect it in the vault's root [[Dashboard.md]] or relevant domain MOC note.
 * **Strict Repository Self-Containment**: All links within a repository MUST resolve exclusively to notes and files inside that same repository. Never generate relative links that traverse out to sibling directories or other repositories (e.g., do NOT write `[[../other-repo/...]]` or `[...](../other-repo/...)`).
 * **Obsidian Wikilinks Standard**: Use standard Obsidian Wikilinks `[[Note Name]]` (or `[[Folder/Note Name|Display Text]]`) for all internal note cross-references, glossary terms, runbooks, and project logs.
 * **YAML Frontmatter Schema**: Every formal documentation note should begin with a consistent YAML frontmatter block:
