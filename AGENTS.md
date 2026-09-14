@@ -56,10 +56,19 @@ Whether operating at the root vault level or inside any child repository, you **
 
 ## 4. 🔐 Security, Privacy & Sanitization Hygiene
 
-* **Zero Plaintext Secrets**: Never hardcode private keys, API tokens, cloud credentials, or passwords into manifests, scripts, or documentation.
-* **Zero PII & Local Path Leaks**: Do not hardcode personal email addresses, private file paths (e.g., `/Users/<username>/...`), or internal hostnames in public templates or documentation.
-* **Sensitive Inputs**: Reference secrets via Kubernetes Secrets, environment variables, or `.tfvars` files (which must remain strictly ignored by `.gitignore`).
-* **Public GitHub Commits**: In public repositories, ensure commit author emails utilize the GitHub private noreply address (`bar2sek@users.noreply.github.com`).
+* **"Public-by-Default" Invariant**: Treat EVERY repository (whether currently public or private) as if its entire commit history is open to the world, prospective employers, and peers. Never rely on a repo's private visibility setting as a security or privacy boundary.
+* **Zero Plaintext Secrets**:
+  * Never hardcode or commit private keys (`*.pem`, `*.key`), API tokens, cloud credentials, passwords, WireGuard configs, or cluster credentials (`kubeconfig`, `talosconfig`).
+  * Never commit `.env` files, `*.tfvars`, or raw unencrypted Kubernetes secrets.
+* **Strict `.gitignore` Invariants for Sensitive State**:
+  * Proactively ensure all sensitive patterns (`.env*`, `*.tfvars`, `*.key`, `*.pem`, `*kubeconfig*`, `talosconfig`, private certificates, credentials) are explicitly added to each repository's `.gitignore`.
+  * **Google Drive Synergy**: Acknowledge that private notes, sensitive variables, and local configs remain safely backed up via local Google Drive synchronization—they must NEVER enter Git version control.
+* **Zero PII, Infrastructure & Local Path Leaks**:
+  * Sanitize personal identity data: personal phone numbers, physical residential addresses, and private personal emails (commit author emails MUST use `bar2sek@users.noreply.github.com`).
+  * Sanitize private infrastructure details: public WAN IPs, ISP hostnames, hardware MAC addresses, and local username paths (use `~` or `$HOME` instead of `/Users/ryan.bartusek/...`).
+  * Exclude private personal records (finances, receipts, personal house documents) from git tracking.
+* **Pre-Stage Leak Auditing (Agent Duty)**:
+  * When reviewing file status or suggesting staging commands, actively inspect untracked and modified files for accidental secrets, credentials, or PII. If detected, flag them immediately and ensure they are added to `.gitignore` before the user stages them.
 
 ---
 
