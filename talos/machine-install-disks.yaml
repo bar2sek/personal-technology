@@ -1,0 +1,44 @@
+# ==============================================================================
+# Declarative Machine Install Disk Configurations for Sidero Omni
+# Pins each node to its dedicated OS drive to protect bulk & Ceph storage drives.
+# ==============================================================================
+
+# sm-node-01 (Control Plane 1): 16GB SATA SuperDOM
+metadata:
+  namespace: default
+  type: MachineInstallDiskConfigs.omni.sidero.dev
+  id: da165a00-3e5d-11ea-8000-3cecef44a132
+spec:
+  disk: /dev/sda
+---
+# sm-node-02 (Control Plane 2): 16GB SATA SuperDOM
+metadata:
+  namespace: default
+  type: MachineInstallDiskConfigs.omni.sidero.dev
+  id: 9983ae00-e364-11ea-8000-3cecef6fd61e
+spec:
+  disk: /dev/sda
+---
+# sm-node-03 (Control Plane 3): 16GB SATA SuperDOM (sda..sdd are Crucial 2TB SSDs)
+metadata:
+  namespace: default
+  type: MachineInstallDiskConfigs.omni.sidero.dev
+  id: 00000000-0000-0000-0000-3cecef58ed64
+spec:
+  disk: /dev/sde
+---
+# pc-node-04 (Storage Worker): 80GB Intel 320 SSD (preserves all 11 bulk HDDs)
+metadata:
+  namespace: default
+  type: MachineInstallDiskConfigs.omni.sidero.dev
+  id: 927ef8ab-872a-f416-acb4-2cf05d577ea4
+spec:
+  disk: /dev/sdc
+---
+# pc-node-05 (GPU Worker): 1TB Sabrent Rocket 4.0 NVMe (preserves 1TB Crucial P3 for Ceph)
+metadata:
+  namespace: default
+  type: MachineInstallDiskConfigs.omni.sidero.dev
+  id: 7a7d25b8-0dfc-c810-a348-047c1680b262
+spec:
+  disk: /dev/nvme1n1

@@ -306,21 +306,48 @@ Any AI agent or human operator can review this document to pick up exactly where
 
 ---
 
+### 2026-09-14
+
+28. **Root-Cause Resolution (`HostnameConfig`), Disk Safeguards & Production Cluster Bootstrapped**:
+    - **Root-Cause Discovery**:
+      - Investigated why Talos v1alpha1 rejected literal hostname patches with `* static hostname is already set in v1alpha1 config`.
+      - **Discovery**: In Talos v1.12+, static hostname configuration was moved out of `machine.network.hostname` into a dedicated `HostnameConfig` document. Sidero Omni auto-injects `HostnameConfig` with `auto: stable`. When custom patches declared `machine.network.hostname`, Talos detected conflicting duplicate hostname sources and failed validation.
+      - **Resolution**: Modernized [`talos/cluster-template.yaml`](file:///talos/cluster-template.yaml) by patching the dedicated `HostnameConfig` resource with `auto: "off"` and literal hostnames (`sm-node-01` .. `pc-node-05`).
+    - **Machine Install Disk Safeguards**:
+      - Created [`talos/machine-install-disks.yaml`](file:///talos/machine-install-disks.yaml) explicitly pinning all 5 machines to their dedicated OS drives (`sm-01`/`sm-02`: `/dev/sda` SuperDOM, `sm-03`: `/dev/sde` SuperDOM, `pc-04`: `/dev/sdc` Intel SSD, `pc-05`: `/dev/nvme1n1` Sabrent Rocket NVMe).
+      - Guaranteed 100% data safety: All 11 bulk storage HDDs on `pc-node-04` and the secondary raw Crucial P3 NVMe on `pc-node-05` remained untouched.
+    - **Declarative Template Sync & Convergence**:
+      - Synced template via `omnictl cluster template sync -f talos/cluster-template.yaml`.
+      - Omni seamlessly dispatched configs, initialized etcd on `sm-node-03`, formed a 3-node HA control plane, and registered all 5 nodes.
+    - **Production Cluster Health Verified**:
+      - Generated cluster service-account kubeconfig at `talos/kubeconfig` and updated `~/.kube/config`.
+      - Verified `kubectl get nodes -o wide`:
+        ```text
+        NAME         STATUS   ROLES           AGE     VERSION   INTERNAL-IP    EXTERNAL-IP   OS-IMAGE           KERNEL-VERSION          CONTAINER-RUNTIME
+        pc-node-04   Ready    <none>          2m15s   v1.36.4   10.10.20.20    <none>        Talos (v1.13.10)   6.18.48-talos (amd64)   containerd://2.2.7
+        pc-node-05   Ready    <none>          2m9s    v1.36.4   10.10.20.111   <none>        Talos (v1.13.10)   6.18.48-talos (amd64)   containerd://2.2.7
+        sm-node-01   Ready    control-plane   2m36s   v1.36.4   10.10.20.199   <none>        Talos (v1.13.10)   6.18.48-talos (amd64)   containerd://2.2.7
+        sm-node-02   Ready    control-plane   2m36s   v1.36.4   10.10.20.120   <none>        Talos (v1.13.10)   6.18.48-talos (amd64)   containerd://2.2.7
+        sm-node-03   Ready    control-plane   2m35s   v1.36.4   10.10.20.131   <none>        Talos (v1.13.10)   6.18.48-talos (amd64)   containerd://2.2.7
+        ```
+      - Verified node labels (`storage-worker` on `pc-04`, `gpu-worker` on `pc-05`).
+      - Verified zero control plane taints (`allowSchedulingOnControlPlanes: true`).
+      - Verified etcd cluster health (`talosctl -n 10.10.20.131 service etcd` -> `Running / OK`).
+      - Core workloads (CoreDNS, Flannel CNI, Kube-Proxy) running 1/1 healthy across all 5 nodes.
+
+---
+
 ## 🎯 Immediate Next Actions
 
-1. **Bootstrap `homelab-k8s` with Plan Hostnames**:
-   - Form cluster in Omni (`https://10.10.10.5/clusters` -> **Create Cluster**).
-   - Control Planes: Assign `sm-node-01`, `sm-node-02`, `sm-node-03` (selecting respective SuperDOMs).
-   - Workers: Assign `pc-node-04` (Intel SSD `/dev/sdc`) and `pc-node-05` (NVMe `/dev/nvme1n1`).
-   - Confirm `kubectl get nodes -o wide` shows `sm-node-01` .. `pc-node-05` in `Ready` state.
-2. **Deploy Rook-Ceph Distributed Storage**:
-   - Apply Rook-Ceph operator and cluster manifests targeting raw HDDs and NVMe on `pc-node-04` and nodes.
-   - Establish CephBlockPool, CephFilesystem (CephFS), and CephObjectStore.
-3. **Deploy Core Addons & GitOps Pipeline**:
-   - Provision ArgoCD / Flux for declarative GitOps application delivery.
-   - Configure Cert-Manager, Gateway API / Envoy Gateway / Ingress Controller, and ExternalDNS.
-4. **Configure GPU Worker & Workload Partitioning**:
-   - Deploy NVIDIA GPU Operator or configure KubeVirt VFIO passthrough for Windows 11 Gaming VM and LLM inference.
+1. **Deploy Rook-Ceph Distributed Storage (Phase 2)**:
+   - Apply Rook-Ceph operator targeting raw bulk HDDs on `pc-node-04` and NVMe/SATA SSDs on `sm-node-01`, `sm-node-02`, `sm-node-03`, and `pc-node-05`.
+   - Establish CephBlockPool (RWO volumes), CephFilesystem / CephFS (RWX shared volumes), and CephObjectStore (S3-compatible bucket storage).
+2. **Deploy Core Addons & Ingress Platform**:
+   - Provision Cert-Manager, Gateway API / Envoy Gateway / Ingress Controller, and ExternalDNS.
+   - Configure Cloudflare Tunnel integration for zero-trust remote access.
+3. **Configure GPU Worker & Workload Partitioning**:
+   - Deploy NVIDIA GPU Operator or configure KubeVirt VFIO passthrough on `pc-node-05` for Windows 11 Gaming VM and LLM inference.
+
 
 
 

@@ -45,36 +45,42 @@ name: da165a00-3e5d-11ea-8000-3cecef44a132
 patches:
   - name: hostname-sm-node-01
     inline: |-
-      machine:
-        network:
-          hostname: sm-node-01
+      apiVersion: v1alpha1
+      kind: HostnameConfig
+      auto: "off"
+      hostname: sm-node-01
 ---
 kind: Machine
 name: 9983ae00-e364-11ea-8000-3cecef6fd61e
 patches:
   - name: hostname-sm-node-02
     inline: |-
-      machine:
-        network:
-          hostname: sm-node-02
+      apiVersion: v1alpha1
+      kind: HostnameConfig
+      auto: "off"
+      hostname: sm-node-02
 ---
 kind: Machine
 name: 00000000-0000-0000-0000-3cecef58ed64
 patches:
   - name: hostname-sm-node-03
     inline: |-
-      machine:
-        network:
-          hostname: sm-node-03
+      apiVersion: v1alpha1
+      kind: HostnameConfig
+      auto: "off"
+      hostname: sm-node-03
 ---
 kind: Machine
 name: 927ef8ab-872a-f416-acb4-2cf05d577ea4
 patches:
   - name: storage-worker
     inline: |-
+      apiVersion: v1alpha1
+      kind: HostnameConfig
+      auto: "off"
+      hostname: pc-node-04
+      ---
       machine:
-        network:
-          hostname: pc-node-04
         nodeLabels:
           node.kubernetes.io/role: storage-worker
           storage.homelab/tier3-hdd: "true"
@@ -84,9 +90,12 @@ name: 7a7d25b8-0dfc-c810-a348-047c1680b262
 patches:
   - name: gpu-worker
     inline: |-
+      apiVersion: v1alpha1
+      kind: HostnameConfig
+      auto: "off"
+      hostname: pc-node-05
+      ---
       machine:
-        network:
-          hostname: pc-node-05
         install:
           extraKernelArgs:
             - amd_iommu=on
