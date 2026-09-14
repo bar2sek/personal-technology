@@ -64,6 +64,10 @@ secrets.yaml
 *.secrets.yaml
 *.secret.yaml
 *.sops.yaml.dec
+client-tools/*.json
+client-tools/*.discovered
+*.inventory.json
+omni-inventory.json
 
 # Cryptographic Keys & TLS Certificates
 *.pem
