@@ -31,12 +31,12 @@ spec:
             - --bind-addr=0.0.0.0:443
             - --machine-api-bind-addr=0.0.0.0:8090
             - --k8s-proxy-bind-addr=0.0.0.0:8100
-            - --advertised-api-url=https://10.10.10.5/
+            - --advertised-api-url=https://omni.bar2sek.com/
             - --advertised-kubernetes-proxy-url=https://10.10.10.5:8100/
             - --machine-api-advertised-url=grpc://10.10.10.5:8090/
             - --siderolink-wireguard-advertised-addr=10.10.10.5:50180
             - --auth-oidc-enabled
-            - --auth-oidc-provider-url=https://10.10.10.5:5556
+            - --auth-oidc-provider-url=https://omni.bar2sek.com:5556
             - --auth-oidc-client-id=omni
             - --auth-oidc-client-secret=$(OIDC_CLIENT_SECRET)
             - --auth-oidc-scopes=openid
@@ -92,6 +92,10 @@ spec:
               mountPath: /_out
             - name: tun
               mountPath: /dev/net/tun
+      hostAliases:
+        - ip: "10.10.10.5"
+          hostnames:
+            - "omni.bar2sek.com"
       volumes:
         - name: tls
           secret:

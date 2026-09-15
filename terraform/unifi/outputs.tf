@@ -52,3 +52,13 @@ output "sm_node_03_ipmi_ip" {
   value       = "10.10.10.13"
   description = "Static IP reserved for sm-node-03 IPMI BMC (VLAN 10)"
 }
+
+output "local_dns_ceph" {
+  value       = "${unifi_dns_record.ceph.name} -> ${unifi_dns_record.ceph.value}"
+  description = "Local split-horizon DNS record for Ceph Dashboard"
+}
+
+output "local_dns_omni" {
+  value       = "${unifi_dns_record.omni.name} -> ${unifi_dns_record.omni.value}"
+  description = "Local split-horizon DNS record for Sidero Omni"
+}

@@ -399,6 +399,23 @@ Any AI agent or human operator can review this document to pick up exactly where
       - Verified local direct LAN routing via `10.10.20.50` (`<title>Ceph</title>`).
       - Verified remote internet access via `https://ceph.bar2sek.com` through Cloudflare Tunnel with 100% valid SSL verification and zero open firewall ports.
 
+31. **UniFi Split-Horizon Local DNS Optimization & Omni Origin Integration (`terraform/unifi`)**:
+    - **UniFi Terraform Provider Upgrade**:
+      - Upgraded `ubiquiti-community/unifi` provider from `~> 0.41.0` to `~> 0.55.0` in [`terraform/unifi/providers.tf`](file:///terraform/unifi/providers.tf) to unlock native support for the managed `unifi_dns_record` resource.
+    - **Split-Horizon Local DNS Declarations**:
+      - Created [`terraform/unifi/dns.tf`](file:///terraform/unifi/dns.tf) declaring local authoritative A records on the UDM-Pro:
+        - `ceph.bar2sek.com` $\rightarrow$ `10.10.20.50` (MetalLB Ingress-Nginx VIP)
+        - `omni.bar2sek.com` $\rightarrow$ `10.10.10.5` (Sidero Omni Server)
+      - Added configurable domain and VIP variables to [`terraform/unifi/variables.tf`](file:///terraform/unifi/variables.tf) and exported record statuses in [`terraform/unifi/outputs.tf`](file:///terraform/unifi/outputs.tf).
+    - **Omni Origin Ingress Alignment & Native Wildcard TLS**:
+      - Verified Omni port allocation: Port 8080 refused; port 443 active and serving Omni web console.
+      - Updated Cloudflare Tunnel configuration in [`terraform/cloudflare/main.tf`](file:///terraform/cloudflare/main.tf) to forward `omni.bar2sek.com` to `https://10.10.10.5:443` with `no_tls_verify = true`.
+      - Backed up initial self-signed certificate on `omni-server` to `secret/omni-tls-backup`.
+      - Upgraded `secret/omni-tls` on the `omni-server` cluster with the genuine Let's Encrypt wildcard certificate (`*.bar2sek.com`) from `secret/bar2sek-wildcard-tls`.
+      - Verified direct local HTTPS reachability at `10.10.10.5:443`: SSL handshake passes with 100% trusted verification (`SSL certificate verify ok`) and trusted green lock in browsers.
+    - **Network Performance Impact**:
+      - Internal LAN clients resolve `ceph.bar2sek.com` directly to `10.10.20.50` and `omni.bar2sek.com` directly to `10.10.10.5` via UDM-Pro (`10.0.1.1`), achieving line-rate local throughput without WAN hairpinning, while preserving valid Let's Encrypt TLS certificates.
+
 ---
 
 ## 🎯 Immediate Next Actions

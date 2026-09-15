@@ -16,6 +16,24 @@ variable "domain_suffix" {
   default     = "homelab.local"
 }
 
+variable "public_domain" {
+  type        = string
+  description = "Public domain name for local split-horizon DNS resolution"
+  default     = "bar2sek.com"
+}
+
+variable "ingress_vip" {
+  type        = string
+  description = "MetalLB Layer 2 VIP for cluster ingress (ingress-nginx)"
+  default     = "10.10.20.50"
+}
+
+variable "omni_ip" {
+  type        = string
+  description = "Static IP address for Sidero Omni bare-metal server"
+  default     = "10.10.10.5"
+}
+
 variable "unifi_username" {
   type        = string
   description = "UniFi Controller Admin Username"
