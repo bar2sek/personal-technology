@@ -3,15 +3,6 @@ kind: Namespace
 metadata:
   name: cloudflare-system
 ---
-apiVersion: v1
-kind: Secret
-metadata:
-  name: cloudflared-tunnel-token
-  namespace: cloudflare-system
-type: Opaque
-stringData:
-  TUNNEL_TOKEN: "REPLACE_WITH_CLOUDFLARE_TUNNEL_TOKEN" # Injected via SealedSecrets, SOPS or CI/CD
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -20,7 +11,7 @@ metadata:
   labels:
     app.kubernetes.io/name: cloudflared
 spec:
-  replicas: 2 # High Availability across cluster nodes
+  replicas: 2
   selector:
     matchLabels:
       app: cloudflared
@@ -29,6 +20,10 @@ spec:
       labels:
         app: cloudflared
     spec:
+      tolerations:
+        - key: "node-role.kubernetes.io/control-plane"
+          operator: "Exists"
+          effect: "NoSchedule"
       containers:
         - name: cloudflared
           image: cloudflare/cloudflared:latest

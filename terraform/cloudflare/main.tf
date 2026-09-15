@@ -17,7 +17,7 @@ resource "cloudflare_zero_trust_tunnel_cloudflared_config" "homelab_tunnel_confi
 
   config {
     ingress_rule {
-      hostname = "teslamate.${var.domain_name}"
+      hostname = "tesla.${var.domain_name}"
       service  = "http://teslamate.teslamate.svc.cluster.local:4000"
     }
     ingress_rule {
@@ -25,7 +25,7 @@ resource "cloudflare_zero_trust_tunnel_cloudflared_config" "homelab_tunnel_confi
       service  = "http://actual-budget-service.finance.svc.cluster.local:80"
     }
     ingress_rule {
-      hostname = "recipes.${var.domain_name}"
+      hostname = "diet.${var.domain_name}"
       service  = "http://mealie-service.mealie.svc.cluster.local:80"
     }
     ingress_rule {
@@ -36,6 +36,13 @@ resource "cloudflare_zero_trust_tunnel_cloudflared_config" "homelab_tunnel_confi
       hostname = "omni.${var.domain_name}"
       service  = "http://10.10.10.5:8080"
     }
+    ingress_rule {
+      hostname = "ceph.${var.domain_name}"
+      service  = "https://ingress-nginx-controller.ingress-nginx.svc.cluster.local:443"
+      origin_request {
+        no_tls_verify = true
+      }
+    }
     # Catch-all rule
     ingress_rule {
       service = "http_status:404"
@@ -44,9 +51,9 @@ resource "cloudflare_zero_trust_tunnel_cloudflared_config" "homelab_tunnel_confi
 }
 
 # 3. CNAME DNS Records Pointing Subdomains to Tunnel
-resource "cloudflare_record" "teslamate_dns" {
+resource "cloudflare_record" "tesla_dns" {
   zone_id = var.cloudflare_zone_id
-  name    = "teslamate"
+  name    = "tesla"
   value   = "${cloudflare_zero_trust_tunnel_cloudflared.homelab_tunnel.id}.cfargotunnel.com"
   type    = "CNAME"
   proxied = true
@@ -60,9 +67,9 @@ resource "cloudflare_record" "finance_dns" {
   proxied = true
 }
 
-resource "cloudflare_record" "recipes_dns" {
+resource "cloudflare_record" "diet_dns" {
   zone_id = var.cloudflare_zone_id
-  name    = "recipes"
+  name    = "diet"
   value   = "${cloudflare_zero_trust_tunnel_cloudflared.homelab_tunnel.id}.cfargotunnel.com"
   type    = "CNAME"
   proxied = true
@@ -79,6 +86,14 @@ resource "cloudflare_record" "grafana_dns" {
 resource "cloudflare_record" "omni_dns" {
   zone_id = var.cloudflare_zone_id
   name    = "omni"
+  value   = "${cloudflare_zero_trust_tunnel_cloudflared.homelab_tunnel.id}.cfargotunnel.com"
+  type    = "CNAME"
+  proxied = true
+}
+
+resource "cloudflare_record" "ceph_dns" {
+  zone_id = var.cloudflare_zone_id
+  name    = "ceph"
   value   = "${cloudflare_zero_trust_tunnel_cloudflared.homelab_tunnel.id}.cfargotunnel.com"
   type    = "CNAME"
   proxied = true
@@ -102,63 +117,5 @@ resource "cloudflare_zero_trust_access_policy" "admin_apps_policy" {
 
   include {
     email = [var.destination_email]
-  }
-}
-
-# 5. Cloudflare Email Routing Configuration
-resource "cloudflare_email_routing_settings" "email_routing" {
-  zone_id = var.cloudflare_zone_id
-  enabled = true
-}
-
-# Forwarding Rules for AWS Sub-Accounts
-resource "cloudflare_email_routing_rule" "aws_prod_email" {
-  zone_id = var.cloudflare_zone_id
-  name    = "AWS Production Homelab Email Forward"
-  enabled = true
-
-  matcher {
-    type  = "literal"
-    field = "to"
-    value = "aws-prod@${var.domain_name}"
-  }
-
-  action {
-    type  = "forward"
-    value = [var.destination_email]
-  }
-}
-
-resource "cloudflare_email_routing_rule" "aws_logs_email" {
-  zone_id = var.cloudflare_zone_id
-  name    = "AWS Log Archive Account Email Forward"
-  enabled = true
-
-  matcher {
-    type  = "literal"
-    field = "to"
-    value = "aws-logs@${var.domain_name}"
-  }
-
-  action {
-    type  = "forward"
-    value = [var.destination_email]
-  }
-}
-
-resource "cloudflare_email_routing_rule" "aws_security_email" {
-  zone_id = var.cloudflare_zone_id
-  name    = "AWS Security Audit Account Email Forward"
-  enabled = true
-
-  matcher {
-    type  = "literal"
-    field = "to"
-    value = "aws-security@${var.domain_name}"
-  }
-
-  action {
-    type  = "forward"
-    value = [var.destination_email]
   }
 }

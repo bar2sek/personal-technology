@@ -373,14 +373,39 @@ Any AI agent or human operator can review this document to pick up exactly where
       - Deployed [`kubernetes/infrastructure/rook-ceph/toolbox.yaml`](file:///kubernetes/infrastructure/rook-ceph/toolbox.yaml) for direct cluster operations (`ceph status`, `ceph osd tree`).
       - Ceph Management Dashboard active on port 8443 (`svc/rook-ceph-mgr-dashboard`).
 
+30. **Automated DNS, Ingress, Wildcard TLS & Cloudflare Tunnel Deployed (`bar2sek.com`)**:
+    - **MetalLB Layer 2 Load Balancing**:
+      - Deployed MetalLB in pure Layer 2 mode (disabling unused FRR BGP subchart).
+      - Configured `IPAddressPool` (`homelab-pool`) with static range `10.10.20.50-10.10.20.60` and `L2Advertisement` on `10.10.20.0/24`.
+      - All 5 node `speaker` pods and controller running healthy.
+    - **Ingress Controller (Ingress-Nginx)**:
+      - Deployed HA Ingress-Nginx controller claiming static LAN VIP `10.10.20.50`.
+      - Verified direct LAN reachability on port 80/443.
+    - **Cert-Manager & Automated Wildcard TLS**:
+      - Deployed Cert-Manager `v1.21.2` with direct recursive nameservers (`1.1.1.1:53`, `8.8.8.8:53`).
+      - Created `ClusterIssuer` (`letsencrypt-prod`, `letsencrypt-staging`) backed by Cloudflare DNS-01 API solver.
+      - Successfully issued genuine Let's Encrypt wildcard certificate for `*.bar2sek.com` and `bar2sek.com` (`bar2sek-wildcard-tls`).
+      - Pinned Ingress-Nginx `--default-ssl-certificate` to the wildcard secret, providing automatic zero-warning TLS across all cluster services.
+    - **Terraform Cloudflare Automation (`terraform/cloudflare`)**:
+      - Managed Cloudflare resources declaratively via Terraform:
+        - Provisioned Zero Trust tunnel `tunnel-clf-homelab-prod-use2-001`.
+        - Created proxied CNAME DNS records: `ceph`, `omni`, `grafana`, `diet`, `finance`, `tesla`.
+        - Created Zero Trust Access application and email authentication policy.
+    - **In-Cluster Cloudflare Tunnel (`cloudflared`)**:
+      - Deployed HA `cloudflared` daemon in `cloudflare-system` namespace.
+      - Tunnel established via QUIC protocol to Cloudflare edge data centers.
+    - **Ceph Dashboard Ingress & End-to-End Routing**:
+      - Created [`kubernetes/infrastructure/ingress/ceph-dashboard-ingress.yaml`](file:///kubernetes/infrastructure/ingress/ceph-dashboard-ingress.yaml) routing `ceph.bar2sek.com` to `rook-ceph-mgr-dashboard:8443`.
+      - Verified local direct LAN routing via `10.10.20.50` (`<title>Ceph</title>`).
+      - Verified remote internet access via `https://ceph.bar2sek.com` through Cloudflare Tunnel with 100% valid SSL verification and zero open firewall ports.
+
 ---
 
 ## 🎯 Immediate Next Actions
 
-1. **Deploy Core Addons & Ingress Platform**:
-   - Provision Cert-Manager, Gateway API / Envoy Gateway / Ingress Controller, and ExternalDNS.
-   - Configure Cloudflare Tunnel integration for zero-trust remote access.
-2. **Configure GPU Worker & Workload Partitioning**:
+1. **Configure GPU Worker & Workload Partitioning**:
    - Deploy NVIDIA GPU Operator or configure KubeVirt VFIO passthrough on `pc-node-05` for Windows 11 Gaming VM and LLM inference.
-3. **Deploy Observability Stack**:
+2. **Deploy Observability Stack**:
    - Deploy Prometheus Operator / VictoriaMetrics, Grafana, and Ceph exporter dashboards.
+3. **Deploy Workload Applications**:
+   - Deploy Home Assistant, Immich, Mealie (Diet), TeslaMate, and Authentik IdP.

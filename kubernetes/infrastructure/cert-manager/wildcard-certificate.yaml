@@ -1,0 +1,14 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: bar2sek-wildcard-cert
+  namespace: ingress-nginx
+spec:
+  secretName: bar2sek-wildcard-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  commonName: "*.bar2sek.com"
+  dnsNames:
+    - "bar2sek.com"
+    - "*.bar2sek.com"

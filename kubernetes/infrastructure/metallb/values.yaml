@@ -1,0 +1,16 @@
+# Helm values for MetalLB on Talos Linux (Layer 2 Mode)
+frrk8s:
+  enabled: false
+
+controller:
+  tolerations:
+    - key: "node-role.kubernetes.io/control-plane"
+      operator: "Exists"
+      effect: "NoSchedule"
+
+speaker:
+  tolerateMaster: true
+  tolerations:
+    - key: "node-role.kubernetes.io/control-plane"
+      operator: "Exists"
+      effect: "NoSchedule"

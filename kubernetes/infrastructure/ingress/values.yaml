@@ -1,0 +1,22 @@
+# Helm values for Ingress-Nginx on Talos Linux
+controller:
+  replicaCount: 2
+
+  extraArgs:
+    default-ssl-certificate: "ingress-nginx/bar2sek-wildcard-tls"
+
+  service:
+    enabled: true
+    type: LoadBalancer
+    loadBalancerIP: "10.10.20.50"
+    annotations:
+      metallb.universe.tf/address-pool: homelab-pool
+
+  tolerations:
+    - key: "node-role.kubernetes.io/control-plane"
+      operator: "Exists"
+      effect: "NoSchedule"
+
+  config:
+    use-forwarded-headers: "true"
+    compute-full-forwarded-for: "true"
