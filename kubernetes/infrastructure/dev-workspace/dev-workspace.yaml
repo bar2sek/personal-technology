@@ -35,55 +35,47 @@ spec:
       labels:
         app: antigravity-dev
     spec:
-      # Target Supermicro Node 03 to utilize 160GB RAM and 28 vCPUs for builds
-      affinity:
-        nodeAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-            - weight: 100
-              preference:
-                matchExpressions:
-                  - key: kubernetes.io/hostname
-                    operator: In
-                    values:
-                      - sm-node-03
       tolerations:
         - key: node-role.kubernetes.io/control-plane
           operator: Exists
           effect: NoSchedule
+      securityContext:
+        fsGroup: 1000
       containers:
         - name: dev-agent
-          image: ghcr.io/bar2sek/dev-agent:latest
+          image: codercom/code-server:latest
           imagePullPolicy: IfNotPresent
+          args:
+            - --bind-addr=0.0.0.0:8080
+            - --auth=none
+            - /home/coder/workspace
           ports:
             - name: http
               containerPort: 8080
-            - name: ssh
-              containerPort: 22
           env:
-            - name: WORKSPACE_DIR
-              value: "/workspace"
-            - name: CODE_SERVER_AUTH
-              value: "none"
+            - name: DOCKER_USER
+              value: "coder"
             - name: SHELL
-              value: "/bin/zsh"
+              value: "/bin/bash"
+          lifecycle:
+            postStart:
+              exec:
+                command:
+                  - /bin/bash
+                  - -c
+                  - |
+                    mkdir -p /home/coder/workspace /home/coder/.local/bin /home/coder/.config/rclone
+                    if ! command -v rclone &> /dev/null; then
+                      curl -fsSL https://rclone.org/install.sh | sudo bash || true
+                    fi
+                    if ! command -v cron &> /dev/null; then
+                      sudo apt-get update && sudo apt-get install -y cron || true
+                    fi
+                    sudo service cron start || true
+
           volumeMounts:
             - name: workspace-storage
-              mountPath: /workspace
-            - name: workspace-storage
-              mountPath: /root/.config/antigravity
-              subPath: .config/antigravity
-            - name: workspace-storage
-              mountPath: /root/.config/code-server
-              subPath: .config/code-server
-            - name: workspace-storage
-              mountPath: /root/.ssh
-              subPath: .ssh
-            - name: workspace-storage
-              mountPath: /root/.rclone
-              subPath: .rclone
-            - name: workspace-storage
-              mountPath: /root/.local
-              subPath: .local
+              mountPath: /home/coder
           resources:
             requests:
               cpu: "2000m"
@@ -95,6 +87,7 @@ spec:
         - name: workspace-storage
           persistentVolumeClaim:
             claimName: antigravity-dev-workspace-pvc
+
 ---
 apiVersion: v1
 kind: Service
