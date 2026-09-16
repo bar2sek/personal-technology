@@ -139,18 +139,73 @@ Deploy [`client-tools/ai-dev/continue-config.json`](../client-tools/ai-dev/conti
 
 ---
 
-## 🚀 Server / Kubernetes Deployment
+---
 
-1. **Apply the Dev Workspace Manifest**:
-   ```bash
-   kubectl apply -f kubernetes/infrastructure/dev-workspace/dev-workspace.yaml
-   ```
+## 🚀 Deployment & Networking Architecture (`agy.bar2sek.com`)
 
-2. **Connect via VS Code Remote - SSH**:
-   Add the snippet from [`client-tools/ai-dev/ssh-config-snippet`](../client-tools/ai-dev/ssh-config-snippet) to `~/.ssh/config`. Open VS Code, select **Remote-SSH: Connect to Host**, and choose `antigravity-dev`.
+The remote Antigravity node is accessible across all devices through two optimized paths:
 
-3. **Trigger In-Cluster Agent Tasks**:
-   Inside the attached VS Code terminal or via `kubectl`:
-   ```bash
-   kubectl exec -it deployment/antigravity-dev -n dev-workspaces -- agy
-   ```
+```
+[Remote Devices / Internet]                   [Local Devices on Home LAN / Wi-Fi]
+ (Mac on the road, iPad, phone)                     (MacBook Pro, Local Desktops)
+               │                                                  │
+               │ HTTPS (agy.bar2sek.com)                          │ HTTPS (agy.bar2sek.com)
+               ▼                                                  ▼
+     [Cloudflare Edge Network]                          [UDM-Pro Local DNS]
+   - Cloudflare Access (SSO Policy)                    - Split-Horizon DNS A record:
+   - SSL / DDoS / WAF                                    agy.bar2sek.com -> 10.10.20.50
+               │                                                  │
+               │ Encrypted Outbound Tunnel (cloudflared)          │ Direct 10GbE Line-Rate
+               ▼                                                  ▼
+   [cloudflared Pod in Cluster]                                   │
+               │                                                  │
+               └───────────────► [Ingress-Nginx VIP: 10.10.20.50] ◄┘
+                                       │
+                                       │ Let's Encrypt Wildcard TLS (*.bar2sek.com)
+                                       │ WebSocket Proxy Headers & 1hr Timeouts
+                                       ▼
+                               [Dev Workspace Service]
+                                       │ (ports 8080 & 22)
+                                       ▼
+                         [antigravity-dev Pod on sm-node-03]
+                               ┌───────────────────────────┐
+                               │ - code-server Web IDE (:8080)
+                               │ - OpenSSH Server (:22)    │
+                               │ - Antigravity CLI (agy)   │
+                               │ - rclone (Google Drive)   │
+                               │ - 160GB RAM / 28 vCPUs    │
+                               │ - 100GB Rook-Ceph NVMe PVC│
+                               └───────────────────────────┘
+```
+
+### 1. Apply Declarative Infrastructure
+
+```bash
+# 1. Update Cloudflare Tunnel & Zero Trust Access (30-day SSO session)
+just tf-apply cloudflare
+
+# 2. Update UniFi Split-Horizon DNS (agy.bar2sek.com -> 10.10.20.50)
+just tf-apply unifi
+
+# 3. Apply the Dev Workspace Manifest
+kubectl apply -f kubernetes/infrastructure/dev-workspace/dev-workspace.yaml
+```
+
+### 2. Multi-Device Access Modalities
+
+#### A. Web Browser & PWA (iPad, iPhone, Mac, Windows, Linux)
+* **Direct Access**: Navigate to `https://agy.bar2sek.com`.
+* **On Local Network**: Split DNS routes directly to `10.10.20.50` over 10GbE with instant passwordless loading.
+* **On Public Internet**: Cloudflare Zero Trust Access prompts once for Google SSO or Email OTP (valid for 30 days).
+* **PWA Installation**: In Safari or Chrome, select **Add to Home Screen** (iOS/iPadOS) or **Install as App** (macOS). This provides a native window, offline caching, and full desktop keyboard shortcuts.
+* **Agent CLI**: Open the integrated terminal (`Ctrl+` `) and run `agy` to plan, refactor, and execute agent tasks.
+
+#### B. Native Desktop VS Code on macOS (`Remote - SSH`)
+* Add the snippet from [`client-tools/ai-dev/ssh-config-snippet`](../client-tools/ai-dev/ssh-config-snippet) to `~/.ssh/config`.
+* In VS Code, press `⌘+Shift+P` -> **Remote-SSH: Connect to Host** -> select `antigravity-dev`.
+* Connects instantly with your native Ed25519 SSH key (`~/.ssh/id_ed25519`) without web SSO prompts.
+
+#### C. Google Drive Synchronization & Backup (`rclone`)
+* Untracked files, `.env` files, and persistent workspace configurations live on the 100GB Rook-Ceph NVMe volume.
+* `rclone` is pre-installed inside the container to sync gitignored state directly to Google Drive (`rclone sync /workspace gdrive:second-brain/remote-workspace`).
+

@@ -56,6 +56,13 @@ resource "cloudflare_zero_trust_tunnel_cloudflared_config" "homelab_tunnel_confi
         no_tls_verify = true
       }
     }
+    ingress_rule {
+      hostname = "agy.${var.domain_name}"
+      service  = "https://ingress-nginx-controller.ingress-nginx.svc.cluster.local:443"
+      origin_request {
+        no_tls_verify = true
+      }
+    }
     # Catch-all rule
     ingress_rule {
       service = "http_status:404"
@@ -121,6 +128,14 @@ resource "cloudflare_record" "auth_dns" {
   proxied = true
 }
 
+resource "cloudflare_record" "agy_dns" {
+  zone_id = var.cloudflare_zone_id
+  name    = "agy"
+  value   = "${cloudflare_zero_trust_tunnel_cloudflared.homelab_tunnel.id}.cfargotunnel.com"
+  type    = "CNAME"
+  proxied = true
+}
+
 
 # 4. Cloudflare Zero Trust Access Applications (SSO Protection)
 resource "cloudflare_zero_trust_access_application" "admin_apps" {
@@ -135,6 +150,26 @@ resource "cloudflare_zero_trust_access_policy" "admin_apps_policy" {
   application_id = cloudflare_zero_trust_access_application.admin_apps.id
   zone_id        = var.cloudflare_zone_id
   name           = "Allow Authorized Homelab Admin"
+  precedence     = "1"
+  decision       = "allow"
+
+  include {
+    email = [var.destination_email]
+  }
+}
+
+resource "cloudflare_zero_trust_access_application" "agy_app" {
+  zone_id          = var.cloudflare_zone_id
+  name             = "Antigravity Remote Dev Node"
+  domain           = "agy.${var.domain_name}"
+  type             = "self_hosted"
+  session_duration = "730h" # 30-day persistent SSO session
+}
+
+resource "cloudflare_zero_trust_access_policy" "agy_policy" {
+  application_id = cloudflare_zero_trust_access_application.agy_app.id
+  zone_id        = var.cloudflare_zone_id
+  name           = "Allow Authorized Homelab Admin for Antigravity"
   precedence     = "1"
   decision       = "allow"
 

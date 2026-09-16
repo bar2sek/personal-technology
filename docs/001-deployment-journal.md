@@ -477,6 +477,19 @@ Any AI agent or human operator can review this document to pick up exactly where
       - Verified OAuth redirect flow: `curl -sI https://grafana.bar2sek.com/login/generic_oauth` returns `HTTP/2 302` redirecting to `https://auth.bar2sek.com/application/o/authorize/?client_id=grafana&response_type=code`.
       - Users can now log into Grafana using their centralized Authentik credentials or hardware Passkeys.
 
+35. **Remote Antigravity Node & Universal Web IDE Architecture Deployed (`agy.bar2sek.com`)**:
+    - **Architecture & Compute Topology**:
+      - Provisioned dedicated high-throughput AI development workspace on `sm-node-03` leveraging its 14C/28T Xeon E5-2680 v4 CPU and 160 GB RAM envelope.
+      - Attached high-IOPS 100GB persistent block storage on `rook-ceph-block-nvme` via `antigravity-dev-workspace-pvc`.
+      - Built dual-modality container architecture running `code-server` on port 8080 (universal web IDE and PWA) alongside OpenSSH server on port 22 (native macOS desktop VS Code `Remote - SSH`).
+      - Pre-installed developer toolchains: Antigravity CLI (`agy`), Astral `uv`, `rclone` (Google Drive backup), `terraform`, `kubectl`, `talosctl`, `go`, and `nodejs`.
+    - **Network, Wildcard TLS & Split-Horizon Routing**:
+      - Created Ingress resource routing `agy.bar2sek.com` through Ingress-Nginx (`10.10.20.50`) with Let's Encrypt wildcard certificate (`bar2sek-wildcard-tls`), 1-hour proxy timeouts, 512MB upload limits, and native WebSocket upgrade support.
+      - Added declarative authoritative A record in [`terraform/unifi/dns.tf`](file:///terraform/unifi/dns.tf) resolving `agy.bar2sek.com` -> `10.10.20.50` locally across the 10GbE network fabric for sub-millisecond, line-rate throughput.
+      - Added Cloudflare Zero Trust Tunnel ingress rule, CNAME record, and 30-day persistent SSO access policy (`cloudflare_zero_trust_access_application` and `policy`) in [`terraform/cloudflare/main.tf`](file:///terraform/cloudflare/main.tf).
+    - **Multi-Device Mobility**:
+      - Enables seamless, untethered agent management and coding across iPad, iPhone, MacBook Pro, and remote web browsers with full state persistence.
+
 ---
 
 ## 🎯 Immediate Next Actions

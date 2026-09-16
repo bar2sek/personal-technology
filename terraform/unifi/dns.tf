@@ -33,4 +33,12 @@ resource "unifi_dns_record" "auth" {
   ttl         = "300s"
 }
 
+resource "unifi_dns_record" "agy" {
+  name        = "agy.${var.public_domain}"
+  record_type = "A"
+  value       = var.ingress_vip
+  ttl         = "300s"
+}
+
+
 

@@ -55,13 +55,17 @@ spec:
           image: ghcr.io/bar2sek/dev-agent:latest
           imagePullPolicy: IfNotPresent
           ports:
+            - name: http
+              containerPort: 8080
             - name: ssh
               containerPort: 22
           env:
             - name: WORKSPACE_DIR
               value: "/workspace"
-            - name: AGY_DAEMON_PORT
-              value: "8080"
+            - name: CODE_SERVER_AUTH
+              value: "none"
+            - name: SHELL
+              value: "/bin/zsh"
           volumeMounts:
             - name: workspace-storage
               mountPath: /workspace
@@ -69,8 +73,17 @@ spec:
               mountPath: /root/.config/antigravity
               subPath: .config/antigravity
             - name: workspace-storage
+              mountPath: /root/.config/code-server
+              subPath: .config/code-server
+            - name: workspace-storage
               mountPath: /root/.ssh
               subPath: .ssh
+            - name: workspace-storage
+              mountPath: /root/.rclone
+              subPath: .rclone
+            - name: workspace-storage
+              mountPath: /root/.local
+              subPath: .local
           resources:
             requests:
               cpu: "2000m"
@@ -86,15 +99,49 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: antigravity-dev-ssh
+  name: antigravity-dev-service
   namespace: dev-workspaces
   labels:
     app: antigravity-dev
 spec:
   type: ClusterIP
   ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
     - name: ssh
       port: 22
       targetPort: 22
   selector:
     app: antigravity-dev
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: antigravity-dev-ingress
+  namespace: dev-workspaces
+  labels:
+    app: antigravity-dev
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-body-size: "512m"
+    nginx.ingress.kubernetes.io/websocket-services: "antigravity-dev-service"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - agy.bar2sek.com
+      secretName: bar2sek-wildcard-tls
+  rules:
+    - host: agy.bar2sek.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: antigravity-dev-service
+                port:
+                  number: 8080
+

@@ -71,13 +71,23 @@ RUN ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/') && \
 # Install Oh-My-Zsh for root
 RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
 
+# Install Astral uv (Python package manager)
+RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="/usr/local/bin" sh
+
+# Install rclone for Google Drive backup / sync
+RUN curl -fsSL https://rclone.org/install.sh | bash
+
+# Install code-server for web-based IDE (agy.bar2sek.com)
+RUN curl -fsSL https://code-server.dev/install.sh | sh
+
 # Set working directory
 WORKDIR /workspace
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-EXPOSE 22
+EXPOSE 22 8080
 
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["/usr/sbin/sshd", "-D"]
+CMD ["start"]
+
