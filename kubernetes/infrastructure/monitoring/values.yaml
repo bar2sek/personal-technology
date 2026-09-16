@@ -39,7 +39,7 @@ prometheus:
 
     # Retention configuration
     retention: 15d
-    retentionSize: 45Gi
+    retentionSize: 45GiB
 
     # Storage: Bound to Ceph RBD replicated SATA SSD pool
     storageSpec:
@@ -175,39 +175,6 @@ grafana:
       - secretName: bar2sek-wildcard-tls
         hosts:
           - grafana.bar2sek.com
-
-  # Dashboard providers and automated dashboard imports
-  dashboardProviders:
-    dashboardproviders.yaml:
-      apiVersion: 1
-      providers:
-        - name: "default"
-          orgId: 1
-          folder: "Storage & Infrastructure"
-          type: file
-          disableDeletion: false
-          editable: true
-          options:
-            path: /var/lib/grafana/dashboards/default
-
-  dashboards:
-    default:
-      node-exporter-full:
-        gnetId: 1860
-        revision: 37
-        datasource: Prometheus
-      ceph-cluster:
-        gnetId: 2842
-        revision: 16
-        datasource: Prometheus
-      ceph-osds:
-        gnetId: 5336
-        revision: 9
-        datasource: Prometheus
-      ceph-pools:
-        gnetId: 5337
-        revision: 8
-        datasource: Prometheus
 
   # Auto-discover dashboards and datasources from ConfigMaps/Secrets
   sidecar:

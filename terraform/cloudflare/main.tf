@@ -30,7 +30,10 @@ resource "cloudflare_zero_trust_tunnel_cloudflared_config" "homelab_tunnel_confi
     }
     ingress_rule {
       hostname = "grafana.${var.domain_name}"
-      service  = "http://teslamate-grafana.teslamate.svc.cluster.local:3000"
+      service  = "https://ingress-nginx-controller.ingress-nginx.svc.cluster.local:443"
+      origin_request {
+        no_tls_verify = true
+      }
     }
     ingress_rule {
       hostname = "omni.${var.domain_name}"

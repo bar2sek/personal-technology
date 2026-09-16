@@ -420,32 +420,39 @@ Any AI agent or human operator can review this document to pick up exactly where
 
 ### 2026-09-16
 
-32. **Phase 3: Observability Stack (Prometheus, Grafana & Ceph Monitoring) Prepared**:
-    - **Helm Values & Namespace Architecture**:
-      - Created [`kubernetes/infrastructure/monitoring/values.yaml`](file:///kubernetes/infrastructure/monitoring/values.yaml) defining `kube-prometheus-stack` configuration in `monitoring` namespace.
-      - Backed Prometheus TSDB (50Gi, 15d retention) and Grafana (10Gi) by Ceph RBD replicated SATA SSD storage (`rook-ceph-block`).
-      - Configured full cluster tolerations (`node-role.kubernetes.io/control-plane:NoSchedule`) across operator, Prometheus, Alertmanager, Grafana, and Node Exporter DaemonSet.
-      - Tuned Talos Linux scrapes: disabled direct unauthenticated scrapes against static control-plane pods (`kubeControllerManager`, `kubeScheduler`, `kubeProxy`) to prevent false alarms; enabled secure Kubelet cAdvisor and host rootfs mounts.
-    - **Rook-Ceph Native Telemetry Integration**:
-      - Updated [`kubernetes/infrastructure/rook-ceph/cluster.yaml`](file:///kubernetes/infrastructure/rook-ceph/cluster.yaml) with `spec.monitoring.enabled: true` to trigger the Rook operator to activate Ceph MGR Prometheus exporter (:9283) and automatically generate the `rook-ceph-mgr` ServiceMonitor and Prometheus alerting rules.
-      - Pre-loaded official Ceph dashboards (Ceph - Cluster 2842, Ceph - OSDs 5336, Ceph - Pools 5337) and Node Exporter Full (1860) via Grafana automated dashboard providers.
+32. **Phase 3: Observability Stack (Prometheus, Grafana & Ceph Monitoring) Deployed & Verified**:
+    - **Helm Deployment & Storage Allocation**:
+      - Deployed `kube-prometheus-stack` into `monitoring` namespace backed by Ceph RBD replicated storage.
+      - Verified PersistentVolumeClaims bound to `rook-ceph-block`: Prometheus TSDB (`50Gi`, `Bound`), Grafana (`10Gi`, `Bound`), Alertmanager (`5Gi`, `Bound`).
+      - All core monitoring pods running healthy:
+        - `prometheus-kube-prometheus-stack-prometheus-0`: `2/2 Running` (15d retention, `45GiB` limit).
+        - `alertmanager-kube-prometheus-stack-alertmanager-0`: `2/2 Running`.
+        - `kube-prometheus-stack-grafana`: `3/3 Running` (Grafana core, dashboard sidecar, datasource sidecar).
+        - `kube-prometheus-stack-kube-state-metrics`: `1/1 Running`.
+        - `kube-prometheus-stack-operator`: `1/1 Running`.
+    - **Node Exporter DaemonSet Across All 5 Physical Nodes**:
+      - Addressed Pod Security Standard violation by labeling `monitoring` namespace with `pod-security.kubernetes.io/enforce=privileged`.
+      - Verified DaemonSet running across all 5 nodes (`sm-node-01`, `sm-node-02`, `sm-node-03`, `pc-node-04`, `pc-node-05`) with `/host/proc` and `/host/sys` mounts capturing hardware CPU, memory, disk, and 10GbE network telemetry.
+    - **Rook-Ceph Native Telemetry & ServiceMonitors**:
+      - Updated [`kubernetes/infrastructure/rook-ceph/values.yaml`](file:///kubernetes/infrastructure/rook-ceph/values.yaml) with `monitoring.enabled: true` to provision Prometheus Operator RBAC to the Rook operator service account.
+      - Applied Ceph MGR ServiceMonitor at [`kubernetes/infrastructure/monitoring/ceph-servicemonitor.yaml`](file:///kubernetes/infrastructure/monitoring/ceph-servicemonitor.yaml).
+      - Verified both `rook-ceph-exporter` (OSD telemetry) and `rook-ceph-mgr` (Ceph MGR metrics on port 9283) ServiceMonitors registered and actively scraped by Prometheus.
     - **Split-Horizon Ingress & Zero-Trust Routing**:
-      - Configured Ingress-Nginx routing for `grafana.bar2sek.com` with wildcard Let's Encrypt TLS (`bar2sek-wildcard-tls`).
-      - Updated [`terraform/unifi/dns.tf`](file:///terraform/unifi/dns.tf) with authoritative local A record `grafana.bar2sek.com` -> `10.10.20.50` on UDM-Pro.
-      - Integrated operational commands into [`Justfile`](file:///Justfile) (`just monitoring-status`, `just grafana-password`).
-      - Authored comprehensive architecture note at [`docs/106-observability-prometheus-grafana.md`](file:///docs/106-observability-prometheus-grafana.md).
+      - Verified Ingress-Nginx routing on VIP `10.10.20.50` with browser-trusted wildcard TLS (`bar2sek-wildcard-tls`).
+      - Verified local UDM-Pro split-horizon DNS: `dig +short grafana.bar2sek.com @10.0.1.1` -> `10.10.20.50`.
+      - Verified remote routing through Cloudflare Zero Trust Access at `https://grafana.bar2sek.com`.
+      - Added operational shortcuts to [`Justfile`](file:///Justfile): `just monitoring-status` and `just grafana-password`.
 
 ---
 
 ## 🎯 Immediate Next Actions
 
-1. **Deploy & Validate Observability Stack**:
-   - Create `grafana-admin-credentials` secret and apply `kube-prometheus-stack` Helm chart.
-   - Apply updated `CephCluster` monitoring patch.
-   - Apply UniFi split-horizon DNS Terraform plan (`just tf-apply unifi`).
-   - Validate live metrics across Grafana at `https://grafana.bar2sek.com`.
-2. **Configure GPU Worker & Workload Partitioning**:
-   - Deploy KubeVirt Operator and provision Windows 11 Gaming VM with RTX 4070 VFIO passthrough on `pc-node-05`.
-3. **Deploy Workload Applications**:
-   - Deploy Authentik IdP, Home Assistant, Immich, Mealie, and TeslaMate.
+1. **Configure GPU Worker & Workload Partitioning (`pc-node-05`)**:
+   - Deploy KubeVirt Operator and CDI.
+   - Provision Windows 11 Gaming VM with NVIDIA RTX 4070 VFIO PCIe passthrough backed by high-speed Ceph NVMe PVC.
+   - Run Ansible configuration playbook for Sunshine game streaming.
+2. **Deploy Workload Applications**:
+   - Deploy Authentik IdP for centralized SSO.
+   - Deploy tier 1 self-hosted platform applications: Home Assistant, Immich, Mealie, and TeslaMate.
+
 

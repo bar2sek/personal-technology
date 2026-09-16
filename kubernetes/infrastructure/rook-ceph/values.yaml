@@ -17,3 +17,7 @@ resources:
 csi:
   enableRbdDriver: true
   enableCephfsDriver: true
+
+monitoring:
+  enabled: true
+
