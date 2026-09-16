@@ -46,6 +46,20 @@ ceph-status:
 tunnel-status:
     kubectl -n cloudflare-system get pods -o wide
 
+# Check status of the monitoring stack (Prometheus, Grafana, Alertmanager, Node-Exporter)
+monitoring-status:
+    @echo "===> Monitoring Pods & PVCs:"
+    kubectl -n monitoring get pods,pvc -o wide
+    @echo "\n===> Ceph ServiceMonitor:"
+    kubectl -n rook-ceph get servicemonitor
+
+# Retrieve Grafana admin credentials
+grafana-password:
+    @echo "Grafana Admin User: admin"
+    @echo -n "Grafana Admin Password: "
+    @kubectl -n monitoring get secret grafana-admin-credentials -o jsonpath="{.data.admin-password}" | base64 --decode && echo ""
+
+
 # Launch interactive terminal into the in-cluster Antigravity Dev Workspace
 ssh-dev:
     @echo "Connecting to Antigravity Dev Workspace on sm-node-03..."

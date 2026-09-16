@@ -22,6 +22,8 @@ spec:
   dashboard:
     enabled: true
     ssl: true
+  monitoring:
+    enabled: true
   network:
     provider: host
     ipFamily: IPv4

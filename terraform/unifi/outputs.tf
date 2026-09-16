@@ -62,3 +62,9 @@ output "local_dns_omni" {
   value       = "${unifi_dns_record.omni.name} -> ${unifi_dns_record.omni.value}"
   description = "Local split-horizon DNS record for Sidero Omni"
 }
+
+output "local_dns_grafana" {
+  value       = "${unifi_dns_record.grafana.name} -> ${unifi_dns_record.grafana.value}"
+  description = "Local split-horizon DNS record for Grafana"
+}
+

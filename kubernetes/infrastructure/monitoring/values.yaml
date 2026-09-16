@@ -1,0 +1,233 @@
+# ==============================================================================
+# kube-prometheus-stack Helm Values for Talos Linux Homelab (homelab-k8s)
+# ==============================================================================
+
+# Global configuration
+global:
+  rbac:
+    create: true
+
+# ------------------------------------------------------------------------------
+# 1. Prometheus Operator
+# ------------------------------------------------------------------------------
+prometheusOperator:
+  tolerations:
+    - key: node-role.kubernetes.io/control-plane
+      operator: Exists
+      effect: NoSchedule
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+# ------------------------------------------------------------------------------
+# 2. Prometheus Instance
+# ------------------------------------------------------------------------------
+prometheus:
+  prometheusSpec:
+    # Allow Prometheus to discover ServiceMonitors, PodMonitors, and Rules across
+    # all namespaces without requiring helm release label matching (critical for Rook-Ceph)
+    serviceMonitorSelectorNilUsesHelmValues: false
+    serviceMonitorNamespaceSelector: {}
+    podMonitorSelectorNilUsesHelmValues: false
+    podMonitorNamespaceSelector: {}
+    ruleSelectorNilUsesHelmValues: false
+    ruleNamespaceSelector: {}
+
+    # Retention configuration
+    retention: 15d
+    retentionSize: 45Gi
+
+    # Storage: Bound to Ceph RBD replicated SATA SSD pool
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: rook-ceph-block
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 50Gi
+
+    # Tolerations to allow Prometheus pod to schedule on Supermicro control planes
+    tolerations:
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
+
+    resources:
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+      requests:
+        cpu: 500m
+        memory: 1536Mi
+
+# ------------------------------------------------------------------------------
+# 3. Node Exporter (DaemonSet for Physical Machine Telemetry)
+# ------------------------------------------------------------------------------
+nodeExporter:
+  enabled: true
+  tolerations:
+    - key: node-role.kubernetes.io/control-plane
+      operator: Exists
+      effect: NoSchedule
+  hostRootFsMount:
+    enabled: true
+
+# ------------------------------------------------------------------------------
+# 4. Kube State Metrics
+# ------------------------------------------------------------------------------
+kubeStateMetrics:
+  enabled: true
+  tolerations:
+    - key: node-role.kubernetes.io/control-plane
+      operator: Exists
+      effect: NoSchedule
+
+# ------------------------------------------------------------------------------
+# 5. Talos Linux Static Control-Plane Scrapes Tuning
+# ------------------------------------------------------------------------------
+# Talos Linux runs controller-manager, scheduler, and proxy in isolated static pods
+# with loopback-only or secure-only bindings. We disable direct unauthenticated
+# scrapes to prevent false-positive target down alerts.
+kubeControllerManager:
+  enabled: false
+
+kubeScheduler:
+  enabled: false
+
+kubeProxy:
+  enabled: false
+
+# Kubelet scraping over secure HTTPS
+kubelet:
+  enabled: true
+  serviceMonitor:
+    cAdvisor: true
+    probes: true
+    resource: true
+
+# ------------------------------------------------------------------------------
+# 6. Alertmanager
+# ------------------------------------------------------------------------------
+alertmanager:
+  enabled: true
+  alertmanagerSpec:
+    tolerations:
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: rook-ceph-block
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 5Gi
+    resources:
+      limits:
+        cpu: 200m
+        memory: 256Mi
+      requests:
+        cpu: 50m
+        memory: 128Mi
+
+# ------------------------------------------------------------------------------
+# 7. Grafana
+# ------------------------------------------------------------------------------
+grafana:
+  enabled: true
+  admin:
+    existingSecret: grafana-admin-credentials
+    userKey: admin-user
+    passwordKey: admin-password
+
+  # Persistence backed by Ceph RBD
+  persistence:
+    enabled: true
+    storageClassName: rook-ceph-block
+    size: 10Gi
+    accessModes: ["ReadWriteOnce"]
+
+  # Tolerations for scheduling
+  tolerations:
+    - key: node-role.kubernetes.io/control-plane
+      operator: Exists
+      effect: NoSchedule
+
+  # Ingress routing for grafana.bar2sek.com
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hosts:
+      - grafana.bar2sek.com
+    path: /
+    pathType: Prefix
+    annotations:
+      nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+      nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+    tls:
+      - secretName: bar2sek-wildcard-tls
+        hosts:
+          - grafana.bar2sek.com
+
+  # Dashboard providers and automated dashboard imports
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+        - name: "default"
+          orgId: 1
+          folder: "Storage & Infrastructure"
+          type: file
+          disableDeletion: false
+          editable: true
+          options:
+            path: /var/lib/grafana/dashboards/default
+
+  dashboards:
+    default:
+      node-exporter-full:
+        gnetId: 1860
+        revision: 37
+        datasource: Prometheus
+      ceph-cluster:
+        gnetId: 2842
+        revision: 16
+        datasource: Prometheus
+      ceph-osds:
+        gnetId: 5336
+        revision: 9
+        datasource: Prometheus
+      ceph-pools:
+        gnetId: 5337
+        revision: 8
+        datasource: Prometheus
+
+  # Auto-discover dashboards and datasources from ConfigMaps/Secrets
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+      searchNamespace: ALL
+      folderAnnotation: k8s-sidecar-target-directory
+      provider:
+        allowUiUpdates: false
+        foldersFromFilesStructure: true
+    datasources:
+      enabled: true
+      defaultDatasourceEnabled: true
+
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 256Mi

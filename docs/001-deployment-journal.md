@@ -418,11 +418,34 @@ Any AI agent or human operator can review this document to pick up exactly where
 
 ---
 
+### 2026-09-16
+
+32. **Phase 3: Observability Stack (Prometheus, Grafana & Ceph Monitoring) Prepared**:
+    - **Helm Values & Namespace Architecture**:
+      - Created [`kubernetes/infrastructure/monitoring/values.yaml`](file:///kubernetes/infrastructure/monitoring/values.yaml) defining `kube-prometheus-stack` configuration in `monitoring` namespace.
+      - Backed Prometheus TSDB (50Gi, 15d retention) and Grafana (10Gi) by Ceph RBD replicated SATA SSD storage (`rook-ceph-block`).
+      - Configured full cluster tolerations (`node-role.kubernetes.io/control-plane:NoSchedule`) across operator, Prometheus, Alertmanager, Grafana, and Node Exporter DaemonSet.
+      - Tuned Talos Linux scrapes: disabled direct unauthenticated scrapes against static control-plane pods (`kubeControllerManager`, `kubeScheduler`, `kubeProxy`) to prevent false alarms; enabled secure Kubelet cAdvisor and host rootfs mounts.
+    - **Rook-Ceph Native Telemetry Integration**:
+      - Updated [`kubernetes/infrastructure/rook-ceph/cluster.yaml`](file:///kubernetes/infrastructure/rook-ceph/cluster.yaml) with `spec.monitoring.enabled: true` to trigger the Rook operator to activate Ceph MGR Prometheus exporter (:9283) and automatically generate the `rook-ceph-mgr` ServiceMonitor and Prometheus alerting rules.
+      - Pre-loaded official Ceph dashboards (Ceph - Cluster 2842, Ceph - OSDs 5336, Ceph - Pools 5337) and Node Exporter Full (1860) via Grafana automated dashboard providers.
+    - **Split-Horizon Ingress & Zero-Trust Routing**:
+      - Configured Ingress-Nginx routing for `grafana.bar2sek.com` with wildcard Let's Encrypt TLS (`bar2sek-wildcard-tls`).
+      - Updated [`terraform/unifi/dns.tf`](file:///terraform/unifi/dns.tf) with authoritative local A record `grafana.bar2sek.com` -> `10.10.20.50` on UDM-Pro.
+      - Integrated operational commands into [`Justfile`](file:///Justfile) (`just monitoring-status`, `just grafana-password`).
+      - Authored comprehensive architecture note at [`docs/106-observability-prometheus-grafana.md`](file:///docs/106-observability-prometheus-grafana.md).
+
+---
+
 ## 🎯 Immediate Next Actions
 
-1. **Configure GPU Worker & Workload Partitioning**:
-   - Deploy NVIDIA GPU Operator or configure KubeVirt VFIO passthrough on `pc-node-05` for Windows 11 Gaming VM and LLM inference.
-2. **Deploy Observability Stack**:
-   - Deploy Prometheus Operator / VictoriaMetrics, Grafana, and Ceph exporter dashboards.
+1. **Deploy & Validate Observability Stack**:
+   - Create `grafana-admin-credentials` secret and apply `kube-prometheus-stack` Helm chart.
+   - Apply updated `CephCluster` monitoring patch.
+   - Apply UniFi split-horizon DNS Terraform plan (`just tf-apply unifi`).
+   - Validate live metrics across Grafana at `https://grafana.bar2sek.com`.
+2. **Configure GPU Worker & Workload Partitioning**:
+   - Deploy KubeVirt Operator and provision Windows 11 Gaming VM with RTX 4070 VFIO passthrough on `pc-node-05`.
 3. **Deploy Workload Applications**:
-   - Deploy Home Assistant, Immich, Mealie (Diet), TeslaMate, and Authentik IdP.
+   - Deploy Authentik IdP, Home Assistant, Immich, Mealie, and TeslaMate.
+
