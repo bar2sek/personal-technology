@@ -443,16 +443,35 @@ Any AI agent or human operator can review this document to pick up exactly where
       - Verified remote routing through Cloudflare Zero Trust Access at `https://grafana.bar2sek.com`.
       - Added operational shortcuts to [`Justfile`](file:///Justfile): `just monitoring-status` and `just grafana-password`.
 
+33. **Phase 4: Authentik Master IdP & Centralized SSO Deployed & Validated**:
+    - **Architecture & Deployment**:
+      - Established centralized External Identity Provider (External IdP) in dedicated `identity` namespace labeled with Pod Security Standard `baseline`.
+      - Deployed PostgreSQL 16 Alpine backed by 10Gi Ceph RBD replicated storage (`rook-ceph-block`) on `authentik-db-pvc`. Configured `PGDATA: /var/lib/postgresql/data/pgdata` to prevent ext4 `lost+found` initdb conflicts.
+      - Deployed Redis 7 Alpine cache and task broker.
+      - Deployed Authentik Server and Authentik Worker running stable `ghcr.io/goauthentik/server:2024.12.3`.
+      - All 4 pods running healthy (`1/1 Running` across `authentik-db`, `authentik-redis`, `authentik-server`, `authentik-worker`).
+    - **Network, Wildcard TLS & Split-Horizon Routing**:
+      - Created Ingress resource routing `auth.bar2sek.com` through Ingress-Nginx (`10.10.20.50`) with Let's Encrypt wildcard certificate (`bar2sek-wildcard-tls`), custom proxy buffer sizing (128k), and 100MB body size limit.
+      - Added declarative authoritative A record in [`terraform/unifi/dns.tf`](file:///terraform/unifi/dns.tf) resolving `auth.bar2sek.com` -> `10.10.20.50` locally across the 10GbE network fabric.
+      - Added Zero Trust Cloudflare Tunnel ingress rule and proxied CNAME DNS record in [`terraform/cloudflare/main.tf`](file:///terraform/cloudflare/main.tf).
+      - Verified local DNS resolution (`dig auth.bar2sek.com @10.0.1.1` -> `10.10.20.50` in 3ms) and HTTPS reachability (`curl -sI https://auth.bar2sek.com` -> `HTTP/2 302` and initial-setup flow -> `HTTP/2 200`).
+    - **Operational Automation**:
+      - Added [`kubernetes/infrastructure/authentik/authentik-secrets.example.yaml`](file:///kubernetes/infrastructure/authentik/authentik-secrets.example.yaml) as sanitized template while keeping live secrets gitignored.
+      - Added `just authentik-status` and `just authentik-logs` operational recipes to root [`Justfile`](file:///Justfile).
+
 ---
 
 ## 🎯 Immediate Next Actions
 
-1. **Configure GPU Worker & Workload Partitioning (`pc-node-05`)**:
+1. **Initial Authentik Admin Flow & SSO Integration**:
+   - Access `https://auth.bar2sek.com/if/flow/initial-setup/` to set initial master `akadmin` password.
+   - Configure OAuth2/OIDC provider and application in Authentik for **Grafana**, updating `kubernetes/infrastructure/monitoring/values.yaml` to enable SSO.
+2. **Deploy Workload Applications (Day-1 SSO Ready)**:
+   - Deploy tier 1 self-hosted platform applications: Home Assistant, Immich, Mealie, and TeslaMate.
+3. **Configure GPU Worker & Workload Partitioning (`pc-node-05`)**:
    - Deploy KubeVirt Operator and CDI.
    - Provision Windows 11 Gaming VM with NVIDIA RTX 4070 VFIO PCIe passthrough backed by high-speed Ceph NVMe PVC.
    - Run Ansible configuration playbook for Sunshine game streaming.
-2. **Deploy Workload Applications**:
-   - Deploy Authentik IdP for centralized SSO.
-   - Deploy tier 1 self-hosted platform applications: Home Assistant, Immich, Mealie, and TeslaMate.
+
 
 

@@ -68,3 +68,9 @@ output "local_dns_grafana" {
   description = "Local split-horizon DNS record for Grafana"
 }
 
+output "local_dns_auth" {
+  value       = "${unifi_dns_record.auth.name} -> ${unifi_dns_record.auth.value}"
+  description = "Local split-horizon DNS record for Authentik"
+}
+
+

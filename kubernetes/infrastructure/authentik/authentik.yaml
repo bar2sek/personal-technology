@@ -2,17 +2,14 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: identity
+  labels:
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/audit: baseline
+    pod-security.kubernetes.io/warn: baseline
 ---
-apiVersion: v1
-kind: Secret
-metadata:
-  name: authentik-secrets
-  namespace: identity
-type: Opaque
-stringData:
-  secret-key: "REPLACE_WITH_AUTHENTIK_SECRET_KEY"
-  db-password: "authentik_secure_db_password"
----
+# ==============================================================================
+# Persistent Storage (Rook-Ceph Replicated SSD Tier)
+# ==============================================================================
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -26,14 +23,21 @@ spec:
     requests:
       storage: 10Gi
 ---
-# PostgreSQL Database for Authentik
+# ==============================================================================
+# PostgreSQL 16 Database
+# ==============================================================================
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: authentik-db
   namespace: identity
+  labels:
+    app.kubernetes.io/name: authentik-db
+    app.kubernetes.io/part-of: authentik
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: authentik-db
@@ -41,11 +45,16 @@ spec:
     metadata:
       labels:
         app: authentik-db
+        app.kubernetes.io/name: authentik-db
+        app.kubernetes.io/part-of: authentik
     spec:
       containers:
         - name: postgres
           image: postgres:16-alpine
+          imagePullPolicy: IfNotPresent
           env:
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
             - name: POSTGRES_DB
               value: authentik
             - name: POSTGRES_USER
@@ -55,8 +64,35 @@ spec:
                 secretKeyRef:
                   name: authentik-secrets
                   key: db-password
+
           ports:
             - containerPort: 5432
+              name: postgres
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+          livenessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - authentik
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - authentik
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
           volumeMounts:
             - name: db-data
               mountPath: /var/lib/postgresql/data
@@ -70,19 +106,28 @@ kind: Service
 metadata:
   name: authentik-db
   namespace: identity
+  labels:
+    app.kubernetes.io/name: authentik-db
+    app.kubernetes.io/part-of: authentik
 spec:
   selector:
     app: authentik-db
   ports:
-    - port: 5432
+    - name: postgres
+      port: 5432
       targetPort: 5432
 ---
-# Redis for Authentik
+# ==============================================================================
+# Redis Cache & Task Broker
+# ==============================================================================
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: authentik-redis
   namespace: identity
+  labels:
+    app.kubernetes.io/name: authentik-redis
+    app.kubernetes.io/part-of: authentik
 spec:
   replicas: 1
   selector:
@@ -92,31 +137,65 @@ spec:
     metadata:
       labels:
         app: authentik-redis
+        app.kubernetes.io/name: authentik-redis
+        app.kubernetes.io/part-of: authentik
     spec:
       containers:
         - name: redis
-          image: redis:alpine
+          image: redis:7-alpine
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 6379
+              name: redis
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          livenessProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            initialDelaySeconds: 10
+            periodSeconds: 10
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: authentik-redis
   namespace: identity
+  labels:
+    app.kubernetes.io/name: authentik-redis
+    app.kubernetes.io/part-of: authentik
 spec:
   selector:
     app: authentik-redis
   ports:
-    - port: 6379
+    - name: redis
+      port: 6379
       targetPort: 6379
 ---
-# Authentik Server
+# ==============================================================================
+# Authentik Server (Web Console, Flow Engine, OIDC & SAML Provider)
+# ==============================================================================
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: authentik-server
   namespace: identity
+  labels:
+    app.kubernetes.io/name: authentik-server
+    app.kubernetes.io/part-of: authentik
 spec:
   replicas: 1
   selector:
@@ -126,10 +205,13 @@ spec:
     metadata:
       labels:
         app: authentik-server
+        app.kubernetes.io/name: authentik-server
+        app.kubernetes.io/part-of: authentik
     spec:
       containers:
         - name: authentik-server
-          image: ghcr.io/goauthentik/server:2024.4.2
+          image: ghcr.io/goauthentik/server:2024.12.3
+          imagePullPolicy: IfNotPresent
           args: ["server"]
           env:
             - name: AUTHENTIK_SECRET_KEY
@@ -150,6 +232,12 @@ spec:
                 secretKeyRef:
                   name: authentik-secrets
                   key: db-password
+            - name: AUTHENTIK_IN_CONTAINER
+              value: "true"
+            - name: AUTHENTIK_DISABLE_UPDATE_CHECK
+              value: "true"
+            - name: AUTHENTIK_ERROR_REPORTING__ENABLED
+              value: "false"
           ports:
             - containerPort: 9000
               name: http
@@ -157,18 +245,37 @@ spec:
               name: https
           resources:
             requests:
-              cpu: 100m
-              memory: 512Mi
+              cpu: 200m
+              memory: 768Mi
             limits:
-              cpu: 1000m
-              memory: 1536Mi
+              cpu: 1500m
+              memory: 2Gi
+          livenessProbe:
+            httpGet:
+              path: /-/health/live/
+              port: http
+            initialDelaySeconds: 40
+            periodSeconds: 15
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /-/health/ready/
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
 ---
-# Authentik Worker
+# ==============================================================================
+# Authentik Worker (Background Tasks & Celery Execution)
+# ==============================================================================
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: authentik-worker
   namespace: identity
+  labels:
+    app.kubernetes.io/name: authentik-worker
+    app.kubernetes.io/part-of: authentik
 spec:
   replicas: 1
   selector:
@@ -178,10 +285,13 @@ spec:
     metadata:
       labels:
         app: authentik-worker
+        app.kubernetes.io/name: authentik-worker
+        app.kubernetes.io/part-of: authentik
     spec:
       containers:
         - name: authentik-worker
-          image: ghcr.io/goauthentik/server:2024.4.2
+          image: ghcr.io/goauthentik/server:2024.12.3
+          imagePullPolicy: IfNotPresent
           args: ["worker"]
           env:
             - name: AUTHENTIK_SECRET_KEY
@@ -202,12 +312,31 @@ spec:
                 secretKeyRef:
                   name: authentik-secrets
                   key: db-password
+            - name: AUTHENTIK_IN_CONTAINER
+              value: "true"
+            - name: AUTHENTIK_DISABLE_UPDATE_CHECK
+              value: "true"
+            - name: AUTHENTIK_ERROR_REPORTING__ENABLED
+              value: "false"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1.5Gi
 ---
+# ==============================================================================
+# Authentik Service
+# ==============================================================================
 apiVersion: v1
 kind: Service
 metadata:
   name: authentik-service
   namespace: identity
+  labels:
+    app.kubernetes.io/name: authentik
+    app.kubernetes.io/part-of: authentik
 spec:
   selector:
     app: authentik-server
@@ -218,3 +347,36 @@ spec:
     - name: https
       port: 443
       targetPort: 9443
+---
+# ==============================================================================
+# Ingress Routing with Wildcard TLS (Ingress-Nginx)
+# ==============================================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: authentik-ingress
+  namespace: identity
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "128k"
+    nginx.ingress.kubernetes.io/proxy-buffers-number: "4"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - auth.bar2sek.com
+      secretName: bar2sek-wildcard-tls
+  rules:
+    - host: auth.bar2sek.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: authentik-service
+                port:
+                  number: 80

@@ -49,10 +49,18 @@ resource "cloudflare_zero_trust_tunnel_cloudflared_config" "homelab_tunnel_confi
         no_tls_verify = true
       }
     }
+    ingress_rule {
+      hostname = "auth.${var.domain_name}"
+      service  = "https://ingress-nginx-controller.ingress-nginx.svc.cluster.local:443"
+      origin_request {
+        no_tls_verify = true
+      }
+    }
     # Catch-all rule
     ingress_rule {
       service = "http_status:404"
     }
+
   }
 }
 
@@ -104,6 +112,15 @@ resource "cloudflare_record" "ceph_dns" {
   type    = "CNAME"
   proxied = true
 }
+
+resource "cloudflare_record" "auth_dns" {
+  zone_id = var.cloudflare_zone_id
+  name    = "auth"
+  value   = "${cloudflare_zero_trust_tunnel_cloudflared.homelab_tunnel.id}.cfargotunnel.com"
+  type    = "CNAME"
+  proxied = true
+}
+
 
 # 4. Cloudflare Zero Trust Access Applications (SSO Protection)
 resource "cloudflare_zero_trust_access_application" "admin_apps" {

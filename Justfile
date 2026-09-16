@@ -59,6 +59,18 @@ grafana-password:
     @echo -n "Grafana Admin Password: "
     @kubectl -n monitoring get secret grafana-admin-credentials -o jsonpath="{.data.admin-password}" | base64 --decode && echo ""
 
+# Check status of Authentik Identity stack (Server, Worker, DB, Redis, Ingress)
+authentik-status:
+    @echo "===> Identity Pods & PVCs:"
+    kubectl -n identity get pods,pvc -o wide
+    @echo "\n===> Identity Ingress:"
+    kubectl -n identity get ingress -o wide
+
+# Stream Authentik server logs
+authentik-logs:
+    kubectl -n identity logs -l app.kubernetes.io/name=authentik-server -f
+
+
 
 # Launch interactive terminal into the in-cluster Antigravity Dev Workspace
 ssh-dev:

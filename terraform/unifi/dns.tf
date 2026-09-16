@@ -26,3 +26,11 @@ resource "unifi_dns_record" "grafana" {
   ttl         = "300s"
 }
 
+resource "unifi_dns_record" "auth" {
+  name        = "auth.${var.public_domain}"
+  record_type = "A"
+  value       = var.ingress_vip
+  ttl         = "300s"
+}
+
+
