@@ -459,19 +459,35 @@ Any AI agent or human operator can review this document to pick up exactly where
       - Added [`kubernetes/infrastructure/authentik/authentik-secrets.example.yaml`](file:///kubernetes/infrastructure/authentik/authentik-secrets.example.yaml) as sanitized template while keeping live secrets gitignored.
       - Added `just authentik-status` and `just authentik-logs` operational recipes to root [`Justfile`](file:///Justfile).
 
+34. **Grafana OIDC Single Sign-On (SSO) Integration via Authentik**:
+    - **Authentik OAuth2 Provider & Application Provisioned**:
+      - Created `OAuth2Provider` for Grafana (`client_id: grafana`) with `redirect_uris`: `https://grafana.bar2sek.com/login/generic_oauth`.
+      - Attached default scope mappings (`openid`, `email`, `profile`) and bound to the `default-provider-authorization-implicit-consent` flow.
+      - Bound provider to Application `Grafana` (slug: `grafana`).
+      - Verified OIDC discovery endpoint at `https://auth.bar2sek.com/application/o/grafana/.well-known/openid-configuration`.
+    - **Kubernetes Secret & Helm Values Configuration**:
+      - Provisioned `secret/grafana-oauth-secret` in `monitoring` namespace containing client secret (`GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET`).
+      - Updated [`kubernetes/infrastructure/monitoring/values.yaml`](file:///kubernetes/infrastructure/monitoring/values.yaml) with `auth.generic_oauth` block:
+        - `auth_url`: `https://auth.bar2sek.com/application/o/authorize/`
+        - `token_url`: `https://auth.bar2sek.com/application/o/token/`
+        - `api_url`: `https://auth.bar2sek.com/application/o/userinfo/`
+        - Automatic role mapping: Users in `authentik Admins` or `grafana-admins` automatically receive Grafana `Admin` privileges.
+      - Upgraded Helm release `kube-prometheus-stack` (Revision 3).
+    - **End-to-End Verification**:
+      - Verified OAuth redirect flow: `curl -sI https://grafana.bar2sek.com/login/generic_oauth` returns `HTTP/2 302` redirecting to `https://auth.bar2sek.com/application/o/authorize/?client_id=grafana&response_type=code`.
+      - Users can now log into Grafana using their centralized Authentik credentials or hardware Passkeys.
+
 ---
 
 ## 🎯 Immediate Next Actions
 
-1. **Initial Authentik Admin Flow & SSO Integration**:
-   - Access `https://auth.bar2sek.com/if/flow/initial-setup/` to set initial master `akadmin` password.
-   - Configure OAuth2/OIDC provider and application in Authentik for **Grafana**, updating `kubernetes/infrastructure/monitoring/values.yaml` to enable SSO.
-2. **Deploy Workload Applications (Day-1 SSO Ready)**:
+1. **Deploy Workload Applications (Day-1 SSO Ready)**:
    - Deploy tier 1 self-hosted platform applications: Home Assistant, Immich, Mealie, and TeslaMate.
-3. **Configure GPU Worker & Workload Partitioning (`pc-node-05`)**:
+2. **Configure GPU Worker & Workload Partitioning (`pc-node-05`)**:
    - Deploy KubeVirt Operator and CDI.
    - Provision Windows 11 Gaming VM with NVIDIA RTX 4070 VFIO PCIe passthrough backed by high-speed Ceph NVMe PVC.
    - Run Ansible configuration playbook for Sunshine game streaming.
+
 
 
 

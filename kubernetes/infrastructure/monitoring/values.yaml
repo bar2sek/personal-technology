@@ -146,6 +146,31 @@ grafana:
     userKey: admin-user
     passwordKey: admin-password
 
+  # Inject OAuth Client Secret from Kubernetes secret
+  envFromSecret: grafana-oauth-secret
+
+  # Grafana Server & Generic OAuth (Authentik OIDC)
+  grafana.ini:
+    server:
+      root_url: https://grafana.bar2sek.com
+    auth:
+      disable_login_form: false
+    auth.generic_oauth:
+      enabled: true
+      name: Authentik
+      allow_sign_up: true
+      auto_login: false
+      client_id: grafana
+      scopes: openid profile email
+      empty_scopes: false
+      auth_url: https://auth.bar2sek.com/application/o/authorize/
+      token_url: https://auth.bar2sek.com/application/o/token/
+      api_url: https://auth.bar2sek.com/application/o/userinfo/
+      role_attribute_path: "contains(groups[*], 'authentik Admins') && 'Admin' || contains(groups[*], 'grafana-admins') && 'Admin' || contains(groups[*], 'grafana-editors') && 'Editor' || 'Viewer'"
+      role_attribute_strict: false
+      allow_assign_grafana_admin: true
+
+
   # Persistence backed by Ceph RBD
   persistence:
     enabled: true
