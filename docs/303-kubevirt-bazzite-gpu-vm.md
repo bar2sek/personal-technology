@@ -165,6 +165,7 @@ spec:
           limits:
             memory: 16Gi
         devices:
+          autoattachGraphicsDevice: false
           disks:
             - name: rootdisk
               bootOrder: 1

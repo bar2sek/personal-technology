@@ -28,6 +28,7 @@ spec:
           limits:
             memory: 16Gi
         devices:
+          autoattachGraphicsDevice: false
           disks:
             # Primary OS Target NVMe Block Device (Ceph NVMe Pool)
             - name: rootdisk

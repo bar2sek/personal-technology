@@ -18,40 +18,51 @@
       args:
         creates: /var/lib/systemd/linger/bazzite
 
-    - name: Configure SDDM autologin for bazzite user
+    - name: Configure SDDM and Plasmalogin autologin for bazzite user
       become: true
       ansible.builtin.copy:
-        dest: /etc/sddm.conf.d/autologin.conf
+        dest: "{{ item }}"
         content: |
           [Autologin]
           User=bazzite
-          Session=plasma.desktop
+          Session=plasma
           Relogin=true
         owner: root
         group: root
         mode: '0644'
-      register: sddm_autologin
+      loop:
+        - /etc/sddm.conf.d/autologin.conf
+        - /etc/plasmalogin.conf.d/autologin.conf
+      register: desktop_autologin
 
-    - name: Restart SDDM to start desktop session
+    - name: Remove override plasma setup autologin if present
       become: true
-      ansible.builtin.systemd:
-        name: sddm
-        state: restarted
-      when: sddm_autologin.changed
+      ansible.builtin.file:
+        path: /etc/plasmalogin.conf.d/99-plasma-setup.conf
+        state: absent
 
-    - name: Wait for Wayland session to initialize
-      ansible.builtin.wait_for:
-        path: /run/user/1000/wayland-0
-        timeout: 30
-      when: sddm_autologin.changed
-      ignore_errors: true
+    - name: Ensure uhid module is loaded for gamepad emulation
+      become: true
+      ansible.builtin.copy:
+        dest: /etc/modules-load.d/60-sunshine.conf
+        content: uhid
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Add bazzite user to video, input, and render groups
+      become: true
+      ansible.builtin.user:
+        name: bazzite
+        groups: video,input,render
+        append: true
 
     - name: Ensure Sunshine service is enabled and running
       ansible.builtin.systemd:
-        name: sunshine
+        name: app-dev.lizardbyte.app.Sunshine.service
         scope: user
         enabled: true
-        state: restarted
+        state: started
       ignore_errors: true
 
     - name: Check Steam and Flatpak gaming status
