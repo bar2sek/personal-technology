@@ -1,0 +1,24 @@
+apiVersion: kubevirt.io/v1
+kind: KubeVirt
+metadata:
+  name: kubevirt
+  namespace: kubevirt
+spec:
+  certificateRotateStrategy: {}
+  configuration:
+    developerConfiguration:
+      featureGates:
+        - GPU
+        - HostDevices
+        - VMPersistentState
+        - HotplugVolumes
+    permittedHostDevices:
+      pciHostDevices:
+        - pciVendorSelector: "10DE:2786"
+          resourceName: "nvidia.com/RTX_4070"
+        - pciVendorSelector: "10DE:22BC"
+          resourceName: "nvidia.com/RTX_4070_Audio"
+    vmStateStorageClass: rook-ceph-filesystem
+  customizeComponents: {}
+  imagePullPolicy: IfNotPresent
+  workloadUpdateStrategy: {}

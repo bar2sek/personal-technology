@@ -114,6 +114,15 @@ patches:
             - amd_iommu=on
             - iommu=pt
             - vfio-pci.ids=10de:2786,10de:22bc
+        kernel:
+          modules:
+            - name: vfio
+            - name: vfio_iommu_type1
+            - name: vfio-pci
+              parameters:
+                - ids=10de:2786,10de:22bc
+        sysctls:
+          vm.nr_hugepages: "0"
         nodeLabels:
           node.kubernetes.io/role: gpu-worker
           nvidia.com/gpu.present: "true"

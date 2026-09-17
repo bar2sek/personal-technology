@@ -1,61 +1,77 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: vms
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: windows-gaming-nvme-pvc
-  namespace: vms
-spec:
-  accessModes:
-    - ReadWriteOnce
-  storageClassName: rook-ceph-block-nvme
-  resources:
-    requests:
-      storage: 250Gi
----
 apiVersion: kubevirt.io/v1
 kind: VirtualMachine
 metadata:
   name: windows11-gaming-vm
   namespace: vms
   labels:
+    app: windows11-gaming
     special: windows11-gaming
 spec:
-  running: true
+  runStrategy: Always
   template:
     metadata:
       labels:
+        app: windows11-gaming
         kubevirt.io/domain: windows11-gaming-vm
     spec:
       nodeSelector:
         kubernetes.io/hostname: pc-node-05
       domain:
         cpu:
-          cores: 6
-          threads: 2
+          model: host-passthrough
+          cores: 12
+          threads: 1
+          sockets: 1
         resources:
           requests:
-            memory: 24Gi
+            memory: 16Gi
           limits:
-            memory: 24Gi
+            memory: 16Gi
         devices:
           disks:
+            # 1. Windows 11 IoT Enterprise LTSC 2024 Installation Media
+            - name: install-iso
+              bootOrder: 1
+              cdrom:
+                bus: sata
+            # 2. Primary OS Target NVMe Block Device (Ceph NVMe Pool)
             - name: rootdisk
+              bootOrder: 2
               disk:
                 bus: virtio
+            # 3. Fedora/Red Hat Signed VirtIO Drivers
+            - name: virtio-drivers
+              cdrom:
+                bus: sata
+            # 4. Automated Unattended Setup (Autounattend.xml + WinRM)
+            - name: sysprep
+              cdrom:
+                bus: sata
           interfaces:
             - name: default
               masquerade: {}
+          # NVIDIA RTX 4070 + Audio Controller (IOMMU Group 12 VFIO Passthrough)
           gpus:
             - name: rtx4070
-              deviceName: nvidia.com/GA104_GeForce_RTX_4070 # Or PCI host-device mapping
+              deviceName: nvidia.com/RTX_4070
+            - name: rtx4070-audio
+              deviceName: nvidia.com/RTX_4070_Audio
           inputs:
             - type: tablet
               bus: usb
               name: tablet
+          tpm:
+            persistent: true
+        clock:
+          utc: {}
+          timer:
+            hpet:
+              present: false
+            pit:
+              tickPolicy: delay
+            rtc:
+              tickPolicy: catchup
+            hyperv: {}
         features:
           acpi: {}
           apic: {}
@@ -72,11 +88,103 @@ spec:
             reenlightenment: {}
             tlbflush: {}
             ipi: {}
-            evmcs: {}
+          smm:
+            enabled: true
+        firmware:
+          bootloader:
+            efi:
+              secureBoot: false
       networks:
         - name: default
           pod: {}
       volumes:
+        # NVMe 250Gi PVC
         - name: rootdisk
           persistentVolumeClaim:
             claimName: windows-gaming-nvme-pvc
+        # Windows 11 IoT LTSC ISO
+        - name: install-iso
+          persistentVolumeClaim:
+            claimName: win11-ltsc-iso
+        # VirtIO drivers
+        - name: virtio-drivers
+          containerDisk:
+            image: quay.io/kubevirt/virtio-container-disk:v1.9.0
+        # Sysprep automated configuration
+        - name: sysprep
+          sysprep:
+            configMap:
+              name: windows11-sysprep-config
+---
+# Dedicated MetalLB LAN VIP for Sunshine Game Streaming, WinRM & RDP
+apiVersion: v1
+kind: Service
+metadata:
+  name: windows11-gaming-lan
+  namespace: vms
+  annotations:
+    metallb.universe.tf/loadBalancerIPs: 10.10.20.55
+spec:
+  type: LoadBalancer
+  selector:
+    kubevirt.io/domain: windows11-gaming-vm
+  ports:
+    # Sunshine Web Configuration UI
+    - name: sunshine-ui
+      port: 47990
+      targetPort: 47990
+      protocol: TCP
+    # Sunshine HTTPS Web UI / Discovery
+    - name: sunshine-https
+      port: 47984
+      targetPort: 47984
+      protocol: TCP
+    # Sunshine HTTP
+    - name: sunshine-http
+      port: 47989
+      targetPort: 47989
+      protocol: TCP
+    # Sunshine Control
+    - name: sunshine-ctrl-tcp
+      port: 48010
+      targetPort: 48010
+      protocol: TCP
+    # Sunshine RTSP
+    - name: sunshine-rtsp
+      port: 48010
+      targetPort: 48010
+      protocol: UDP
+    # Sunshine Video Stream
+    - name: sunshine-video
+      port: 47999
+      targetPort: 47999
+      protocol: UDP
+    # Sunshine Audio Stream
+    - name: sunshine-audio
+      port: 47998
+      targetPort: 47998
+      protocol: UDP
+    # Sunshine Control Stream
+    - name: sunshine-ctrl-udp
+      port: 48000
+      targetPort: 48000
+      protocol: UDP
+    # Sunshine Mic Stream
+    - name: sunshine-mic
+      port: 48002
+      targetPort: 48002
+      protocol: UDP
+    # Windows Remote Management (Ansible)
+    - name: winrm-http
+      port: 5985
+      targetPort: 5985
+      protocol: TCP
+    - name: winrm-https
+      port: 5986
+      targetPort: 5986
+      protocol: TCP
+    # Remote Desktop Protocol (RDP)
+    - name: rdp
+      port: 3389
+      targetPort: 3389
+      protocol: TCP

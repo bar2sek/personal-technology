@@ -40,5 +40,12 @@ resource "unifi_dns_record" "agy" {
   ttl         = "300s"
 }
 
+resource "unifi_dns_record" "gaming" {
+  name        = "gaming.${var.public_domain}"
+  record_type = "A"
+  value       = "10.10.20.55"
+  ttl         = "300s"
+}
+
 
 

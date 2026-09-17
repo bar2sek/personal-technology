@@ -55,12 +55,12 @@ machine:
 
 ## 🚀 Step 2: Deploy KubeVirt & Device Plugins
 
-1. Install **KubeVirt Operator** via Helm or `kubectl`:
+1. Install **KubeVirt Operator v1.9.0** & CRDs:
    ```bash
-   kubectl apply -f https://github.com/kubevirt/kubevirt/releases/download/v1.2.0/kubevirt-operator.yaml
-   kubectl apply -f https://github.com/kubevirt/kubevirt/releases/download/v1.2.0/kubevirt-cr.yaml
+   kubectl apply -f https://github.com/kubevirt/kubevirt/releases/download/v1.9.0/kubevirt-operator.yaml
+   kubectl apply -f kubernetes/infrastructure/kubevirt/kubevirt-cr.yaml
    ```
-2. Enable GPU & HostDevice Passthrough in KubeVirt configuration:
+2. Enable GPU & HostDevice Passthrough in [`kubernetes/infrastructure/kubevirt/kubevirt-cr.yaml`](file:///kubernetes/infrastructure/kubevirt/kubevirt-cr.yaml):
    ```yaml
    apiVersion: kubevirt.io/v1
    kind: KubeVirt
@@ -73,17 +73,22 @@ machine:
          featureGates:
            - GPU
            - HostDevices
+           - VMPersistentState
+           - HotplugVolumes
        permittedHostDevices:
-         gpus:
-           - resourceName: "nvidia.com/RTX_4070"
-             selectors:
-               - vendorId: "10de"
-                 deviceId: "2786"
+         pciHostDevices:
+           - pciVendorSelector: "10DE:2786"
+             resourceName: "nvidia.com/RTX_4070"
+           - pciVendorSelector: "10DE:22BC"
+             resourceName: "nvidia.com/RTX_4070_Audio"
+     vmStateStorageClass: rook-ceph-filesystem
    ```
 
 ---
 
 ## 🎮 Step 3: Windows 11 VirtualMachine Manifest
+
+The production manifest is defined in [`kubernetes/infrastructure/kubevirt/windows11-vm.yaml`](file:///kubernetes/infrastructure/kubevirt/windows11-vm.yaml):
 
 ```yaml
 apiVersion: kubevirt.io/v1
@@ -92,44 +97,93 @@ metadata:
   name: windows11-gaming-vm
   namespace: vms
 spec:
-  running: true
+  runStrategy: Always
   template:
     metadata:
       labels:
+        app: windows11-gaming
         kubevirt.io/domain: windows11-gaming-vm
     spec:
+      nodeSelector:
+        kubernetes.io/hostname: pc-node-05
       domain:
         cpu:
-          cores: 6
-          threads: 2
+          model: host-passthrough
+          cores: 12
+          threads: 1
+          sockets: 1
         resources:
           requests:
-            memory: 24Gi
+            memory: 16Gi
           limits:
-            memory: 24Gi
+            memory: 16Gi
         devices:
           gpus:
             - name: rtx4070
               deviceName: nvidia.com/RTX_4070
+            - name: rtx4070-audio
+              deviceName: nvidia.com/RTX_4070_Audio
           disks:
-            - name: win-boot
+            - name: install-iso
+              bootOrder: 1
+              cdrom:
+                bus: sata
+            - name: rootdisk
+              bootOrder: 2
               disk:
                 bus: virtio
             - name: virtio-drivers
               cdrom:
                 bus: sata
+            - name: sysprep
+              cdrom:
+                bus: sata
+          tpm:
+            persistent: true
+        features:
+          acpi: {}
+          apic: {}
+          hyperv:
+            relaxed: {}
+            vapic: {}
+            spinlocks:
+              spinlocks: 8191
+            synic: {}
+            synictimer:
+              direct: {}
+            reset: {}
+            frequencies: {}
+            reenlightenment: {}
+            tlbflush: {}
+            ipi: {}
+          smm:
+            enabled: true
+        firmware:
+          bootloader:
+            efi:
+              secureBoot: false
       volumes:
-        - name: win-boot
+        - name: rootdisk
           persistentVolumeClaim:
-            claimName: windows11-nvme-pvc
+            claimName: windows-gaming-nvme-pvc
+        - name: install-iso
+          persistentVolumeClaim:
+            claimName: win11-ltsc-iso
         - name: virtio-drivers
           containerDisk:
-            image: kubevirt/virtio-container-disk
+            image: quay.io/kubevirt/virtio-container-disk:v1.9.0
+        - name: sysprep
+          sysprep:
+            configMap:
+              name: windows11-sysprep-config
 ```
 
 ---
 
 ## 📡 Step 4: High-Performance Remote Streaming (Sunshine + Moonlight)
 
-1. **Sunshine Server**: Installed inside the Windows 11 VM to capture the RTX 4070 NVENC frame buffer with zero latency.
-2. **Moonlight Client**: Connect from your Mac, TV, or phone over your **2.5GbE / 10GbE UniFi network** for smooth 4K 120 FPS gaming!
+1. **Dedicated LAN VIP (`10.10.20.55`)**: MetalLB exposes ports `47984-48010` (Sunshine HTTP/RTSP/UDP streams), `5985/5986` (WinRM for Ansible), and `3389` (RDP).
+2. **Local Split-Horizon DNS (`gaming.bar2sek.com`)**: Managed declaratively in [`terraform/unifi/dns.tf`](file:///terraform/unifi/dns.tf) pointing to `10.10.20.55`.
+3. **Sunshine Server**: Installed inside the Windows 11 VM via Ansible (`ansible/playbooks/configure-gaming-vm.yml`) to capture the RTX 4070 NVENC frame buffer with zero latency.
+4. **Moonlight Client**: Connect from your MacBook Pro over the **2.5GbE / 10GbE UniFi network** for smooth 4K 120 FPS gaming with AV1/HEVC encoding!
+

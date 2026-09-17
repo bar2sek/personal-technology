@@ -490,17 +490,34 @@ Any AI agent or human operator can review this document to pick up exactly where
     - **Multi-Device Mobility**:
       - Enables seamless, untethered agent management and coding across iPad, iPhone, MacBook Pro, and remote web browsers with full state persistence.
 
+36. **KubeVirt v1.9.0 Modernization & Windows 11 Gaming VM Architecture (`gaming.bar2sek.com`)**:
+    - **KubeVirt Platform Modernization**:
+      - Upgraded KubeVirt Operator, CRDs, `virt-api`, `virt-controller`, and `virt-handler` from legacy v1.4.0 (2024) to v1.9.0 (July 2026).
+      - Resolved Kubernetes 1.36 schema validation errors (`format: int32` on checksums) and pod condition patch synchronization failures (`virt-controller` condition sync errors).
+      - Upgraded local macOS CLI `~/.local/bin/virtctl` to v1.9.0.
+    - **VFIO PCIe GPU & Audio Passthrough on Talos Linux (`pc-node-05`)**:
+      - Configured AM5 platform B650I IOMMU hardware isolation (`amd_iommu=on iommu=pt`) in [`talos/cluster-template.yaml`](file:///talos/cluster-template.yaml).
+      - Assigned VFIO drivers to NVIDIA GeForce RTX 4070 (`10de:2786`) and High Definition Audio Controller (`10de:22bc`) in isolated IOMMU Group 12.
+      - Defined PCI host devices in [`kubernetes/infrastructure/kubevirt/kubevirt-cr.yaml`](file:///kubernetes/infrastructure/kubevirt/kubevirt-cr.yaml) (`nvidia.com/RTX_4070` and `nvidia.com/RTX_4070_Audio`).
+      - Verified node device plugin advertisements on `pc-node-05` allocating both devices directly to QEMU/KVM launcher pod.
+    - **AMD Ryzen CPU Topology Optimization**:
+      - Configured CPU domain topology with `model: host-passthrough`, 12 vCPUs (`cores: 12, threads: 1, sockets: 1`), and 16Gi RAM.
+      - Removed hyperthreading threads-per-core specification to eliminate QEMU AMD SMT `topoext` configuration warnings.
+    - **Automated Windows 11 IoT Enterprise LTSC 2024 Pipeline**:
+      - Provisioned dedicated 250Gi high-IOPS NVMe PersistentVolumeClaim (`windows-gaming-nvme-pvc`) on `rook-ceph-block-nvme`.
+      - Mounted official Windows 11 IoT Enterprise LTSC 2024 x64 installation media alongside Fedora/Red Hat signed VirtIO driver container disk v1.9.0.
+      - Authored fully automated unattended Sysprep configuration [`kubernetes/infrastructure/kubevirt/windows11-sysprep.yaml`](file:///kubernetes/infrastructure/kubevirt/windows11-sysprep.yaml) (`Autounattend.xml`) providing automatic disk partitioning (EFI/MSR/NTFS), VirtIO storage and network driver injection, user creation, and WinRM provisioning on port 5985/5986.
+    - **Dedicated LAN VIP & Split-Horizon DNS**:
+      - Provisioned MetalLB LoadBalancer service [`kubernetes/infrastructure/kubevirt/windows11-vm.yaml`](file:///kubernetes/infrastructure/kubevirt/windows11-vm.yaml) binding dedicated static IP `10.10.20.55` on the internal homelab network for Sunshine 4K/120Hz streaming, WinRM automation, and RDP.
+      - Added authoritative DNS A record `gaming.bar2sek.com` -> `10.10.20.55` in [`terraform/unifi/dns.tf`](file:///terraform/unifi/dns.tf).
+
 ---
 
 ## 🎯 Immediate Next Actions
 
-1. **Deploy Workload Applications (Day-1 SSO Ready)**:
+1. **Complete Windows 11 Gaming VM First Boot & Ansible Automation**:
+   - Complete unattended Windows 11 setup boot via EDK2 EFI selector.
+   - Run Ansible configuration playbook (`ansible/playbooks/configure-gaming-vm.yml`) to install NVIDIA Game Ready drivers, Sunshine streaming server, and Steam.
+   - Pair client MacBook Pro via Moonlight for sub-millisecond 4K LAN game streaming.
+2. **Deploy Workload Applications (Day-1 SSO Ready)**:
    - Deploy tier 1 self-hosted platform applications: Home Assistant, Immich, Mealie, and TeslaMate.
-2. **Configure GPU Worker & Workload Partitioning (`pc-node-05`)**:
-   - Deploy KubeVirt Operator and CDI.
-   - Provision Windows 11 Gaming VM with NVIDIA RTX 4070 VFIO PCIe passthrough backed by high-speed Ceph NVMe PVC.
-   - Run Ansible configuration playbook for Sunshine game streaming.
-
-
-
-
