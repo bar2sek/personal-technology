@@ -105,13 +105,13 @@ tf-apply dir:
 # 4. Ansible Automation
 # ------------------------------------------------------------------------------
 
-# Run automated Windows 11 Gaming VM setup (NVIDIA, Sunshine, Steam, Chocolatey)
-win-setup:
-    cd ansible && ansible-playbook -i inventory/hosts.ini playbooks/configure-gaming-vm.yml
+# Run automated Bazzite Gaming VM post-install configuration (NVIDIA, Sunshine, Flatpaks)
+bazzite-setup:
+    cd ansible && ansible-playbook -i inventory/hosts.ini playbooks/configure-bazzite-vm.yml
 
-# Ping Windows 11 Gaming VM over WinRM
-win-ping:
-    cd ansible && ansible -i inventory/hosts.ini gaming_vms -m win_ping
+# Ping Bazzite Gaming VM over SSH
+bazzite-ping:
+    cd ansible && ansible -i inventory/hosts.ini gaming_vms -m ping
 
 # ------------------------------------------------------------------------------
 # 5. Local AI (Apple MLX / oMLX on macOS)

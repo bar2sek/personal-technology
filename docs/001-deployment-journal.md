@@ -511,13 +511,29 @@ Any AI agent or human operator can review this document to pick up exactly where
       - Provisioned MetalLB LoadBalancer service [`kubernetes/infrastructure/kubevirt/windows11-vm.yaml`](file:///kubernetes/infrastructure/kubevirt/windows11-vm.yaml) binding dedicated static IP `10.10.20.55` on the internal homelab network for Sunshine 4K/120Hz streaming, WinRM automation, and RDP.
       - Added authoritative DNS A record `gaming.bar2sek.com` -> `10.10.20.55` in [`terraform/unifi/dns.tf`](file:///terraform/unifi/dns.tf).
 
+37. **Pivot to Bazzite Linux Cloud Gaming VM (`gaming.bar2sek.com`)**:
+    - **Architectural Motivation**:
+      - Replaced Windows 11 with **Bazzite Linux** (Fedora Atomic / Kinoite 42 with pre-baked official NVIDIA proprietary drivers and Sunshine streaming server).
+      - Eliminates Windows EDK2 boot prompt hurdles, WinRM HTTPS fragility, and manual Chocolatey driver injection in favor of native Linux containerized OSTree updates, QEMU guest-agent integration, and standard OpenSSH management.
+    - **Storage & Ingestion**:
+      - Ingested official Bazzite NVIDIA Stable ISO (`12Gi`) via CDI DataVolume (`bazzite-nvidia-iso`).
+      - Deployed OS directly to the 250Gi high-IOPS Ceph NVMe block PVC (`windows-gaming-nvme-pvc`) using automated unattended Anaconda kickstart.
+    - **Decoupled Production VM**:
+      - Removed installation media (`install-iso` and `kickstart`) from [`kubernetes/infrastructure/kubevirt/bazzite-vm.yaml`](file:///kubernetes/infrastructure/kubevirt/bazzite-vm.yaml).
+      - Configured clean UEFI boot from `/dev/vda` (`rootdisk`, Ceph NVMe block pool).
+    - **NVIDIA GPU Passthrough & Hardware Acceleration Verified**:
+      - Verified RTX 4070 (12GB VRAM, Ada Lovelace) PCIe passthrough initializes cleanly with official NVIDIA driver 580.95.05 and CUDA 13.0 via `nvidia-smi`.
+    - **Networking & Sunshine GameStream**:
+      - Assigned dedicated MetalLB Layer 2 static VIP `10.10.20.52` (`bazzite-gaming-lan`).
+      - Automated post-install configuration via Ansible ([`ansible/playbooks/configure-bazzite-vm.yml`](file:///ansible/playbooks/configure-bazzite-vm.yml)) and root [`Justfile`](file:///Justfile) (`just bazzite-setup`, `just bazzite-ping`).
+      - Verified Sunshine HTTPS Web UI is active and listening on `https://10.10.20.52:47990` with full AV1/HEVC NVENC hardware encoding ready for Moonlight client pairing.
+
 ---
 
 ## 🎯 Immediate Next Actions
 
-1. **Complete Windows 11 Gaming VM First Boot & Ansible Automation**:
-   - Complete unattended Windows 11 setup boot via EDK2 EFI selector.
-   - Run Ansible configuration playbook (`ansible/playbooks/configure-gaming-vm.yml`) to install NVIDIA Game Ready drivers, Sunshine streaming server, and Steam.
-   - Pair client MacBook Pro via Moonlight for sub-millisecond 4K LAN game streaming.
+1. **Pair Client Devices & Configure Games**:
+   - Access Sunshine Web UI at `https://10.10.20.52:47990` to pair Moonlight client on MacBook Pro.
+   - Launch Steam Big Picture mode and configure game library.
 2. **Deploy Workload Applications (Day-1 SSO Ready)**:
    - Deploy tier 1 self-hosted platform applications: Home Assistant, Immich, Mealie, and TeslaMate.

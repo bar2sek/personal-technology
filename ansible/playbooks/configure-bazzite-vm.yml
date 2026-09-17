@@ -1,0 +1,30 @@
+---
+- name: Configure Bazzite Linux Gaming VM
+  hosts: gaming_vms
+  gather_facts: true
+  tasks:
+    - name: Verify NVIDIA GPU driver and hardware acceleration
+      ansible.builtin.command: nvidia-smi
+      register: nvidia_smi
+      changed_when: false
+
+    - name: Display NVIDIA Driver & GPU Status
+      ansible.builtin.debug:
+        var: nvidia_smi.stdout_lines
+
+    - name: Ensure Sunshine service is enabled and running
+      ansible.builtin.systemd:
+        name: sunshine
+        scope: user
+        enabled: true
+        state: started
+      ignore_errors: true
+
+    - name: Check Steam and Flatpak gaming status
+      ansible.builtin.command: flatpak list
+      register: flatpak_list
+      changed_when: false
+
+    - name: Display Installed Gaming Packages
+      ansible.builtin.debug:
+        var: flatpak_list.stdout_lines

@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bazzite-kickstart
+  namespace: vms
+data:
+  autounattend.xml: |
+    <!-- Dummy XML to satisfy KubeVirt sysprep validation -->
+  ks.cfg: |
+    # Automated Kickstart for Bazzite Gaming VM
+    text
+    lang en_US.UTF-8
+    keyboard us
+    timezone America/Chicago --utc
+
+    # Network configuration
+    network --bootproto=dhcp --device=link --activate --onboot=on
+
+    # Partitioning: clean and auto-partition /dev/vda with btrfs
+    zerombr
+    clearpart --all --initlabel --drives=vda
+    autopart --type=btrfs
+
+    # Bazzite OCI container image source from mounted ISO
+    ostreecontainer --url=/run/install/repo/bazzite-nvidia-stable --transport=oci --no-signature-verification
+
+    # User setup
+    rootpw --plaintext bazzite
+    user --name=bazzite --password=bazzite --plaintext --groups=wheel
+
+    # Post-installation automation
+    %post --log=/root/post-install.log
+    mkdir -p /root/.ssh /home/bazzite/.ssh
+    chmod 700 /root/.ssh /home/bazzite/.ssh
+
+    cat << 'KEY_EOF' > /root/.ssh/authorized_keys
+    ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOFKVjxv8n0adhZ3ls90JAweiA9S0RXxC63JQLbV6b1/ bar2sek@users.noreply.github.com
+    KEY_EOF
+
+    cp /root/.ssh/authorized_keys /home/bazzite/.ssh/authorized_keys
+    chmod 600 /root/.ssh/authorized_keys /home/bazzite/.ssh/authorized_keys
+    chown -R bazzite:bazzite /home/bazzite/.ssh
+
+    echo "bazzite ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/bazzite
+    chmod 440 /etc/sudoers.d/bazzite
+
+    mkdir -p /etc/ssh/sshd_config.d
+    echo "PermitRootLogin yes" > /etc/ssh/sshd_config.d/01-permitroot.conf
+
+    systemctl enable sshd
+    systemctl enable qemu-guest-agent
+    %end
+
+    reboot

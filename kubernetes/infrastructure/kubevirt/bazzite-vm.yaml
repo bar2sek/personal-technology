@@ -1,18 +1,18 @@
 apiVersion: kubevirt.io/v1
 kind: VirtualMachine
 metadata:
-  name: windows11-gaming-vm
+  name: bazzite-gaming-vm
   namespace: vms
   labels:
-    app: windows11-gaming
-    special: windows11-gaming
+    app: bazzite-gaming
+    special: bazzite-gaming
 spec:
   runStrategy: Always
   template:
     metadata:
       labels:
-        app: windows11-gaming
-        kubevirt.io/domain: windows11-gaming-vm
+        app: bazzite-gaming
+        kubevirt.io/domain: bazzite-gaming-vm
     spec:
       nodeSelector:
         kubernetes.io/hostname: pc-node-05
@@ -29,24 +29,11 @@ spec:
             memory: 16Gi
         devices:
           disks:
-            # 1. Windows 11 IoT Enterprise LTSC 2024 Installation Media
-            - name: install-iso
-              bootOrder: 1
-              cdrom:
-                bus: sata
-            # 2. Primary OS Target NVMe Block Device (Ceph NVMe Pool)
+            # Primary OS Target NVMe Block Device (Ceph NVMe Pool)
             - name: rootdisk
-              bootOrder: 2
+              bootOrder: 1
               disk:
                 bus: virtio
-            # 3. Fedora/Red Hat Signed VirtIO Drivers
-            - name: virtio-drivers
-              cdrom:
-                bus: sata
-            # 4. Automated Unattended Setup (Autounattend.xml + WinRM)
-            - name: sysprep
-              cdrom:
-                bus: sata
           interfaces:
             - name: default
               masquerade: {}
@@ -60,36 +47,9 @@ spec:
             - type: tablet
               bus: usb
               name: tablet
-          tpm:
-            persistent: true
-        clock:
-          utc: {}
-          timer:
-            hpet:
-              present: false
-            pit:
-              tickPolicy: delay
-            rtc:
-              tickPolicy: catchup
-            hyperv: {}
         features:
           acpi: {}
           apic: {}
-          hyperv:
-            relaxed: {}
-            vapic: {}
-            spinlocks:
-              spinlocks: 8191
-            synic: {}
-            synictimer:
-              direct: {}
-            reset: {}
-            frequencies: {}
-            reenlightenment: {}
-            tlbflush: {}
-            ipi: {}
-          smm:
-            enabled: true
         firmware:
           bootloader:
             efi:
@@ -98,37 +58,29 @@ spec:
         - name: default
           pod: {}
       volumes:
-        # NVMe 250Gi PVC
+        # NVMe 250Gi PVC on Ceph NVMe pool
         - name: rootdisk
           persistentVolumeClaim:
             claimName: windows-gaming-nvme-pvc
-        # Windows 11 IoT LTSC ISO
-        - name: install-iso
-          persistentVolumeClaim:
-            claimName: win11-ltsc-iso
-        # VirtIO drivers
-        - name: virtio-drivers
-          containerDisk:
-            image: quay.io/kubevirt/virtio-container-disk:v1.9.0
-        # Sysprep automated configuration
-        - name: sysprep
-          sysprep:
-            configMap:
-              name: windows11-sysprep-config
 ---
-# Dedicated MetalLB LAN VIP for Sunshine Game Streaming, WinRM & RDP
+# Dedicated MetalLB LAN VIP for Sunshine Game Streaming & SSH
 apiVersion: v1
 kind: Service
 metadata:
-  name: windows11-gaming-lan
+  name: bazzite-gaming-lan
   namespace: vms
   annotations:
-    metallb.universe.tf/loadBalancerIPs: 10.10.20.55
+    metallb.universe.tf/loadBalancerIPs: 10.10.20.52
 spec:
   type: LoadBalancer
   selector:
-    kubevirt.io/domain: windows11-gaming-vm
+    kubevirt.io/domain: bazzite-gaming-vm
   ports:
+    # SSH Remote Shell / Ansible Automation
+    - name: ssh
+      port: 22
+      targetPort: 22
+      protocol: TCP
     # Sunshine Web Configuration UI
     - name: sunshine-ui
       port: 47990
@@ -174,17 +126,3 @@ spec:
       port: 48002
       targetPort: 48002
       protocol: UDP
-    # Windows Remote Management (Ansible)
-    - name: winrm-http
-      port: 5985
-      targetPort: 5985
-      protocol: TCP
-    - name: winrm-https
-      port: 5986
-      targetPort: 5986
-      protocol: TCP
-    # Remote Desktop Protocol (RDP)
-    - name: rdp
-      port: 3389
-      targetPort: 3389
-      protocol: TCP
