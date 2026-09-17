@@ -12,12 +12,46 @@
       ansible.builtin.debug:
         var: nvidia_smi.stdout_lines
 
+    - name: Enable systemd lingering for user services
+      ansible.builtin.command: loginctl enable-linger bazzite
+      become: true
+      args:
+        creates: /var/lib/systemd/linger/bazzite
+
+    - name: Configure SDDM autologin for bazzite user
+      become: true
+      ansible.builtin.copy:
+        dest: /etc/sddm.conf.d/autologin.conf
+        content: |
+          [Autologin]
+          User=bazzite
+          Session=plasma.desktop
+          Relogin=true
+        owner: root
+        group: root
+        mode: '0644'
+      register: sddm_autologin
+
+    - name: Restart SDDM to start desktop session
+      become: true
+      ansible.builtin.systemd:
+        name: sddm
+        state: restarted
+      when: sddm_autologin.changed
+
+    - name: Wait for Wayland session to initialize
+      ansible.builtin.wait_for:
+        path: /run/user/1000/wayland-0
+        timeout: 30
+      when: sddm_autologin.changed
+      ignore_errors: true
+
     - name: Ensure Sunshine service is enabled and running
       ansible.builtin.systemd:
         name: sunshine
         scope: user
         enabled: true
-        state: started
+        state: restarted
       ignore_errors: true
 
     - name: Check Steam and Flatpak gaming status

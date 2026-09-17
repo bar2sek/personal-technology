@@ -43,7 +43,7 @@ resource "unifi_dns_record" "agy" {
 resource "unifi_dns_record" "gaming" {
   name        = "gaming.${var.public_domain}"
   record_type = "A"
-  value       = "10.10.20.55"
+  value       = "10.10.20.52"
   ttl         = "300s"
 }
 
