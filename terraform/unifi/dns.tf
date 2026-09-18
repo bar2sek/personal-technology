@@ -54,5 +54,12 @@ resource "unifi_dns_record" "printer" {
   ttl         = "300s"
 }
 
+resource "unifi_dns_record" "printing" {
+  name        = "printing.${var.public_domain}"
+  record_type = "A"
+  value       = "10.10.20.20"
+  ttl         = "300s"
+}
+
 
 

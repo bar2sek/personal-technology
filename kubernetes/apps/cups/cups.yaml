@@ -73,6 +73,8 @@ spec:
               value: "yes"
             - name: CUPS_LPADMIN_PRINTER1
               value: "lpadmin -p Brother_DCP-7065DN -D 'Brother DCP-7065DN' -L 'Homelab Rack' -m drv:///brlaser.drv/br7065d.ppd -v socket://10.0.1.25:9100 -E"
+            - name: PRE_INIT_HOOK
+              value: "sed -i '/^Port 631/d' /etc/cups/cupsd.conf || true; sed -i '/^ServerAlias /d' /etc/cups/cupsd.conf || true; echo 'ServerAlias *' >> /etc/cups/cupsd.conf"
             - name: AVAHI_IPV6
               value: "no"
           ports:

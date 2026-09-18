@@ -78,4 +78,9 @@ output "local_dns_printer" {
   description = "Local split-horizon DNS record for Brother DCP-7065DN Printer"
 }
 
+output "local_dns_printing" {
+  value       = "${unifi_dns_record.printing.name} -> ${unifi_dns_record.printing.value}"
+  description = "Local split-horizon DNS record for CUPS AirPrint Bridge"
+}
+
 

@@ -13,6 +13,7 @@ import json
 import zlib
 import struct
 import shutil
+import subprocess
 
 STEAM_DIR = os.path.expanduser("~/.local/share/Steam")
 COMPAT_PREFIX_ID = "3234450451"
@@ -199,35 +200,56 @@ def update_config_vdf(config_path: str, appids: list):
 
     shutil.copy2(config_path, config_path + ".bak")
 
-    compat_marker = '"CompatToolMapping"\n\t\t\t\t{'
-    if compat_marker not in content:
-        compat_marker = '"CompatToolMapping"\n\t\t{'
-
-    if compat_marker not in content:
+    idx = content.find('"CompatToolMapping"')
+    if idx == -1:
         print("[-] Could not find CompatToolMapping block in config.vdf")
         return
 
-    new_blocks = []
-    for appid, name in appids:
-        if f'"{appid}"' not in content:
-            block = (
-                f'\n\t\t\t\t\t"{appid}"\n'
+    brace_start = content.find("{", idx)
+    if brace_start == -1:
+        return
+
+    depth = 1
+    pos = brace_start + 1
+    while pos < len(content) and depth > 0:
+        if content[pos] == "{":
+            depth += 1
+        elif content[pos] == "}":
+            depth -= 1
+        pos += 1
+
+    compat_block = content[brace_start:pos]
+
+    # Map global default ("0") + every game AppID
+    targets = [("0", "Global Default")] + [
+        (str(aid), name) for aid, name in appids
+    ]
+
+    new_entries = []
+    for aid, name in targets:
+        if f'"{aid}"' not in compat_block:
+            entry = (
+                f'\n\t\t\t\t\t"{aid}"\n'
                 f'\t\t\t\t\t{{\n'
                 f'\t\t\t\t\t\t"name"\t\t"GE-Proton11-7-x86_64"\n'
                 f'\t\t\t\t\t\t"config"\t\t""\n'
                 f'\t\t\t\t\t\t"priority"\t\t"250"\n'
                 f'\t\t\t\t\t}}'
             )
-            new_blocks.append(block)
-            print(f"  [+] Mapped {name} (AppID: {appid}) to GE-Proton11-7-x86_64")
+            new_entries.append(entry)
+            print(f"  [+] Mapped {name} (AppID: {aid}) to GE-Proton11-7-x86_64")
 
-    if new_blocks:
-        content = content.replace(compat_marker, compat_marker + "".join(new_blocks), 1)
+    if new_entries:
+        content = (
+            content[:brace_start + 1]
+            + "".join(new_entries)
+            + content[brace_start + 1:]
+        )
         with open(config_path, "w", encoding="utf-8") as f:
             f.write(content)
         print(f"[✔] Successfully updated {config_path}")
     else:
-        print("[*] All games already mapped in config.vdf")
+        print("[*] All games already mapped in CompatToolMapping")
 
 
 def update_compatdata_symlinks(appids: list):
@@ -290,6 +312,7 @@ def main():
         print("    Ensure Battle.net has been installed first.")
         sys.exit(1)
 
+    # Find all shortcuts.vdf files under userdata/*/config/
     shortcuts_pattern = os.path.join(STEAM_DIR, "userdata/*/config/shortcuts.vdf")
     matched_files = glob.glob(shortcuts_pattern)
 
