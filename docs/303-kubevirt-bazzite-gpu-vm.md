@@ -38,7 +38,7 @@ graph TD
     end
 
     subgraph Storage ["Rook-Ceph Distributed Storage"]
-        CephNVMe["250Gi Ceph NVMe Block PVC (rook-ceph-block-nvme)"]
+        CephNVMe["1000Gi (1 TiB) Ceph NVMe Block PVC (rook-ceph-block-nvme)"]
     end
 
     subgraph Networking ["Homelab Network Fabric"]

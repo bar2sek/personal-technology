@@ -59,7 +59,7 @@ spec:
         - name: default
           pod: {}
       volumes:
-        # NVMe 250Gi PVC on Ceph NVMe pool
+        # NVMe 1000Gi PVC on Ceph NVMe pool
         - name: rootdisk
           persistentVolumeClaim:
             claimName: windows-gaming-nvme-pvc
