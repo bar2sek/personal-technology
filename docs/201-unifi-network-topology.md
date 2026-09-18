@@ -87,6 +87,7 @@ graph TD
     USW24_P4["USW-24-G2 Port 4 (1G RJ45)"] -->|1G RJ45| SM3_IPMI["sm-node-03 IPMI Port"]
     USW24_P5["USW-24-G2 Port 5 (1G RJ45)"] -->|1G RJ45| PC4_1G["pc-node-04 1GbE Onboard"]
     USW24_P6["USW-24-G2 Port 6 (1G RJ45)"] -->|1G RJ45| PC5_USB["pc-node-05 1GbE USB Adapter"]
+    USW24_P23["USW-24-G2 Port 23 (100M RJ45)"] -->|10/100M RJ45| BROTHER["Brother DCP-7065DN (10.0.1.25)"]
 ```
 
 ---

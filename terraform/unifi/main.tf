@@ -110,3 +110,12 @@ resource "unifi_network" "iot_network" {
   }
 }
 
+# 8. Client Reservations: Brother DCP-7065DN Laser Printer (USW-24-G2 Port 23)
+resource "unifi_client" "brother_printer" {
+  mac            = var.printer_mac_address
+  name           = "Brother DCP-7065DN"
+  fixed_ip       = var.printer_ip
+  allow_existing = true
+  note           = "Brother Laser Printer on USW-24-G2 Port 23"
+}
+

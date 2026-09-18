@@ -74,3 +74,15 @@ variable "sm_node_03_ipmi_mac" {
   description = "sm-node-03 (main01) Supermicro IPMI BMC MAC"
   default     = "3c:ec:ef:5b:9a:da"
 }
+
+variable "printer_ip" {
+  type        = string
+  description = "Static IP address for Brother DCP-7065DN laser printer"
+  default     = "10.0.1.25"
+}
+
+variable "printer_mac_address" {
+  type        = string
+  description = "MAC address for Brother DCP-7065DN laser printer (USW-24-G2 Port 23)"
+  default     = "30:05:5c:18:d8:79"
+}

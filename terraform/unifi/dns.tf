@@ -47,5 +47,12 @@ resource "unifi_dns_record" "gaming" {
   ttl         = "300s"
 }
 
+resource "unifi_dns_record" "printer" {
+  name        = "printer.${var.public_domain}"
+  record_type = "A"
+  value       = var.printer_ip
+  ttl         = "300s"
+}
+
 
 
