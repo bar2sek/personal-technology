@@ -299,4 +299,19 @@ To play Blizzard titles (Diablo IV, World of Warcraft, Overwatch 2) directly ins
      * Name: `Battle.net`
      * Target: `"/home/bazzite/.local/share/Steam/steamapps/compatdata/<compat_id>/pfx/drive_c/Program Files (x86)/Battle.net/Battle.net Launcher.exe"`
      * Start In: `"/home/bazzite/.local/share/Steam/steamapps/compatdata/<compat_id>/pfx/drive_c/Program Files (x86)/Battle.net/"`
+     * Launch Options: `DXVK_NVAPI_DRIVER_VERSION=59571 %command%`
+
+---
+
+## ⚠️ Troubleshooting & Gotchas
+
+### Diablo IV / Blizzard "Graphics Drivers Out of Date" Warning
+* **Root Cause**: Blizzard's game engine performs a strict check against Windows NVIDIA driver version numbers (e.g. demanding $\ge 595.71$). Under Linux/Proton, DXVK-NVAPI queries the host kernel driver (`580.178.04`) and maps it to `580.99`. Because $580.99 < 595.71$, Diablo IV halts with an out-of-date error despite the RTX 4070 hardware acceleration being fully functional.
+* **Resolution**:
+  1. **DXVK-NVAPI Version Override**: Set `DXVK_NVAPI_DRIVER_VERSION=59571` in `/etc/environment` or in the Steam shortcut's **Launch Options** (`DXVK_NVAPI_DRIVER_VERSION=59571 %command%`).
+  2. **In-Launcher Driver Bypass**: Inside Battle.net, click the gear icon next to **Play** on Diablo IV $\rightarrow$ **Game Settings** $\rightarrow$ check **Additional command line arguments** $\rightarrow$ add:
+     ```text
+     -bypassgpudrivercheck
+     ```
+
 

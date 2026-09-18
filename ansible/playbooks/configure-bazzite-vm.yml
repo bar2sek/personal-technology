@@ -50,6 +50,14 @@
         group: root
         mode: '0644'
 
+    - name: Ensure DXVK_NVAPI_DRIVER_VERSION is configured for Proton games
+      become: true
+      ansible.builtin.lineinfile:
+        path: /etc/environment
+        line: "DXVK_NVAPI_DRIVER_VERSION=59571"
+        regexp: "^DXVK_NVAPI_DRIVER_VERSION="
+        state: present
+
     - name: Add bazzite user to video, input, and render groups
       become: true
       ansible.builtin.user:
