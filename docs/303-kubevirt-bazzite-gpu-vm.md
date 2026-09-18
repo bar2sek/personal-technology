@@ -275,3 +275,28 @@ just bazzite-setup
 # SSH directly into the VM
 ssh bazzite@10.10.20.52 "nvidia-smi"
 ```
+
+---
+
+## 🎮 Step 6: Non-Steam Blizzard / Battle.net Setup (GE-Proton)
+
+To play Blizzard titles (Diablo IV, World of Warcraft, Overwatch 2) directly inside Steam without third-party launcher bloat:
+
+1. **Automated Prerequisites via Ansible**:
+   Running `just bazzite-setup` automatically:
+   * Downloads and installs the latest **GE-Proton** (e.g. `GE-Proton11-7-x86_64`) into `/home/bazzite/.local/share/Steam/compatibilitytools.d/`.
+   * Pre-stages the official `Battle.net-Setup.exe` into `/home/bazzite/Downloads/`.
+2. **Initial Setup in Steam (via Moonlight)**:
+   * Restart Steam so it detects the newly placed `GE-Proton11-7` runner in `compatibilitytools.d`.
+   * In the top menu, select **Games** $\rightarrow$ **Add a Non-Steam Game to My Library...**
+   * Click **Browse...**, select `/home/bazzite/Downloads/Battle.net-Setup.exe`, and click **Add Selected Programs**.
+   * In your Steam Library, right-click `Battle.net-Setup.exe` $\rightarrow$ **Properties** $\rightarrow$ **Compatibility**:
+     * Check **Force the use of a specific Steam Play compatibility tool**.
+     * Select **GE-Proton11-7** from the dropdown.
+   * Click **Play** to run the Blizzard installer and complete the setup wizard.
+3. **Switch Shortcut to Battle.net Launcher**:
+   * Once installation finishes, right-click the shortcut in Steam $\rightarrow$ **Properties**:
+     * Name: `Battle.net`
+     * Target: `"/home/bazzite/.local/share/Steam/steamapps/compatdata/<compat_id>/pfx/drive_c/Program Files (x86)/Battle.net/Battle.net Launcher.exe"`
+     * Start In: `"/home/bazzite/.local/share/Steam/steamapps/compatdata/<compat_id>/pfx/drive_c/Program Files (x86)/Battle.net/"`
+

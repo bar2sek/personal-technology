@@ -73,3 +73,46 @@
     - name: Display Installed Gaming Packages
       ansible.builtin.debug:
         var: flatpak_list.stdout_lines
+
+    - name: Ensure user Downloads directory exists
+      ansible.builtin.file:
+        path: /home/bazzite/Downloads
+        state: directory
+        owner: bazzite
+        group: bazzite
+        mode: '0755'
+
+    - name: Pre-stage official Battle.net setup installer
+      ansible.builtin.get_url:
+        url: "https://www.battle.net/download/getInstallerForGame?os=win&gameProgram=BATTLENET_APP&version=Live"
+        dest: /home/bazzite/Downloads/Battle.net-Setup.exe
+        owner: bazzite
+        group: bazzite
+        mode: '0755'
+
+    - name: Ensure Steam compatibilitytools.d directory exists
+      ansible.builtin.file:
+        path: /home/bazzite/.local/share/Steam/compatibilitytools.d
+        state: directory
+        owner: bazzite
+        group: bazzite
+        mode: '0755'
+
+    - name: Download and install latest GE-Proton compatibility runner
+      ansible.builtin.unarchive:
+        src: "https://github.com/GloriousEggroll/proton-ge-custom/releases/download/GE-Proton11-7/GE-Proton11-7-x86_64.tar.gz"
+        dest: /home/bazzite/.local/share/Steam/compatibilitytools.d/
+        remote_src: true
+        creates: /home/bazzite/.local/share/Steam/compatibilitytools.d/GE-Proton11-7-x86_64
+        owner: bazzite
+        group: bazzite
+
+    - name: Verify installed Steam compatibility tools
+      ansible.builtin.command: ls -la /home/bazzite/.local/share/Steam/compatibilitytools.d/
+      register: compat_tools
+      changed_when: false
+
+    - name: Display Installed Compatibility Tools
+      ansible.builtin.debug:
+        var: compat_tools.stdout_lines
+
