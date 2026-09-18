@@ -300,6 +300,16 @@ To play Blizzard titles (Diablo IV, World of Warcraft, Overwatch 2) directly ins
      * Target: `"/home/bazzite/.local/share/Steam/steamapps/compatdata/<compat_id>/pfx/drive_c/Program Files (x86)/Battle.net/Battle.net Launcher.exe"`
      * Start In: `"/home/bazzite/.local/share/Steam/steamapps/compatdata/<compat_id>/pfx/drive_c/Program Files (x86)/Battle.net/"`
      * Launch Options: `DXVK_NVAPI_DRIVER_VERSION=59571 %command%`
+4. **Automated Steam Library Integration (`sync-steam-shortcuts.py`)**:
+   * Running `just bazzite-setup` automatically discovers installed Blizzard games in the Battle.net prefix and registers distinct, first-class Steam shortcuts for them:
+     * **Diablo IV** (`--exec="launch Fen"`)
+     * **StarCraft II** (`--exec="launch S2"`)
+     * **Warcraft III** (`--exec="launch W3"`)
+   * **Seamless Authentication & Zero Overhead**:
+     * Automatically assigns **GE-Proton11-7** via `config.vdf`.
+     * Symlinks each game's `compatdata/<appid>` to the primary Battle.net prefix (`3234450451`) to share DirectX shaders, settings, and credentials without duplicating storage.
+     * Tunes `Battle.net.config` with `"GameLaunchWindowBehavior": "2"` (exits Battle.net completely once the game starts) and `"HardwareAcceleration": "false"` (prevents CEF interface deadlocks).
+
 
 ---
 

@@ -124,3 +124,31 @@
       ansible.builtin.debug:
         var: compat_tools.stdout_lines
 
+    - name: Ensure user local bin directory exists
+      ansible.builtin.file:
+        path: /home/bazzite/.local/bin
+        state: directory
+        owner: bazzite
+        group: bazzite
+        mode: '0755'
+
+    - name: Deploy Steam shortcut synchronization script
+      ansible.builtin.copy:
+        src: ../files/sync_steam_shortcuts.py
+        dest: /home/bazzite/.local/bin/sync-steam-shortcuts.py
+        owner: bazzite
+        group: bazzite
+        mode: '0755'
+
+    - name: Synchronize installed Blizzard games into Steam shortcuts
+      ansible.builtin.command: python3 /home/bazzite/.local/bin/sync-steam-shortcuts.py
+      register: sync_shortcuts_out
+      changed_when: "'[✔]' in sync_shortcuts_out.stdout"
+      failed_when: false
+
+    - name: Display Steam Shortcut Sync Results
+      ansible.builtin.debug:
+        var: sync_shortcuts_out.stdout_lines
+      when: sync_shortcuts_out.stdout_lines is defined
+
+
