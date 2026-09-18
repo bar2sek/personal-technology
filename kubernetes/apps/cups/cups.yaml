@@ -1,0 +1,108 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: printing
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: privileged
+    pod-security.kubernetes.io/warn: privileged
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cups-config-pvc
+  namespace: printing
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: rook-ceph-block
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: airprint-bridge
+  namespace: printing
+  labels:
+    app: airprint-bridge
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: airprint-bridge
+  template:
+    metadata:
+      labels:
+        app: airprint-bridge
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      nodeSelector:
+        kubernetes.io/hostname: pc-node-04
+      initContainers:
+        - name: init-cups-config
+          image: drpsychick/airprint-bridge:latest
+          command:
+            - /bin/sh
+            - -c
+            - |
+              if [ ! -f /etc/cups-storage/cups-files.conf ]; then
+                echo "Seeding initial CUPS configuration..."
+                cp -rn /etc/cups/* /etc/cups-storage/ || true
+              fi
+          volumeMounts:
+            - mountPath: /etc/cups-storage
+              name: cups-config
+      containers:
+        - name: cups
+          image: drpsychick/airprint-bridge:latest
+          env:
+            - name: TZ
+              value: "America/Chicago"
+            - name: CUPS_ADMIN_USER
+              value: "admin"
+            - name: CUPS_ADMIN_PASSWORD
+              value: "homelab"
+            - name: CUPS_WEBINTERFACE
+              value: "yes"
+            - name: CUPS_REMOTE_ADMIN
+              value: "yes"
+            - name: CUPS_LPADMIN_PRINTER1
+              value: "lpadmin -p Brother_DCP-7065DN -D 'Brother DCP-7065DN' -L 'Homelab Rack' -m drv:///brlaser.drv/br7065d.ppd -v socket://10.0.1.25:9100 -E"
+            - name: AVAHI_IPV6
+              value: "no"
+          ports:
+            - containerPort: 631
+              name: ipp
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - mountPath: /etc/cups
+              name: cups-config
+      volumes:
+        - name: cups-config
+          persistentVolumeClaim:
+            claimName: cups-config-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cups-service
+  namespace: printing
+spec:
+  type: ClusterIP
+  ports:
+    - port: 631
+      targetPort: 631
+      name: ipp
+  selector:
+    app: airprint-bridge
