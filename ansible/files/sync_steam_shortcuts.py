@@ -189,6 +189,9 @@ def update_shortcuts_vdf(shortcuts_path: str):
     return appids
 
 
+PROTON_TOOL = "GE-Proton10-34"
+
+
 def update_config_vdf(config_path: str, appids: list):
     if not os.path.exists(config_path):
         print(f"[-] config.vdf not found at {config_path}")
@@ -219,37 +222,45 @@ def update_config_vdf(config_path: str, appids: list):
         pos += 1
 
     compat_block = content[brace_start:pos]
+    updated_block = compat_block
 
+    import re
     # Map global default ("0") + every game AppID
     targets = [("0", "Global Default")] + [
         (str(aid), name) for aid, name in appids
     ]
 
-    new_entries = []
     for aid, name in targets:
-        if f'"{aid}"' not in compat_block:
-            entry = (
+        aid_pattern = re.compile(rf'"{aid}"\s*\{{[^}}]*"name"\s*"([^"]+)"[^}}]*\}}', re.DOTALL)
+        match = aid_pattern.search(updated_block)
+        if match:
+            current_tool = match.group(1)
+            if current_tool != PROTON_TOOL:
+                old_sub = match.group(0)
+                new_sub = old_sub.replace(f'"{current_tool}"', f'"{PROTON_TOOL}"')
+                updated_block = updated_block.replace(old_sub, new_sub)
+                print(f"  [+] Updated {name} (AppID: {aid}) from {current_tool} to {PROTON_TOOL}")
+        else:
+            new_entry = (
                 f'\n\t\t\t\t\t"{aid}"\n'
                 f'\t\t\t\t\t{{\n'
-                f'\t\t\t\t\t\t"name"\t\t"GE-Proton11-7-x86_64"\n'
+                f'\t\t\t\t\t\t"name"\t\t"{PROTON_TOOL}"\n'
                 f'\t\t\t\t\t\t"config"\t\t""\n'
                 f'\t\t\t\t\t\t"priority"\t\t"250"\n'
                 f'\t\t\t\t\t}}'
             )
-            new_entries.append(entry)
-            print(f"  [+] Mapped {name} (AppID: {aid}) to GE-Proton11-7-x86_64")
+            last_brace = updated_block.rfind("}")
+            if last_brace != -1:
+                updated_block = updated_block[:last_brace] + new_entry + "\n\t\t\t\t" + updated_block[last_brace:]
+                print(f"  [+] Mapped {name} (AppID: {aid}) to {PROTON_TOOL}")
 
-    if new_entries:
-        content = (
-            content[:brace_start + 1]
-            + "".join(new_entries)
-            + content[brace_start + 1:]
-        )
+    if updated_block != compat_block:
+        content = content[:brace_start] + updated_block + content[pos:]
         with open(config_path, "w", encoding="utf-8") as f:
             f.write(content)
         print(f"[✔] Successfully updated {config_path}")
     else:
-        print("[*] All games already mapped in CompatToolMapping")
+        print(f"[*] All games already mapped to {PROTON_TOOL} in CompatToolMapping")
 
 
 def update_compatdata_symlinks(appids: list):

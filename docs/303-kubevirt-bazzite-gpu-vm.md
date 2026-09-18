@@ -284,15 +284,15 @@ To play Blizzard titles (Diablo IV, World of Warcraft, Overwatch 2) directly ins
 
 1. **Automated Prerequisites via Ansible**:
    Running `just bazzite-setup` automatically:
-   * Downloads and installs the latest **GE-Proton** (e.g. `GE-Proton11-7-x86_64`) into `/home/bazzite/.local/share/Steam/compatibilitytools.d/`.
+   * Downloads and installs the latest stable **GE-Proton** (`GE-Proton10-34`) into `/home/bazzite/.local/share/Steam/compatibilitytools.d/`.
    * Pre-stages the official `Battle.net-Setup.exe` into `/home/bazzite/Downloads/`.
 2. **Initial Setup in Steam (via Moonlight)**:
-   * Restart Steam so it detects the newly placed `GE-Proton11-7` runner in `compatibilitytools.d`.
+   * Restart Steam so it detects the newly placed `GE-Proton10-34` runner in `compatibilitytools.d`.
    * In the top menu, select **Games** $\rightarrow$ **Add a Non-Steam Game to My Library...**
    * Click **Browse...**, select `/home/bazzite/Downloads/Battle.net-Setup.exe`, and click **Add Selected Programs**.
    * In your Steam Library, right-click `Battle.net-Setup.exe` $\rightarrow$ **Properties** $\rightarrow$ **Compatibility**:
      * Check **Force the use of a specific Steam Play compatibility tool**.
-     * Select **GE-Proton11-7** from the dropdown.
+     * Select **GE-Proton10-34** from the dropdown.
    * Click **Play** to run the Blizzard installer and complete the setup wizard.
 3. **Switch Shortcut to Battle.net Launcher**:
    * Once installation finishes, right-click the shortcut in Steam $\rightarrow$ **Properties**:
@@ -306,7 +306,7 @@ To play Blizzard titles (Diablo IV, World of Warcraft, Overwatch 2) directly ins
      * **StarCraft II** (`--exec="launch S2"`)
      * **Warcraft III** (`--exec="launch W3"`)
    * **Seamless Authentication & Zero Overhead**:
-     * Automatically assigns **GE-Proton11-7** via `config.vdf`.
+     * Automatically assigns **GE-Proton10-34** via `config.vdf`.
      * Symlinks each game's `compatdata/<appid>` to the primary Battle.net prefix (`3234450451`) to share DirectX shaders, settings, and credentials without duplicating storage.
      * Tunes `Battle.net.config` with `"GameLaunchWindowBehavior": "2"` (exits Battle.net completely once the game starts) and `"HardwareAcceleration": "false"` (prevents CEF interface deadlocks).
 
@@ -314,6 +314,10 @@ To play Blizzard titles (Diablo IV, World of Warcraft, Overwatch 2) directly ins
 ---
 
 ## ⚠️ Troubleshooting & Gotchas
+
+### Steam "An error occurred while launching the game. Compatibility tool failed"
+* **Root Cause**: GE-Proton 11 (`GE-Proton11-x`) mandates **Steam Linux Runtime 4.0** (`steamrt4`, AppID `4183110`), which requires Debian 13 / Python $\ge 3.11$. If Valve's Steam client pulls or lacks the public depot manifest for AppID `4183110`, Steam deletes the runtime directory, causing dependent Proton tools to fail instantly (`unsupported version 0; dependent tool cmdline wrap failed`).
+* **Resolution**: Standardize on **`GE-Proton10-34`**, which natively targets the stable **Steam Linux Runtime 3.0 (sniper)** (AppID `1628350`). Ensure `shortcuts.vdf` and `config.vdf` map games to `GE-Proton10-34`.
 
 ### Diablo IV / Blizzard "Graphics Drivers Out of Date" Warning
 * **Root Cause**: Blizzard's game engine performs a strict check against Windows NVIDIA driver version numbers (e.g. demanding $\ge 595.71$). Under Linux/Proton, DXVK-NVAPI queries the host kernel driver (`580.178.04`) and maps it to `580.99`. Because $580.99 < 595.71$, Diablo IV halts with an out-of-date error despite the RTX 4070 hardware acceleration being fully functional.

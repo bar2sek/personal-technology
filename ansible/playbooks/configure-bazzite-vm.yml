@@ -106,12 +106,12 @@
         group: bazzite
         mode: '0755'
 
-    - name: Download and install latest GE-Proton compatibility runner
+    - name: Download and install latest stable GE-Proton compatibility runner
       ansible.builtin.unarchive:
-        src: "https://github.com/GloriousEggroll/proton-ge-custom/releases/download/GE-Proton11-7/GE-Proton11-7-x86_64.tar.gz"
+        src: "https://github.com/GloriousEggroll/proton-ge-custom/releases/download/GE-Proton10-34/GE-Proton10-34.tar.gz"
         dest: /home/bazzite/.local/share/Steam/compatibilitytools.d/
         remote_src: true
-        creates: /home/bazzite/.local/share/Steam/compatibilitytools.d/GE-Proton11-7-x86_64
+        creates: /home/bazzite/.local/share/Steam/compatibilitytools.d/GE-Proton10-34
         owner: bazzite
         group: bazzite
 
