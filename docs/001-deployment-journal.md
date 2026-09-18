@@ -528,6 +528,28 @@ Any AI agent or human operator can review this document to pick up exactly where
       - Automated post-install configuration via Ansible ([`ansible/playbooks/configure-bazzite-vm.yml`](file:///ansible/playbooks/configure-bazzite-vm.yml)) and root [`Justfile`](file:///Justfile) (`just bazzite-setup`, `just bazzite-ping`).
       - Verified Sunshine HTTPS Web UI is active and listening on `https://10.10.20.52:47990` with full AV1/HEVC NVENC hardware encoding ready for Moonlight client pairing.
 
+38. **Brother DCP-7065DN Laser Multifunction & In-Cluster CUPS AirPrint Bridge (`printing.bar2sek.com`)**:
+    - **Physical Hardware & Network Discovery**:
+      - Connected physical Brother DCP-7065DN laser multifunction printer to Port 23 on `USW-24-G2` access switch (100 Mbps link).
+      - Discovered hardware MAC `30:05:5c:18:d8:79`.
+    - **Declarative UniFi Network & DNS Infrastructure**:
+      - Pinned static DHCP reservation `10.0.1.25` on Default corporate LAN in [`terraform/unifi/main.tf`](file:///terraform/unifi/main.tf) via `unifi_client.brother_printer`.
+      - Configured authoritative split-horizon DNS records in [`terraform/unifi/dns.tf`](file:///terraform/unifi/dns.tf):
+        - `printer.bar2sek.com` -> `10.0.1.25` (physical printer web admin & raw JetDirect port 9100).
+        - `printing.bar2sek.com` -> `10.10.20.20` (`pc-node-04` host IP running CUPS).
+      - Updated switch port topology documentation in [`docs/201-unifi-network-topology.md`](file:///docs/201-unifi-network-topology.md).
+    - **Kubernetes CUPS & Avahi AirPrint Bridge Deployment**:
+      - Created dedicated `printing` namespace in [`kubernetes/apps/cups/cups.yaml`](file:///kubernetes/apps/cups/cups.yaml) with privileged pod-security enforcement.
+      - Provisioned persistent storage on `rook-ceph-block` (`cups-config-pvc`, 1Gi) to preserve queues across pod restarts.
+      - Pinned container workload to worker node `pc-node-04` (`nodeSelector: kubernetes.io/hostname: pc-node-04`) to prevent disk pressure on 16GB SATA SuperDOM control planes.
+      - Configured `hostNetwork: true` with Avahi daemon to broadcast link-local Bonjour/mDNS (`_ipp._tcp`, `_universal._sub._ipp._tcp`) across the physical network.
+      - Integrated open-source `brlaser` rasterizer driver (`drv:///brlaser.drv/br7065d.ppd`) targeting raw JetDirect socket `socket://10.0.1.25:9100`.
+      - Solved CUPS port collision (`Listen *:631` vs `Port 631`) and DNS rebinding host restrictions (`ServerAlias *`) via runtime `PRE_INIT_HOOK`.
+    - **Declarative Workstation Configuration & Apple Ecosystem**:
+      - Declaratively provisioned default print queue on MacBook Pro via `system.activationScripts.postActivation` in `nix-mac/templates/flake.nix` targeting `ipp://printing.bar2sek.com:631/printers/Brother_DCP-7065DN`.
+      - Enabled UniFi gateway Multicast DNS (mDNS) reflector for zero-configuration driverless AirPrint discovery on iOS and iPadOS devices.
+      - Documented complete architecture, operational runbook, and diagnostic steps in [`docs/506-cups-airprint-bridge.md`](file:///docs/506-cups-airprint-bridge.md).
+
 ---
 
 ## 🎯 Immediate Next Actions
