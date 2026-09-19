@@ -113,6 +113,10 @@ bazzite-setup:
 bazzite-ping:
     cd ansible && ansible -i inventory/hosts.ini gaming_vms -m ping
 
+# Force restart frozen Bazzite Gaming VM via KubeVirt
+bazzite-restart:
+    virtctl restart --force --grace-period=0 bazzite-gaming-vm -n vms
+
 # ------------------------------------------------------------------------------
 # 5. Local AI (Apple MLX / oMLX on macOS)
 # ------------------------------------------------------------------------------

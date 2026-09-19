@@ -272,8 +272,15 @@ just bazzite-ping
 # Run automated post-install configuration & status check
 just bazzite-setup
 
+# Force reboot / restart the VM if frozen (via Justfile shortcut or virtctl)
+just bazzite-restart
+virtctl restart --force --grace-period=0 bazzite-gaming-vm -n vms
+
 # SSH directly into the VM
 ssh bazzite@10.10.20.52 "nvidia-smi"
+
+# Or SSH directly over KubeVirt API (bypasses LAN/LoadBalancer)
+virtctl ssh bazzite@vmi/bazzite-gaming-vm -n vms --identity-file ~/.ssh/id_ed25519
 ```
 
 ---
@@ -327,5 +334,29 @@ To play Blizzard titles (Diablo IV, World of Warcraft, Overwatch 2) directly ins
      ```text
      -bypassgpudrivercheck
      ```
+
+### Frozen VM / Unresponsive Guest OS or Moonlight Stream
+* **Root Cause**: If the desktop compositor (KDE Plasma/Wayland), graphics driver, or guest kernel locks up, the Moonlight stream freezes and network timeouts occur on `10.10.20.52`. Because the VM is managed by KubeVirt with `spec.runStrategy: Always`, a forced restart can be commanded immediately from the host or Mac.
+* **Resolution**:
+  1. **One-Liner Fast Restart (`virtctl` or `just`)**:
+     ```bash
+     just bazzite-restart
+     # or directly:
+     virtctl restart --force --grace-period=0 bazzite-gaming-vm -n vms
+     ```
+  2. **Alternative (Delete VMI via `kubectl`)**:
+     ```bash
+     kubectl delete vmi bazzite-gaming-vm -n vms
+     ```
+     KubeVirt will automatically terminate the stale launcher pod and start a clean pod with the Ceph NVMe block PVC and RTX 4070 GPU passthrough re-attached.
+  3. **Out-of-Band SSH & Serial Console**:
+     ```bash
+     # Direct SSH tunnel over Kubernetes API (bypasses LAN/LoadBalancer):
+     virtctl ssh bazzite@vmi/bazzite-gaming-vm -n vms --identity-file ~/.ssh/id_ed25519
+
+     # Serial console:
+     virtctl console bazzite-gaming-vm -n vms
+     ```
+
 
 

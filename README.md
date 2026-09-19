@@ -55,7 +55,7 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 ### ⚙️ Section 3: Talos Linux & Cluster Administration
 - [301 - Network PXE Boot & Node Provisioning Instruction Manual](docs/301-pxe-boot-node-provisioning.md)
 - [302 - GitHub Actions ARC Self-Hosted CI/CD](docs/302-github-actions-runner-controller.md)
-- [303 - KubeVirt Windows 11 Gaming VM (RTX 4070 Passthrough)](docs/303-kubevirt-windows-gpu-vm.md)
+- [303 - KubeVirt Bazzite Gaming VM (RTX 4070 Passthrough)](docs/303-kubevirt-bazzite-gpu-vm.md)
 - [304 - Automated Windows VM Setup with Ansible & Chocolatey](docs/304-windows-ansible-automation.md)
 - [305 - KubeVirt `omarchy-vm` Arch Linux VM](docs/305-kubevirt-arch-linux-vm.md)
 - [306 - Hybrid Local/Remote AI Development Architecture (MLX + K8s)](docs/306-hybrid-local-remote-ai-dev.md)
