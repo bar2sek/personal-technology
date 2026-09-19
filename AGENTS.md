@@ -8,7 +8,6 @@ Whether operating at the root vault level or inside any child repository, you **
 
 ## 1. 🚫 Git Commit & Push Policy (Absolute Invariant)
 
-* **Assist with Commit Messages**: When tasks or file modifications are complete, suggest clear, well-structured commit messages following the Conventional Commits standard (provide detailed, short, and atomic options).
 * **DO NOT Commit or Push Changes**: Under **NO circumstances** should the agent execute `git commit` or `git push` inside any repository unless explicitly commanded by the user for root vault configurations.
 * **User Authority**: Only the **USER** is authorized to review diffs, stage files, commit, and push to version control.
 
