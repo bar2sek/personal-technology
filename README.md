@@ -75,6 +75,13 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 - [503 - Mealie Recipe Manager & Meal Planner](docs/503-mealie-recipe-planner.md)
 - [504 - Immich Self-Hosted Photo & Video Backup Platform](docs/504-immich-photo-backup.md)
 - [505 - Home Assistant Smart Home & IoT Automation Platform](docs/505-home-assistant-smart-home.md)
+- [506 - In-Cluster CUPS Network Print Server & AirPrint Bridge](docs/506-cups-airprint-bridge.md)
+
+### 💻 Section 6: Mac AI Workstation Architecture & USB Bootstrap
+- [Workstation Map of Content](nix-mac/Index.md) — Master Workstation Index & Navigation
+- [Declarative macOS Architecture](nix-mac/README.md) — `nix-darwin`, system-as-code & clean runtime principles
+- [Offline Bootstrap Guide](nix-mac/START_HERE.html) — Standalone visual USB setup instructions
+- [Canonical Flake Configuration](nix-mac/templates/flake.nix) — Master `nix-darwin` system definition applied via `just switch`
 
 ---
 
@@ -86,6 +93,12 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 │   ├── provision-aws-account.yml # Automated AWS account provisioning GitOps
 │   ├── terraform-ci.yml       # Multi-directory Terraform lint/validate CI
 │   └── k8s-validate.yml       # YAML and Kubernetes manifest validation
+├── nix-mac/                   # Workstation configuration & USB bootstrap suite
+│   ├── START_HERE.html        # Offline visual bootstrap guide for new Mac setup
+│   ├── START_HERE.txt         # Offline CLI bootstrap instructions
+│   ├── Antigravity.dmg        # (Gitignored offline installer for USB drives)
+│   ├── templates/             # Canonical flake.nix, Justfile & bootstrap scripts
+│   └── *.md                   # Workstation architecture, MLX serving & care guides
 ├── ansible/                   # Ansible configuration management for VMs
 │   ├── ansible.cfg            # WinRM & connection defaults
 │   ├── inventory/             # Windows 11 Gaming VM hosts

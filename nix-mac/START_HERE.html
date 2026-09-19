@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mac AI Workstation - Quick Start Guide</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --card-bg: #161b22;
+      --border: #30363d;
+      --text: #c9d1d9;
+      --heading: #58a6ff;
+      --accent: #2ea043;
+      --code-bg: #090d13;
+      --code-text: #79c0ff;
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f6f8fa;
+        --card-bg: #ffffff;
+        --border: #d0d7de;
+        --text: #24292f;
+        --heading: #0969da;
+        --accent: #1a7f37;
+        --code-bg: #f3f4f6;
+        --code-text: #0550ae;
+      }
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.6;
+      background-color: var(--bg);
+      color: var(--text);
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+    h1, h2, h3 { color: var(--heading); margin-top: 28px; }
+    h1 { border-bottom: 2px solid var(--border); padding-bottom: 12px; }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      margin: 20px 0;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 18px;
+      overflow-x: auto;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 14px;
+      color: var(--code-text);
+    }
+    code {
+      background: var(--code-bg);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    .step-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      background: var(--heading);
+      color: #fff;
+      border-radius: 50%;
+      font-weight: bold;
+      margin-right: 8px;
+    }
+    ul { padding-left: 20px; }
+    li { margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+
+  <h1>🖥️ Mac AI Workstation — Unboxing & Quick Start Guide</h1>
+  <p><span class="badge">M5 Pro 48GB</span> Ready for zero-fiddle Day 1 deployment.</p>
+
+  <div class="card">
+    <h2><span class="step-number">1</span> Physical Preparation (Before Booting)</h2>
+    <ul>
+      <li>Wash hands thoroughly with degreasing soap.</li>
+      <li>Clean keycaps with a microfiber cloth lightly misted with <strong>70% Isopropyl Alcohol</strong>.</li>
+      <li>Dab keycaps with painter's tape to lift any micro-dust.</li>
+      <li>Apply <strong>Barekey</strong> decals with curved fine-point tweezers.</li>
+      <li>Allow 12–24hr contact time before vigorous rubbing.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2><span class="step-number">2</span> Initial macOS Setup Assistant</h2>
+    <ul>
+      <li>Turn on your new Mac and follow the Apple Setup Assistant.</li>
+      <li><strong>Enable FileVault</strong> disk encryption when prompted.</li>
+      <li>Sign into your Apple ID (for iMessage, FaceTime, and Keychain).</li>
+      <li>⚠️ <strong>CRITICAL:</strong> When Apple asks <em>"Store files from Desktop and Documents in iCloud Drive?"</em> &rarr; <strong>UNCHECK THE BOX</strong>.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2><span class="step-number">3</span> 1-Click Bootstrap Installation</h2>
+    <p>Plug in this USB drive, open the default <strong>Terminal</strong> app on your Mac, and run:</p>
+
+    <pre><code>bash /Volumes/*/templates/bootstrap.sh</code></pre>
+
+    <p><em>(If you copied this folder to your Downloads folder instead, run: <code>bash ~/Downloads/Mac\ AI\ Workstation/templates/bootstrap.sh</code>)</em></p>
+
+    <h3>What this single script does automatically:</h3>
+    <ul>
+      <li>Installs Xcode CLI Tools, Homebrew, and Determinate Nix.</li>
+      <li>Installs <strong>Visual Studio Code, Ghostty, Google Drive, Obsidian, OrbStack, AppCleaner, and oMLX</strong>.</li>
+      <li>Installs <strong>JetBrainsMono Nerd Font</strong> system-wide.</li>
+      <li>Auto-configures <strong>Ghostty</strong> (matching fonts, ligatures, Tokyo Night theme).</li>
+      <li>Arranges your <strong>Dock</strong> in your exact 3-section layout (Browsers &rarr; Apple Core &rarr; Dev Tools).</li>
+      <li>Disables browser telemetry on Edge/Brave and sets Google as default search.</li>
+      <li>Purges GarageBand and iMovie bloatware to reclaim <strong>5–8 GB</strong> of SSD space.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2><span class="step-number">4</span> Launching Your Local Qwen 32B Model</h2>
+    <p>Once the bootstrap script completes, download <strong>oMLX.dmg</strong> from <a href="https://github.com/jundot/omlx/releases" target="_blank">github.com/jundot/omlx/releases</a>, drag <code>oMLX.app</code> to <code>/Applications</code>, then run in Terminal:</p>
+    
+    <pre><code>just serve-omlx-32b</code></pre>
+
+    <p>Open <strong>Visual Studio Code</strong> &rarr; Connect via Continue.dev extension to your local model on <code>localhost:8080</code> (<code>Cmd + L</code>, <code>Cmd + I</code>)!</p>
+  </div>
+
+</body>
+</html>

@@ -1,0 +1,61 @@
+================================================================================
+🖥️  MAC AI WORKSTATION — UNBOXING & QUICK START GUIDE (M5 PRO 48GB)
+================================================================================
+
+This USB drive contains your complete declarative workstation configuration.
+Follow these 4 simple steps on Day 1:
+
+--------------------------------------------------------------------------------
+STEP 1: PHYSICAL PREPARATION (BEFORE TURNING ON)
+--------------------------------------------------------------------------------
+1. Clean keycaps with a microfiber cloth lightly misted with 70% Isopropyl Alcohol.
+2. Dab keycaps with painter's tape to lift micro-dust.
+3. Apply Barekey key decals using curved fine-point tweezers.
+4. Allow 12–24hr contact time before vigorous rubbing.
+
+--------------------------------------------------------------------------------
+STEP 2: INITIAL MACOS SETUP ASSISTANT
+--------------------------------------------------------------------------------
+1. Follow the Apple Setup Assistant.
+2. Enable FileVault disk encryption.
+3. Sign into Apple ID (for iMessage, FaceTime, and Keychain).
+4. ⚠️ CRITICAL: When asked "Store files from Desktop and Documents in iCloud Drive?"
+   --> UNCHECK THE BOX! (Keeps your code and local files 100% on your SSD).
+
+--------------------------------------------------------------------------------
+STEP 3: 1-CLICK BOOTSTRAP INSTALLER
+--------------------------------------------------------------------------------
+1. Plug this USB drive into your new Mac.
+2. Open the default "Terminal" application (press Cmd + Space and type "Terminal").
+3. Run the following command and press Enter:
+
+   bash /Volumes/*/templates/bootstrap.sh
+
+   (Or if copied to Downloads: bash ~/Downloads/Mac\ AI\ Workstation/templates/bootstrap.sh)
+
+What this single command does automatically:
+• Installs Xcode CLI Tools, Homebrew, and Determinate Nix.
+• Installs Visual Studio Code, Ghostty, Google Drive, Obsidian, OrbStack, AppCleaner, and oMLX.
+• Installs AWS CLI, Azure CLI, Terraform, Node.js/npm, and uv (isolated Python).
+• Installs JetBrainsMono Nerd Font system-wide.
+• Auto-configures Ghostty & Zsh with Powerlevel10k (Apple icon , Git status, Eza file icons, Bat syntax colors).
+• Arranges your Dock in your exact 3-section layout:
+  [Safari] [Edge] [Brave] | [Messages]...[OneNote] | [Gemini] [Antigravity] [Ghostty] [VS Code] [Obsidian] [OrbStack]
+• Disables browser telemetry on Edge/Brave and sets Google as default search.
+• Purges GarageBand and iMovie bloatware to reclaim ~5–8 GB of SSD space.
+
+--------------------------------------------------------------------------------
+STEP 4: LAUNCH YOUR LOCAL QWEN 32B MODEL
+--------------------------------------------------------------------------------
+1. Download oMLX.dmg from: https://github.com/jundot/omlx/releases
+2. Drag oMLX.app to your Applications folder.
+3. Open Terminal and run:
+
+   just serve-omlx-32b
+
+4. Open Visual Studio Code: Connect via Continue.dev extension to your local model
+   at http://localhost:8080!
+
+================================================================================
+Enjoy your clean, declarative Mac AI Workstation!
+================================================================================

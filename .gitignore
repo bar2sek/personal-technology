@@ -84,3 +84,13 @@ omni-inventory.json
 .LSOverride
 *.swp
 *~
+
+# ------------------------------------------------------------------------------
+# Workstation & Binary Hygiene (nix-mac)
+# ------------------------------------------------------------------------------
+*.dmg
+*.pkg
+*.iso
+result
+result-*
+nix-mac/result*
