@@ -90,41 +90,62 @@ ssh-dev:
 # 3. Terraform Infrastructure as Code
 # ------------------------------------------------------------------------------
 
-# Plan all 6 Terraform roots (unifi, cloudflare, aws, aws_organization, azure, github)
+# Plan all 6 Terraform roots (bootstrap + cloud roots)
 tf-plan-all:
-    @echo "===> Planning UniFi Network..."
-    cd terraform/unifi && terraform plan
-    @echo "===> Planning Cloudflare Tunnels & Access..."
-    cd terraform/cloudflare && terraform plan
+    @echo "===> Planning UniFi Network (Bootstrap)..."
+    cd bootstrap/unifi && terraform plan -parallelism=1
+    @echo "===> Planning Cloudflare Tunnels & Access (Bootstrap)..."
+    cd bootstrap/cloudflare && terraform plan
+    @echo "===> Planning GitHub Multi-Cloud GitOps (Bootstrap)..."
+    cd bootstrap/github && terraform plan
     @echo "===> Planning AWS Foundation Resources..."
     cd terraform/aws && terraform plan
     @echo "===> Planning AWS Organization & Accounts..."
     cd terraform/aws_organization && terraform plan
     @echo "===> Planning Azure Infrastructure & Entra ID..."
     cd terraform/azure && terraform plan
-    @echo "===> Planning GitHub Multi-Cloud GitOps Resources..."
-    cd terraform/github && terraform plan
 
-# Run Terraform plan in a specific directory (usage: just tf-plan unifi)
+# Run Terraform plan in a specific directory (usage: just tf-plan unifi or just tf-plan azure)
 tf-plan dir:
-    cd terraform/{{ dir }} && terraform plan {{ if dir == "unifi" { "-parallelism=1" } else { "" } }}
+    @if [ -d "bootstrap/{{ dir }}" ]; then \
+        cd bootstrap/{{ dir }} && terraform plan {{ if dir == "unifi" { "-parallelism=1" } else { "" } }}; \
+    else \
+        cd terraform/{{ dir }} && terraform plan; \
+    fi
 
-# Run Terraform apply in a specific directory (usage: just tf-apply unifi)
+# Run Terraform apply in a specific directory (usage: just tf-apply unifi or just tf-apply azure)
 tf-apply dir:
-    cd terraform/{{ dir }} && terraform apply {{ if dir == "unifi" { "-parallelism=1" } else { "" } }}
+    @if [ -d "bootstrap/{{ dir }}" ]; then \
+        cd bootstrap/{{ dir }} && terraform apply {{ if dir == "unifi" { "-parallelism=1" } else { "" } }}; \
+    else \
+        cd terraform/{{ dir }} && terraform apply; \
+    fi
 
-# Quick shortcuts for Azure and GitHub
+# Quick shortcuts for Local Bootstrap roots
+tf-plan-unifi:
+    cd bootstrap/unifi && terraform plan -parallelism=1
+
+tf-apply-unifi:
+    cd bootstrap/unifi && terraform apply -parallelism=1
+
+tf-plan-cloudflare:
+    cd bootstrap/cloudflare && terraform plan
+
+tf-apply-cloudflare:
+    cd bootstrap/cloudflare && terraform apply
+
+tf-plan-github:
+    cd bootstrap/github && terraform plan
+
+tf-apply-github:
+    cd bootstrap/github && terraform apply
+
+# Quick shortcuts for Cloud roots
 tf-plan-azure:
     cd terraform/azure && terraform plan
 
 tf-apply-azure:
     cd terraform/azure && terraform apply
-
-tf-plan-github:
-    cd terraform/github && terraform plan
-
-tf-apply-github:
-    cd terraform/github && terraform apply
 
 
 # ------------------------------------------------------------------------------

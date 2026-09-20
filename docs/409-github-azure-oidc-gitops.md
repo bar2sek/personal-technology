@@ -27,7 +27,7 @@ graph TD
     subgraph Repo1["bar2sek/personal-technology (Documentation & IaC Specs)"]
         Vault["Obsidian Vault / Knowledge Base"]
         Docs["Architecture Notes & Playbooks"]
-        TF_Roots["Declarative IaC Definitions (terraform/github, terraform/azure)"]
+        TF_Roots["Declarative IaC Definitions (bootstrap/github, terraform/azure)"]
     end
 
     subgraph Repo2["bar2sek/infra-cloud-deployments (Automated CI/CD Engine)"]
@@ -97,8 +97,8 @@ Entra ID evaluates incoming JWTs against the configured `subject` string:
 
 ## 📦 Declarative Components
 
-### 1. GitHub Infrastructure as Code (`terraform/github/`)
-The deployment repository and its governance are declared in `terraform/github/`:
+### 1. GitHub Infrastructure as Code (`bootstrap/github/`)
+The deployment repository and its governance are declared in `bootstrap/github/`:
 * **`github_repository.infra_cloud_deployments`**: Creates the standalone deployment repo with automated security alerts.
 * **`github_repository_environment.production`**: Enforces branch policies (deployments restricted to `main`).
 * **`github_actions_environment_variable`**: Declaratively sets `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, and `AZURE_SUBSCRIPTION_ID`.

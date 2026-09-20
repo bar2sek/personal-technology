@@ -96,6 +96,10 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 │   ├── provision-aws-account.yml # Automated AWS account provisioning GitOps
 │   ├── terraform-ci.yml       # Multi-directory Terraform lint/validate CI
 │   └── k8s-validate.yml       # YAML and Kubernetes manifest validation
+├── bootstrap/                 # Local workstation bootstrap Terraform roots
+│   ├── github/                # GitHub repository, environments & multi-cloud OIDC variables
+│   ├── unifi/                 # UDM-Pro VLANs (10,20,30,40,50,60,90), firewalls, split-horizon DNS
+│   └── cloudflare/            # Zero Trust Tunnels, DNS, Access SSO, Email Routing
 ├── nix-mac/                   # Workstation configuration & USB bootstrap suite
 │   ├── START_HERE.html        # Offline visual bootstrap guide for new Mac setup
 │   ├── START_HERE.txt         # Offline CLI bootstrap instructions
@@ -135,12 +139,9 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 │       ├── controlplane.yaml  # Supermicro HA control plane (allowSchedulingOnControlPlanes)
 │       ├── storage-worker.yaml# pc-node-04 11-disk bulk HDD storage worker
 │       └── gpu-worker.yaml    # pc-node-05 AM5 Ryzen 7600 + RTX 4070 VFIO passthrough
-└── terraform/                 # Infrastructure as Code
+└── terraform/                 # Multi-cloud Infrastructure as Code (Cloud Target)
     ├── aws/                   # Route53, encrypted S3 backups, EKS Connector role
     ├── aws_organization/      # Multi-account Landing Zone, Control Tower, SSO
     ├── azure/                 # Entra ID App Registrations, Log Analytics, Azure Arc, State Storage
-    ├── cloudflare/            # Zero Trust Tunnels, DNS, Access SSO, Email Routing
-    ├── github/                # GitHub repository, environments & multi-cloud OIDC variables
-    ├── unifi/                 # UDM-Pro VLANs (10,20,30,40,50,60,90), firewalls, profiles
     └── backend-config.example.tf # Remote state configuration reference
 ```
