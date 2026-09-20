@@ -70,6 +70,7 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 - [406 - Floci: In-Cluster Local AWS Cloud Emulator for Terraform & CI/CD](docs/406-floci-local-aws-emulator.md)
 - [407 - Microsoft Entra ID & Authentik Enterprise Identity Federation](docs/407-azure-entra-id-authentik-federation.md)
 - [408 - Azure Arc-Enabled Kubernetes & Zero-Cost Cloud Monitoring](docs/408-azure-arc-hybrid-kubernetes.md)
+- [409 - GitHub Actions & Azure OIDC GitOps Deployment Engine](docs/409-github-azure-oidc-gitops.md)
 
 ### 📦 Section 5: Self-Hosted Application Suite
 - [501 - TeslaMate Vehicle Telemetry & Analytics Platform](docs/501-teslamate-telemetry-deployment.md)
@@ -137,8 +138,9 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 └── terraform/                 # Infrastructure as Code
     ├── aws/                   # Route53, encrypted S3 backups, EKS Connector role
     ├── aws_organization/      # Multi-account Landing Zone, Control Tower, SSO
-    ├── azure/                 # Entra ID App Registrations, Log Analytics, Azure Arc
+    ├── azure/                 # Entra ID App Registrations, Log Analytics, Azure Arc, State Storage
     ├── cloudflare/            # Zero Trust Tunnels, DNS, Access SSO, Email Routing
+    ├── github/                # GitHub repository, environments & multi-cloud OIDC variables
     ├── unifi/                 # UDM-Pro VLANs (10,20,30,40,50,60,90), firewalls, profiles
     └── backend-config.example.tf # Remote state configuration reference
 ```

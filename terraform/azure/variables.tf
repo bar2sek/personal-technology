@@ -57,3 +57,9 @@ variable "daily_quota_gb" {
   type        = number
   default     = 0.16
 }
+
+variable "github_repo_name" {
+  description = "GitHub repository (owner/repo) authorized for OIDC Workload Identity Federation"
+  type        = string
+  default     = "bar2sek/infra-cloud-deployments"
+}

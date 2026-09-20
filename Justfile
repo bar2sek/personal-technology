@@ -90,7 +90,7 @@ ssh-dev:
 # 3. Terraform Infrastructure as Code
 # ------------------------------------------------------------------------------
 
-# Plan all 5 Terraform roots (unifi, cloudflare, aws, aws_organization, azure)
+# Plan all 6 Terraform roots (unifi, cloudflare, aws, aws_organization, azure, github)
 tf-plan-all:
     @echo "===> Planning UniFi Network..."
     cd terraform/unifi && terraform plan
@@ -102,6 +102,8 @@ tf-plan-all:
     cd terraform/aws_organization && terraform plan
     @echo "===> Planning Azure Infrastructure & Entra ID..."
     cd terraform/azure && terraform plan
+    @echo "===> Planning GitHub Multi-Cloud GitOps Resources..."
+    cd terraform/github && terraform plan
 
 # Run Terraform plan in a specific directory (usage: just tf-plan unifi)
 tf-plan dir:
@@ -110,6 +112,19 @@ tf-plan dir:
 # Run Terraform apply in a specific directory (usage: just tf-apply unifi)
 tf-apply dir:
     cd terraform/{{ dir }} && terraform apply {{ if dir == "unifi" { "-parallelism=1" } else { "" } }}
+
+# Quick shortcuts for Azure and GitHub
+tf-plan-azure:
+    cd terraform/azure && terraform plan
+
+tf-apply-azure:
+    cd terraform/azure && terraform apply
+
+tf-plan-github:
+    cd terraform/github && terraform plan
+
+tf-apply-github:
+    cd terraform/github && terraform apply
 
 
 # ------------------------------------------------------------------------------

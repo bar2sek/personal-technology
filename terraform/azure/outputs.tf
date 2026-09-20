@@ -62,3 +62,33 @@ output "entra_group_member_id" {
   description = "Object ID of the homelab standard member security group"
   value       = azuread_group.member.object_id
 }
+
+# ------------------------------------------------------------------------------
+# GitHub Actions CI/CD & Remote State Storage Outputs
+# ------------------------------------------------------------------------------
+
+output "github_actions_client_id" {
+  description = "Client ID for GitHub Actions OIDC Workload Identity Federation (app-azure-github-actions-prod-001)"
+  value       = azuread_application.github_actions.client_id
+}
+
+output "github_actions_sp_object_id" {
+  description = "Enterprise Service Principal Object ID for GitHub Actions"
+  value       = azuread_service_principal.github_actions.object_id
+}
+
+output "tfstate_resource_group_name" {
+  description = "Resource group holding Terraform remote state"
+  value       = azurerm_resource_group.tfstate.name
+}
+
+output "tfstate_storage_account_name" {
+  description = "Storage account name holding Terraform remote state"
+  value       = azurerm_storage_account.tfstate.name
+}
+
+output "tfstate_container_name" {
+  description = "Storage container name for Terraform remote state"
+  value       = azurerm_storage_container.tfstate.name
+}
+

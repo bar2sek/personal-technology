@@ -1,0 +1,14 @@
+# ==============================================================================
+# GitHub Terraform Configuration - Example Variables
+# Copy to terraform.tfvars (gitignored) for local planning or export via ENV:
+# export GITHUB_TOKEN="ghp_xxxxxxxxxxxx"
+# ==============================================================================
+
+github_owner          = "bar2sek"
+repository_name       = "infra-cloud-deployments"
+repository_visibility = "private"
+
+# Azure OIDC Federation Parameters (retrieved from 'terraform/azure' outputs):
+# azure_client_id       = "00000000-0000-0000-0000-000000000000"
+# azure_tenant_id       = "00000000-0000-0000-0000-000000000000"
+# azure_subscription_id = "00000000-0000-0000-0000-000000000000"

@@ -13,8 +13,14 @@ locals {
   data_collection_rule = "dcr-${var.platform}-containerinsights-${var.env}-${var.location_short}-${var.iteration}"
 
   # Standardized Entra ID Application & Service Principal Names
-  app_authentik_name = "app-${var.platform}-authentik-${var.env}-${var.iteration}"
-  sp_authentik_name  = "sp-${var.platform}-authentik-${var.env}-${var.iteration}"
+  app_authentik_name      = "app-${var.platform}-authentik-${var.env}-${var.iteration}"
+  sp_authentik_name       = "sp-${var.platform}-authentik-${var.env}-${var.iteration}"
+  app_github_actions_name = "app-${var.platform}-github-actions-${var.env}-${var.iteration}"
+  sp_github_actions_name  = "sp-${var.platform}-github-actions-${var.env}-${var.iteration}"
+
+  # Standardized Remote State Storage
+  tfstate_rg_name      = "rg-${var.platform}-tfstate-${var.env}-${var.location_short}-${var.iteration}"
+  tfstate_storage_name = "stazutfstate${var.env}${var.location_short}${var.iteration}"
 
   # Standardized IDP Access Groups
   # <idp-source>-<platform>-<product>-<env>-<tenant-4>-<permission-set>

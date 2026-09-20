@@ -64,3 +64,47 @@ resource "azuread_group" "member" {
   security_enabled = true
   description      = "Standard authorized SSO user for self-hosted apps (Immich, Mealie, etc.)"
 }
+
+# ------------------------------------------------------------------------------
+# Entra ID App Registration & OIDC Federation for GitHub Actions CI/CD
+# ------------------------------------------------------------------------------
+
+resource "azuread_application" "github_actions" {
+  display_name     = local.app_github_actions_name
+  sign_in_audience = "AzureADMyOrg"
+  description      = "Workload identity for GitHub Actions CI/CD in ${var.github_repo_name}"
+}
+
+resource "azuread_service_principal" "github_actions" {
+  client_id                    = azuread_application.github_actions.client_id
+  app_role_assignment_required = false
+  description                  = "Enterprise service principal for GitHub Actions deployment runner"
+}
+
+# OIDC Trust for GitHub Environment 'production'
+resource "azuread_application_federated_identity_credential" "github_env_prod" {
+  application_id = azuread_application.github_actions.id
+  display_name   = "github-env-production"
+  description    = "OIDC trust for GitHub Actions production environment deployment"
+  audiences      = ["api://AzureADTokenExchange"]
+  issuer         = "https://token.actions.githubusercontent.com"
+  subject        = "repo:${var.github_repo_name}:environment:production"
+}
+
+# OIDC Trust for Pull Requests (PR Validation & Planning)
+resource "azuread_application_federated_identity_credential" "github_pr" {
+  application_id = azuread_application.github_actions.id
+  display_name   = "github-pull-request"
+  description    = "OIDC trust for GitHub Actions pull request validation and planning"
+  audiences      = ["api://AzureADTokenExchange"]
+  issuer         = "https://token.actions.githubusercontent.com"
+  subject        = "repo:${var.github_repo_name}:pull_request"
+}
+
+# Assign Contributor role on the target Azure Subscription
+resource "azurerm_role_assignment" "github_actions_contributor" {
+  scope                = "/subscriptions/${var.subscription_id}"
+  role_definition_name = "Contributor"
+  principal_id         = azuread_service_principal.github_actions.object_id
+}
+
