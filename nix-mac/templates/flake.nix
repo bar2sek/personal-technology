@@ -150,6 +150,7 @@
         casks = [
           # Browsers
           "brave-browser"
+          "google-chrome"
           "microsoft-edge"
 
           # Productivity, Notes & Keyboards
@@ -162,10 +163,8 @@
 
           # Developer, AI & Remote Access
           "antigravity-ide"
-          "antigravity"
           "ghostty"
           "orbstack"
-          "google-gemini"
           "tailscale-app"
           "moonlight"
         ];
@@ -200,6 +199,7 @@
           persistent-apps = [
             # 1. Browsers (Farthest Left, immediately right of Finder)
             "/System/Cryptexes/App/System/Applications/Safari.app"
+            "/Applications/Google Chrome.app"
             "/Applications/Microsoft Edge.app"
             "/Applications/Brave Browser.app"
 
@@ -216,8 +216,6 @@
             "/Applications/Microsoft OneNote.app"
 
             # 3. Developer & AI Workstation Tools (Farthest Right)
-            "/Applications/Gemini.app"
-            "/Applications/Antigravity.app"
             "/Applications/Antigravity IDE.app"
             "/Applications/Ghostty.app"
             "/Applications/Obsidian.app"
@@ -458,7 +456,6 @@ EOF
 
         # Apply settings to both Antigravity IDE and Code OSS
         for settings_dir in \
-          "$USER_HOME/Library/Application Support/Antigravity/User" \
           "$USER_HOME/Library/Application Support/Antigravity IDE/User" \
           "$USER_HOME/Library/Application Support/Code/User"; do
           mkdir -p "$settings_dir"
