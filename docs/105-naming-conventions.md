@@ -30,7 +30,7 @@ All lowercase split with dashes:
 ```
 
 ### idp-source
-`authentik` indicates an Authentik native group. `awsid` indicates AWS Identity Center group.
+`authentik` indicates an Authentik native group. `awsid` indicates AWS Identity Center group. `entraid` indicates Microsoft Entra ID group.
 
 ### platform-permission-set
 A matching set of roles/permissions within the platform being assigned by said group. If a custom permission set or RBAC role, match names in the platform and Authentik group.
@@ -40,6 +40,8 @@ A matching set of roles/permissions within the platform being assigned by said g
 - `authentik-aws-homelab-prod-73t0-admin`
 - `authentik-aws-mealie-prod-73t0-read`
 - `awsid-aws-security-prod-73t0-admin`
+- `entraid-azure-homelab-prod-<tenant-4>-admin`
+- `entraid-azure-homelab-prod-<tenant-4>-reader`
 
 ---
 
@@ -106,3 +108,48 @@ acct-aws-<product/category>-<env>-<root-id>
 - `role-aws-terraform-github-prod-admin`
 - `user-aws-ryan-bartusek-prod-admin`
 - `pset-aws-homelab-prod-admin`
+
+---
+
+## 🏢 Azure Management Group & Subscription Hierarchy Pattern
+
+In Azure, hierarchy containers anchor governance, policy boundaries, and RBAC:
+
+```html
+mg-azure-<category>-<env>-<tenant-4>
+subcr-azure-<product/category>-<env>-<tenant-4>
+```
+
+- `<tenant-4>` is the **first 4 characters of the Azure Tenant ID GUID**, serving as the Azure root anchor equivalent to AWS's `r-****` suffix (e.g., `a1b2`).
+- **Management Groups (`mg-`)**: Top-level policy and governance groupings.
+  - Examples: `mg-azure-infrastructure-prod-a1b2`, `mg-azure-landingzone-prod-a1b2`
+- **Subscriptions (`subcr-`)**: Mandatory `subcr-` prefix for subscription identity.
+  - Examples: `subcr-azure-homelab-prod-a1b2`, `subcr-azure-management-prod-a1b2`
+
+---
+
+## 🛠 Azure Resource Pattern
+
+```html
+<azure-resource-abbreviation>-azure-<product>-<env>-<region-code>-<three-character-iteration>
+```
+
+- `region-code` examples: Central US (`cus`), East US 2 (`eus2`).
+- `three-character-iteration` (e.g. `001`) is mandatory.
+
+### Resource Abbreviation Standards:
+- `rg-`: Resource Group (Mandatory prefix)
+- `law-`: Log Analytics Workspace
+- `arc-`: Azure Arc Connected Cluster
+- `dcr-`: Azure Monitor Data Collection Rule
+- `app-`: Entra ID Application Registration
+- `sp-`: Entra ID Service Principal (Enterprise Application)
+
+### Resource Examples:
+- `rg-azure-homelab-prod-cus-001`
+- `law-azure-monitoring-prod-cus-001`
+- `arc-azure-talos-prod-cus-001`
+- `dcr-azure-containerinsights-prod-cus-001`
+- `app-azure-authentik-prod-001`
+- `sp-azure-authentik-prod-001`
+

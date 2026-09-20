@@ -123,6 +123,7 @@ To maximize knowledge transfer and keep the user actively engaged without causin
 
 ### B. Enterprise Hybrid Homelab & Personal Tech (`personal-technology`)
 * **Declarative Infrastructure Invariant**: Code first across Kubernetes platform services (`infrastructure/`), user apps (`apps/`), Talos machine patches (`talos/patches/`), Terraform modules (`terraform/`), and Ansible playbooks (`ansible/`).
+* **Zero Imperative CLI Bootstrap Scripts**: Never introduce ad-hoc setup scripts (`connect.sh`, `setup.sh`, imperative CLI onboarding commands) when declarative equivalents exist. Cloud resources MUST be codified in Terraform (`terraform/<provider>/`), cluster workloads in Kubernetes manifests/Helm, and workstation state in `nix-darwin`.
 * **Command Runner**: Execute cluster operations via root `Justfile` shortcuts (`just talos-health`, `just k8s-nodes`, `just tf-plan-all`).
 
 ### C. Home Projects, Workshop & Digital Fabrication (`home-projects`)

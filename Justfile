@@ -72,6 +72,15 @@ authentik-logs:
 
 
 
+# Check status of Azure Arc agents and connected cluster pods
+arc-status:
+    @echo "===> Azure Arc Pods & Deployments:"
+    kubectl -n azure-arc get pods,daemonset,deploy -o wide
+
+# Stream Azure Arc clusterconnect agent logs
+arc-logs:
+    kubectl -n azure-arc logs -l app.kubernetes.io/name=clusterconnect-agent -f
+
 # Launch interactive terminal into the in-cluster Antigravity Dev Workspace
 ssh-dev:
     @echo "Connecting to Antigravity Dev Workspace on sm-node-03..."
@@ -81,7 +90,7 @@ ssh-dev:
 # 3. Terraform Infrastructure as Code
 # ------------------------------------------------------------------------------
 
-# Plan all 4 Terraform roots (unifi, cloudflare, aws, aws_organization)
+# Plan all 5 Terraform roots (unifi, cloudflare, aws, aws_organization, azure)
 tf-plan-all:
     @echo "===> Planning UniFi Network..."
     cd terraform/unifi && terraform plan
@@ -91,6 +100,8 @@ tf-plan-all:
     cd terraform/aws && terraform plan
     @echo "===> Planning AWS Organization & Accounts..."
     cd terraform/aws_organization && terraform plan
+    @echo "===> Planning Azure Infrastructure & Entra ID..."
+    cd terraform/azure && terraform plan
 
 # Run Terraform plan in a specific directory (usage: just tf-plan unifi)
 tf-plan dir:

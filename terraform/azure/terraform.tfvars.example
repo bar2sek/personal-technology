@@ -1,0 +1,26 @@
+# ==============================================================================
+# Azure & Entra ID Homelab - Terraform Variables Example
+# Copy to terraform.tfvars and populate with your Azure subscription & tenant details
+# ==============================================================================
+
+# Your Azure Subscription ID (from portal.azure.com or `az account show`)
+subscription_id = "00000000-0000-0000-0000-000000000000"
+
+# Your Microsoft Entra ID Tenant ID (from Entra Admin Center or `az account show`)
+tenant_id = "00000000-0000-0000-0000-000000000000"
+
+# Target deployment region & standardized short code
+location       = "centralus"
+location_short = "cus"
+
+# Standard core 3 node descriptors
+platform  = "azure"
+product   = "homelab"
+env       = "prod"
+iteration = "001"
+
+# Inbound OIDC callback URL for Authentik running on your Talos cluster
+authentik_redirect_uri = "https://auth.bar2sek.com/source/oauth/callback/entra-id/"
+
+# Daily Log Analytics Ingestion Ceiling (0.16 GB = ~4.8 GB/month to guarantee $0 cost under 5 GB Free Tier)
+daily_quota_gb = 0.16
