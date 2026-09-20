@@ -99,7 +99,7 @@ To allow AirPrint discovery to cross between VLANs (e.g., trusted Wi-Fi clients 
 
 ## 📦 Kubernetes CUPS Bridge (`kubernetes/apps/cups/cups.yaml`)
 
-The printing service is deployed in the `printing` namespace on `talos-aws-homelab`.
+The printing service is deployed in the `printing` namespace on the Talos cluster (`personal-technology`).
 
 ### Manifest Details
 

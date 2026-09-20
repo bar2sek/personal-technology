@@ -59,7 +59,7 @@ metadata:
   name: talos-homelab-runner
   namespace: actions-runner-system
 spec:
-  githubConfigUrl: "https://github.com/bar2sek/talos-aws-homelab"
+  githubConfigUrl: "https://github.com/bar2sek/personal-technology"
   minReplicas: 0
   maxReplicas: 5
   template:

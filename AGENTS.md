@@ -121,7 +121,7 @@ To maximize knowledge transfer and keep the user actively engaged without causin
 * **Declarative System Invariant**: Zero ad-hoc imperative changes (`brew install`, manual config edits). All system states must be declared in `flake.nix` and applied via `just switch`.
 * **Flake Sync Protocol**: Update canonical template `templates/flake.nix` first, synchronize to active `~/.config/nix-darwin/flake.nix`, test via `nix eval`, then prompt user to switch.
 
-### B. Enterprise Hybrid Homelab (`talos-aws-homelab`)
+### B. Enterprise Hybrid Homelab & Personal Tech (`personal-technology`)
 * **Declarative Infrastructure Invariant**: Code first across Kubernetes platform services (`infrastructure/`), user apps (`apps/`), Talos machine patches (`talos/patches/`), Terraform modules (`terraform/`), and Ansible playbooks (`ansible/`).
 * **Command Runner**: Execute cluster operations via root `Justfile` shortcuts (`just talos-health`, `just k8s-nodes`, `just tf-plan-all`).
 
@@ -141,7 +141,7 @@ To maximize knowledge transfer and keep the user actively engaged without causin
   * **Workshop Hierarchy**: Level 1 French Cleats (3/4" Baltic Birch, 45° rails), Level 2 Multiboard Islands, Level 3 Gridfinity (42mm) & Underware.
   * **Project Documentation**: Log print builds in `3d-printing/Projects/` using `3d-printing/Templates/Template - Print Project Log.md`.
 
-### D. Technology Professional & Architecture (`technology-professional`)
+### D. Technology Professional & Architecture (`professional-technology`)
 * **Knowledge Architecture**: Interconnected AWS Solutions Architect study guides, domain MOCs, decision matrices, and exam trap breakdowns.
 * **Inbox Workflow**: When processing `00 - Inbox/`, extract core insights, apply YAML frontmatter/tags, move refined notes to their domain directory, and link in domain MOCs.
 * **Professional Portfolio & PDF Engine (`resume/`)**:

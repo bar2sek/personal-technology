@@ -106,4 +106,4 @@ terraform init
 terraform apply
 ```
 
-This runs [`terraform/unifi/main.tf`](./terraform/unifi/main.tf) which declaratively provisions VLANs 10, 20, 40, IPv6 Prefix Delegation, and static IP reservations in seconds!
+This runs `terraform/unifi/main.tf` which declaratively provisions VLANs 10, 20, 40, IPv6 Prefix Delegation, and static IP reservations in seconds!

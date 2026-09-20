@@ -70,7 +70,7 @@ Using **Cloudflare Email Routing**, we manage unlimited custom `@bar2sek.com` em
 
 ## 🤖 Infrastructure as Code (Cloudflare Terraform Provider)
 
-All Cloudflare Tunnels, DNS records, and Email Routing rules are declaratively managed using Terraform in [`terraform/cloudflare/main.tf`](./terraform/cloudflare/main.tf):
+All Cloudflare Tunnels, DNS records, and Email Routing rules are declaratively managed using Terraform in `terraform/cloudflare/main.tf`:
 
 ```hcl
 # Cloudflare Email Routing Enabled for bar2sek.com
