@@ -15,17 +15,17 @@ Combining **local M5 Pro hardware** with **frontier cloud models** inside a sing
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                 UNIFIED AGENTIC ARCHITECTURE                │
+│                 CLOUD-FIRST AGENTIC ARCHITECTURE            │
 ├─────────────────────────────────────────────────────────────┤
 │               WORKSPACE CANVAS: ANTIGRAVITY IDE             │
 ├──────────────────────────────┬──────────────────────────────┤
-│ PRIMARY: Native AGY Agent    │ BACKUP: Roo Code Switcher    │
+│ PRIMARY: Native AGY Agent    │ EXTENSION: Roo Code Switcher │
 ├──────────────────────────────┼──────────────────────────────┤
-│ • Gemini Flash / Pro (Cloud) │ • Local Qwen 32B (:8080 MLX) │
-│ • Multi-file Planning & Docs │ • Claude Sonnet 4.6 / Opus 5 │
-│ • Subagent Orchestration     │ • $0 Scoped Edits & Scripts  │
+│ • Gemini Flash / Pro (Cloud) │ • Claude Sonnet 4.6 / Opus 5 │
+│ • Multi-file Planning & Docs │ • xAI Grok (API)             │
+│ • Subagent Orchestration     │ • Deep Audits & Alternative  │
 │ • Terminal Sandbox Tools     │ • Rate-Limit Relief Valve    │
-│ • Runs until Quota Pause     │ • 100% In-IDE Seamless Flow  │
+│ • Built-in Cloud Intelligence│ • 100% In-IDE Seamless Flow  │
 └──────────────────────────────┴──────────────────────────────┘
 ```
 
@@ -34,7 +34,7 @@ Combining **local M5 Pro hardware** with **frontier cloud models** inside a sing
 ## Tier 1: Primary Orchestrator (Native Antigravity Agent)
 * **Goal:** High-level planning, complex multi-repo orchestration, and autonomous execution.
 * **Platform:** Antigravity IDE native agent panel.
-* **Model:** Gemini 3.8 Flash (Medium) / Gemini Pro.
+* **Model:** Gemini 3.8 Flash / Gemini Pro.
 * **Capabilities:**
   1. Inspecting file structures, reading docs, and drafting implementation plans.
   2. Executing terminal commands (`talosctl`, `kubectl`, `nix`).
@@ -43,20 +43,17 @@ Combining **local M5 Pro hardware** with **frontier cloud models** inside a sing
 
 ---
 
-## Tier 2: Zero-Dollar Local Inference (Qwen 2.5 Coder 32B on MLX)
-* **Goal:** High-performance, zero-cost coding without touching cloud quotas.
-* **Engine:** Dedicated `oMLX` server on `http://localhost:8080/v1`.
-* **Hardware Sizing:** High-quant (6-bit/8-bit) Qwen 32B utilizing Apple Silicon Unified Memory (~25–34GB).
-* **Environment:** Roo Code extension inside Antigravity IDE.
-* **Use Cases:** Scoped single-file refactors, unit tests, shell script generation, and offline work.
+## Tier 2: Frontier Multi-Model Engine (Claude Sonnet 4.6 & Opus 5 via Roo Code)
+* **Goal:** Alternative reasoning perspective, deep architectural tie-breakers, and maximum-reasoning audits.
+* **Provider:** Anthropic API (Pay-As-You-Go with spending limits).
+* **Environment:** Toggle dropdown in Roo Code inside Antigravity IDE (`Claude Sonnet 4.6` for fast, cost-efficient edits; `Claude Opus 5` for heavy reasoning).
 
 ---
 
-## Tier 3: Strategic Frontier Backup (Claude Sonnet 4.6 & Opus 5)
-* **Goal:** Seamless continuity when Antigravity quota pauses, or for tough architectural tie-breakers and maximum-reasoning deep audits.
-* **Provider:** Anthropic API (Pay-As-You-Go with hard spending limit) or OpenRouter.
-* **Environment:** Toggle dropdown in Roo Code inside Antigravity IDE (`Claude Sonnet 4.6` for fast, cost-efficient edits; `Claude Opus 5` for heavy frontier reasoning).
-* **Cost Advantage:** Because it acts purely as a backup, monthly costs stay low with prompt caching enabled.
+## Tier 3: Real-Time & High-Velocity Coding (xAI Grok via Roo Code)
+* **Goal:** Fast, state-of-the-art coding and real-time knowledge queries without burning primary quotas.
+* **Provider:** xAI API (`grok-2` / `grok-code`).
+* **Environment:** Configured in Roo Code provider profiles.
 
 ---
 

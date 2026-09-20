@@ -24,64 +24,16 @@ gc:
     nix-collect-garbage -d
 
 # ------------------------------------------------------------------------------
-# Local LLM Serving (oMLX with Paged SSD KV Caching)
-# ------------------------------------------------------------------------------
-
-# Launch oMLX multi-model server on port 8080 (Paged SSD cache + continuous batching)
-serve-omlx:
-    omlx serve --port 8080
-
-# Start oMLX as a managed background server
-omlx-start:
-    omlx start
-
-# Stop oMLX background server
-omlx-stop:
-    omlx stop
-
-# Check oMLX diagnostics and menu bar status
-omlx-status:
-    omlx diagnose menubar
-
-# Launch Qwen 2.5 Coder 32B (4-bit) MLX Server for Deep Chat/Refactor (port 8080)
-serve-qwen-32b:
-    uvx --from mlx-lm mlx_lm.server \
-      --model mlx-community/Qwen2.5-Coder-32B-Instruct-4bit \
-      --port 8080 \
-      --chat-template-name chatml
-
-# Launch Qwen 2.5 Coder 1.5B (4-bit) MLX Server for Instant Tab Autocomplete (port 8081)
-serve-tab:
-    uvx --from mlx-lm mlx_lm.server \
-      --model mlx-community/Qwen2.5-Coder-1.5B-Instruct-4bit \
-      --port 8081 \
-      --chat-template-name chatml
-
-# Launch Qwen 2.5 Coder 14B (4-bit) MLX Server on port 8080
-serve-qwen-14b:
-    uvx --from mlx-lm mlx_lm.server \
-      --model mlx-community/Qwen2.5-Coder-14B-Instruct-4bit \
-      --port 8080 \
-      --chat-template-name chatml
-
-# Run both Tab Autocomplete (8081) and Deep Chat (8080) simultaneously
-serve-all:
-    @echo "Starting Tab Autocomplete (:8081) and Chat Server (:8080)..."
-    @just serve-tab & just serve-qwen-32b
-
-# Quick CLI prompt test against Qwen 14B
-test-prompt:
-    uvx --from mlx-lm mlx_lm.generate \
-      --model mlx-community/Qwen2.5-Coder-14B-Instruct-4bit \
-      --prompt "Write a Python script that benchmarks GPU memory bandwidth on Apple Silicon."
-
-# ------------------------------------------------------------------------------
 # Workspace & IDE Shortcuts
 # ------------------------------------------------------------------------------
 
 # Launch Antigravity Desktop app on the current directory
 agy-app:
     open -a Antigravity .
+
+# Launch Antigravity IDE on the current directory
+agy-ide:
+    open -a "Antigravity IDE" .
 
 # Launch Antigravity CLI in current terminal
 agy:
@@ -91,9 +43,9 @@ agy:
 agy-awake:
     caffeinate -s
 
-# Launch Visual Studio Code on the current directory
+# Launch Antigravity IDE (alias for code)
 code:
-    open -a "Visual Studio Code" .
+    open -a "Antigravity IDE" .
 
 # ------------------------------------------------------------------------------
 # System Housekeeping & Anti-Bloat

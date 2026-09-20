@@ -1,15 +1,19 @@
 ---
-title: Local LLMs with MLX
+title: Local LLMs with MLX (Archived)
+status: archive
 tags:
   - mlx
   - llm
   - qwen
-  - setup
-  - python
+  - archive
 created: 2026-08-24
 ---
 
-# ⚡ Local LLMs with Apple MLX
+# ⚡ Local LLMs with Apple MLX (Archived)
+
+> [!NOTE]
+> **Decommissioned & Archived (September 2026)**:
+> Local model serving via `oMLX` and `mlx-lm` was retired to reclaim ~59 GB of SSD storage and 25–34 GB of Apple Silicon unified memory. The workstation has standardized on a cloud-first architecture: native Gemini in Antigravity IDE paired with Claude and Grok via Roo Code. This document is preserved for historical reference.
 
 ## Why Apple MLX?
 [Apple MLX](https://github.com/ml-explore/mlx) is an open-source machine learning framework engineered specifically for Apple Silicon and Metal GPU acceleration. 

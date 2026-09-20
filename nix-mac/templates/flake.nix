@@ -397,31 +397,8 @@
           chown -h "$PRIMARY_USER" "$USER_HOME/.local/bin/tailscale" 2>/dev/null || true
         fi
 
-        # Symlink oMLX CLI from oMLX.app and register login item
-        if [ -f "/Applications/oMLX.app/Contents/MacOS/omlx-cli" ]; then
-          ln -sf "/Applications/oMLX.app/Contents/MacOS/omlx-cli" "$USER_HOME/.local/bin/omlx"
-          chown -h "$PRIMARY_USER" "$USER_HOME/.local/bin/omlx" 2>/dev/null || true
-          sudo -u "$PRIMARY_USER" osascript -e 'tell application "System Events" to if not (exists login item "oMLX") then make login item at end with properties {path:"/Applications/oMLX.app", hidden:true, name:"oMLX"}' 2>/dev/null || true
-        fi
-
-        echo "--> Deploying declarative Antigravity IDE & Local AI configuration..."
-        mkdir -p "$USER_HOME/.continue"
-        cat << 'EOF' > "$USER_HOME/.continue/config.json"
-{
-  "models": [
-    {
-      "title": "Local Qwen 32B (oMLX)",
-      "provider": "openai",
-      "model": "mlx-community--Qwen2.5-Coder-32B-Instruct-8bit",
-      "apiBase": "http://localhost:8080/v1"
-    }
-  ],
-  "allowAnonymousTelemetry": false
-}
-EOF
-        chown -R "$PRIMARY_USER" "$USER_HOME/.continue"
-
-        # Declarative Roo Code multi-model profiles (Claude Sonnet 4.6 + Local Qwen 32B + Claude Opus 5)
+        echo "--> Deploying declarative Antigravity IDE & AI configuration..."
+        # Declarative Roo Code multi-model profiles (Claude Sonnet 4.6 + Grok xAI + Claude Opus 5)
         mkdir -p "$USER_HOME/.config/roo-code"
         cat << 'EOF' > "$USER_HOME/.config/roo-code/settings.json"
 {
@@ -434,12 +411,11 @@ EOF
         "apiKey": "",
         "apiModelId": "claude-sonnet-4-6"
       },
-      "Local Qwen 2.5 Coder 32B": {
-        "id": "local-qwen-32b",
-        "apiProvider": "openai",
-        "openAiBaseUrl": "http://localhost:8080/v1",
-        "openAiApiKey": "local",
-        "openAiModelId": "mlx-community--Qwen2.5-Coder-32B-Instruct-6bit"
+      "Grok (xAI)": {
+        "id": "grok-xai",
+        "apiProvider": "xai",
+        "apiKey": "",
+        "apiModelId": "grok-2"
       },
       "Claude Opus 5": {
         "id": "claude-opus-5",
