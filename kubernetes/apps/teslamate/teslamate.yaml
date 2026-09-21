@@ -10,7 +10,7 @@ metadata:
   namespace: teslamate
 type: Opaque
 stringData:
-  db-password: "teslamate_secure_db_password"
+  db-password: "REPLACE_WITH_TESLAMATE_DB_PASSWORD"
   encryption-key: "REPLACE_WITH_TESLAMATE_ENCRYPTION_KEY"
 ---
 apiVersion: v1
@@ -34,6 +34,8 @@ metadata:
   namespace: teslamate
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: teslamate-db

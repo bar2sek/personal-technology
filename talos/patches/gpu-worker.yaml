@@ -2,7 +2,7 @@
 machine:
   type: worker
   install:
-    disk: /dev/nvme0n1 # Tiny 2GB partition 1 for OS, 998GB partition 2 for Ceph & AI model caching
+    disk: /dev/nvme1n1 # 1TB Sabrent Rocket 4.0 NVMe (preserves 1TB Crucial P3 /dev/nvme0n1 for Ceph OSD)
     wipe: false
     extraKernelArgs:
       - amd_iommu=on

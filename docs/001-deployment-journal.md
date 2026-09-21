@@ -550,12 +550,25 @@ Any AI agent or human operator can review this document to pick up exactly where
       - Enabled UniFi gateway Multicast DNS (mDNS) reflector for zero-configuration driverless AirPrint discovery on iOS and iPadOS devices.
       - Documented complete architecture, operational runbook, and diagnostic steps in [`docs/506-cups-airprint-bridge.md`](file:///docs/506-cups-airprint-bridge.md).
 
+  - ### Milestone 15: Architecture Audit & Cluster Hardening Remediation (2026-09-20)
+    - **Secrets Hygiene Hardening**:
+      - Replaced hardcoded plaintext database passwords in [`kubernetes/apps/immich/immich.yaml`](file:///kubernetes/apps/immich/immich.yaml) and [`kubernetes/apps/teslamate/teslamate.yaml`](file:///kubernetes/apps/teslamate/teslamate.yaml) with standard `REPLACE_WITH_*` secret placeholders in alignment with `AGENTS.md` Public-by-Default invariants.
+    - **GPU Node Storage Alignment**:
+      - Reconciled target OS boot disk in [`talos/patches/gpu-worker.yaml`](file:///talos/patches/gpu-worker.yaml) to `/dev/nvme1n1` (1TB Sabrent Rocket), matching [`talos/machine-install-disks.yaml`](file:///talos/machine-install-disks.yaml) and isolating `/dev/nvme0n1` (1TB Crucial P3) as a dedicated raw OSD for Rook-Ceph.
+    - **Ceph CSI Volume Expansion**:
+      - Added missing `csi.storage.k8s.io/controller-expand-secret-name` and `controller-expand-secret-namespace` to `rook-ceph-hdd-bulk` in [`kubernetes/infrastructure/rook-ceph/storageclasses.yaml`](file:///kubernetes/infrastructure/rook-ceph/storageclasses.yaml) to enable online PVC volume expansions across bulk mechanical storage.
+    - **RWO Persistent Volume Mount Deadlock Mitigation**:
+      - Configured `strategy: type: Recreate` across all Deployments consuming ReadWriteOnce Ceph RBD persistent volumes ([`immich.yaml`](file:///kubernetes/apps/immich/immich.yaml), [`teslamate.yaml`](file:///kubernetes/apps/teslamate/teslamate.yaml), [`mealie.yaml`](file:///kubernetes/apps/mealie/mealie.yaml), [`actual-budget.yaml`](file:///kubernetes/apps/finance/actual-budget.yaml), and [`home-assistant.yaml`](file:///kubernetes/apps/home-assistant/home-assistant.yaml)), preventing `Multi-Attach error for volume` lockups during rolling updates or node drains.
+    - **VLAN 20 DHCP & MetalLB Collision Prevention**:
+      - Adjusted VLAN 20 DHCP allocation range in [`bootstrap/unifi/main.tf`](file:///bootstrap/unifi/main.tf) to `10.10.20.100 - 10.10.20.254`, carving out and safeguarding `10.10.20.10 - 10.10.20.99` for static node assignments and MetalLB Layer 2 VIP pools (`10.10.20.50 - 10.10.20.60`).
+
 ---
 
 ## 🎯 Immediate Next Actions
 
-1. **Pair Client Devices & Configure Games**:
-   - Access Sunshine Web UI at `https://10.10.20.52:47990` to pair Moonlight client on MacBook Pro.
-   - Launch Steam Big Picture mode and configure game library.
-2. **Deploy Workload Applications (Day-1 SSO Ready)**:
-   - Deploy tier 1 self-hosted platform applications: Home Assistant, Immich, Mealie, and TeslaMate.
+1. **Batch 2: High Availability & Offsite Backup Integration**:
+   - Declare native Talos VRRP Control Plane VIP on VLAN 20 (`10.10.20.10`).
+   - Implement automated Talos etcd snapshot CronJob to the provisioned AWS S3 offsite backup bucket.
+2. **Batch 3: Documentation Hygiene & GitOps Reconciler**:
+   - Redact hardware MAC addresses in documentation per `AGENTS.md` §4 sanitization rules.
+   - Re-index README documentation links.

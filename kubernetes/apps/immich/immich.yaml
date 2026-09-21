@@ -10,7 +10,7 @@ metadata:
   namespace: immich
 type: Opaque
 stringData:
-  db-password: "immich_secure_db_password"
+  db-password: "REPLACE_WITH_IMMICH_DB_PASSWORD"
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -46,6 +46,8 @@ metadata:
   namespace: immich
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: immich-postgres
@@ -165,6 +167,8 @@ metadata:
   namespace: immich
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: immich-server
