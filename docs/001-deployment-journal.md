@@ -560,12 +560,12 @@ Any AI agent or human operator can review this document to pick up exactly where
     - **RWO Persistent Volume Mount Deadlock Mitigation**:
       - Configured `strategy: type: Recreate` across all Deployments consuming ReadWriteOnce Ceph RBD persistent volumes ([`immich.yaml`](file:///kubernetes/apps/immich/immich.yaml), [`teslamate.yaml`](file:///kubernetes/apps/teslamate/teslamate.yaml), [`mealie.yaml`](file:///kubernetes/apps/mealie/mealie.yaml), [`actual-budget.yaml`](file:///kubernetes/apps/finance/actual-budget.yaml), and [`home-assistant.yaml`](file:///kubernetes/apps/home-assistant/home-assistant.yaml)), preventing `Multi-Attach error for volume` lockups during rolling updates or node drains.
     - **VLAN 20 DHCP & MetalLB Collision Prevention**:
-      - Adjusted VLAN 20 DHCP allocation range in [`bootstrap/unifi/main.tf`](file:///bootstrap/unifi/main.tf) to `10.10.20.100 - 10.10.20.254`, carving out and safeguarding `10.10.20.10 - 10.10.20.99` for static node assignments and MetalLB Layer 2 VIP pools (`10.10.20.50 - 10.10.20.60`).
+      - Adjusted VLAN 20 DHCP allocation range in [`terraform/unifi/main.tf`](file:///terraform/unifi/main.tf) to `10.10.20.100 - 10.10.20.254`, carving out and safeguarding `10.10.20.10 - 10.10.20.99` for static node assignments and MetalLB Layer 2 VIP pools (`10.10.20.50 - 10.10.20.60`).
 
   - ### Milestone 16: High Availability VIP & Offsite S3 Backup Engine (2026-09-20)
     - **Talos Native Control Plane VRRP Virtual IP**:
       - Configured native Talos VRRP VIP `10.10.20.10` on VLAN 20 in [`talos/patches/controlplane.yaml`](file:///talos/patches/controlplane.yaml), enabling automated <1s failover across `sm-node-01`, `sm-node-02`, and `sm-node-03`.
-      - Added local split-horizon DNS record `k8s.bar2sek.com` -> `10.10.20.10` in [`bootstrap/unifi/dns.tf`](file:///bootstrap/unifi/dns.tf).
+      - Added local split-horizon DNS record `k8s.bar2sek.com` -> `10.10.20.10` in [`terraform/unifi/dns.tf`](file:///terraform/unifi/dns.tf).
       - Updated root [`Justfile`](file:///Justfile) administrative recipes (`talos-health`, `talos-members`, `talos-etcd`) to target the floating HA VIP `10.10.20.10` rather than the single physical node `10.10.20.131`.
     - **Tiered Cost-Effective Disaster Recovery to AWS S3**:
       - Created automated backup manifests in [`kubernetes/infrastructure/backups/`](file:///kubernetes/infrastructure/backups/):

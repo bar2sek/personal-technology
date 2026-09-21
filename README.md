@@ -96,10 +96,14 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 │   ├── provision-aws-account.yml # Automated AWS account provisioning GitOps
 │   ├── terraform-ci.yml       # Multi-directory Terraform lint/validate CI
 │   └── k8s-validate.yml       # YAML and Kubernetes manifest validation
-├── bootstrap/                 # Local workstation bootstrap Terraform roots
-│   ├── github/                # GitHub repository, environments & multi-cloud OIDC variables
+├── terraform/                 # On-premises homelab infrastructure (applied locally from workstation)
 │   ├── unifi/                 # UDM-Pro VLANs (10,20,30,40,50,60,90), firewalls, split-horizon DNS
 │   └── cloudflare/            # Zero Trust Tunnels, DNS, Access SSO, Email Routing
+├── bootstrap/                 # Day-0 cloud & CI/CD bootstrap roots (before deployment repo takes over)
+│   ├── aws/                   # AWS OIDC role & remote state storage
+│   ├── aws_organization/      # Multi-account landing zone & account provisioning
+│   ├── azure/                 # Azure Entra ID, OIDC workload identity & storage
+│   └── github/                # GitHub deployment repository, environments & multi-cloud OIDC variables
 ├── nix-mac/                   # Workstation configuration & USB bootstrap suite
 │   ├── START_HERE.html        # Offline visual bootstrap guide for new Mac setup
 │   ├── START_HERE.txt         # Offline CLI bootstrap instructions

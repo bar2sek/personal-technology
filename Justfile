@@ -90,12 +90,12 @@ ssh-dev:
 # 3. Terraform Infrastructure as Code
 # ------------------------------------------------------------------------------
 
-# Plan all 6 Bootstrap roots
+# Plan all On-Prem & Cloud Bootstrap roots
 tf-plan-all:
-    @echo "===> Planning UniFi Network (Bootstrap)..."
-    cd bootstrap/unifi && terraform plan -parallelism=1
-    @echo "===> Planning Cloudflare Tunnels & Access (Bootstrap)..."
-    cd bootstrap/cloudflare && terraform plan
+    @echo "===> Planning UniFi Network (On-Prem Terraform)..."
+    cd terraform/unifi && terraform plan -parallelism=1
+    @echo "===> Planning Cloudflare Tunnels & Access (On-Prem Terraform)..."
+    cd terraform/cloudflare && terraform plan
     @echo "===> Planning GitHub Multi-Cloud GitOps (Bootstrap)..."
     cd bootstrap/github && terraform plan
     @echo "===> Planning AWS OIDC & State Storage (Bootstrap)..."
@@ -107,33 +107,38 @@ tf-plan-all:
 
 # Run Terraform plan in a specific directory (usage: just tf-plan unifi or just tf-plan azure)
 tf-plan dir:
-    @if [ -d "bootstrap/{{ dir }}" ]; then \
-        cd bootstrap/{{ dir }} && terraform plan {{ if dir == "unifi" { "-parallelism=1" } else { "" } }}; \
+    @if [ -d "terraform/{{ dir }}" ]; then \
+        cd terraform/{{ dir }} && terraform plan {{ if dir == "unifi" { "-parallelism=1" } else { "" } }}; \
+    elif [ -d "bootstrap/{{ dir }}" ]; then \
+        cd bootstrap/{{ dir }} && terraform plan; \
     else \
-        cd terraform/{{ dir }} && terraform plan; \
+        echo "Error: Directory terraform/{{ dir }} or bootstrap/{{ dir }} not found"; exit 1; \
     fi
 
 # Run Terraform apply in a specific directory (usage: just tf-apply unifi or just tf-apply azure)
 tf-apply dir:
-    @if [ -d "bootstrap/{{ dir }}" ]; then \
-        cd bootstrap/{{ dir }} && terraform apply {{ if dir == "unifi" { "-parallelism=1" } else { "" } }}; \
+    @if [ -d "terraform/{{ dir }}" ]; then \
+        cd terraform/{{ dir }} && terraform apply {{ if dir == "unifi" { "-parallelism=1" } else { "" } }}; \
+    elif [ -d "bootstrap/{{ dir }}" ]; then \
+        cd bootstrap/{{ dir }} && terraform apply; \
     else \
-        cd terraform/{{ dir }} && terraform apply; \
+        echo "Error: Directory terraform/{{ dir }} or bootstrap/{{ dir }} not found"; exit 1; \
     fi
 
-# Quick shortcuts for Local Bootstrap roots
+# Quick shortcuts for On-Premise Homelab roots
 tf-plan-unifi:
-    cd bootstrap/unifi && terraform plan -parallelism=1
+    cd terraform/unifi && terraform plan -parallelism=1
 
 tf-apply-unifi:
-    cd bootstrap/unifi && terraform apply -parallelism=1
+    cd terraform/unifi && terraform apply -parallelism=1
 
 tf-plan-cloudflare:
-    cd bootstrap/cloudflare && terraform plan
+    cd terraform/cloudflare && terraform plan
 
 tf-apply-cloudflare:
-    cd bootstrap/cloudflare && terraform apply
+    cd terraform/cloudflare && terraform apply
 
+# Quick shortcuts for Day-0 Cloud & CI/CD Bootstrap roots
 tf-plan-github:
     cd bootstrap/github && terraform plan
 
