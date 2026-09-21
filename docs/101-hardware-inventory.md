@@ -33,11 +33,11 @@ This document tracks the physical hardware available in the homelab and their in
 
 | Hostname / Node | Machine Type | Specs (CPU / RAM / Storage) | Network Interfaces & Discovered MACs | Boot / OS Drive | Intended Talos Role |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| `sm-node-01`<br>(`edge01`) | Supermicro SYS-E300-9D-4CN8TP | Xeon D-2123IT (4C/8T) / 32GB RAM / 1x 2TB Sabrent NVMe + 2x 2TB MX500 SSD | **IPMI**: `3c:ec:ef:44:a4:2c` (USW-24-G2 P11)<br>**10G SFP+ #1**: `3c:ec:ef:44:9b:50` (USW-Agg P2)<br>**10G SFP+ #2**: `3c:ec:ef:44:9b:51` (USW-Agg P1) | 16GB SATA SuperDOM | Control Plane 1 + Worker |
-| `sm-node-02`<br>(`edge02`) | Supermicro SYS-E300-9D-4CN8TP | Xeon D-2123IT (4C/8T) / 32GB RAM / 1x 2TB Sabrent NVMe + 2x 2TB MX500 SSD | **IPMI**: `3c:ec:ef:6f:da:41` (USW-24-G2 P15)<br>**10G SFP+ #1**: `3c:ec:ef:6f:d4:bc` (USW-Agg P4)<br>**10G SFP+ #2**: `3c:ec:ef:6f:d4:bd` (USW-Agg P3) | 16GB SATA SuperDOM | Control Plane 2 + Worker |
-| `sm-node-03`<br>(`main01`) | Supermicro 813M-3 Chassis | Xeon E5-2680 v4 (14C/28T) / 160GB RAM / 4x 2TB MX500 SSD | **IPMI**: `3c:ec:ef:5b:9a:da` (USW-24-G2 P1)<br>**10G SFP+ #1**: `a0:36:9f:3b:0c:f8`<br>**10G SFP+ #2**: `a0:36:9f:3b:0c:fa` | Dual 16GB SATA SuperDOMs | Primary Control Plane + Heavy Worker |
-| `pc-node-04`<br>(`stor01`) | AMD Ryzen 7 3800X PC | Ryzen 7 3800X (8C/16T) / 64GB RAM / 27.0TB HDD Array (11 HDDs) + 490GB SATA SSDs | **1GbE Onboard**: `2c:f0:5d:57:7e:a4`<br>**Dual 10G SFP+**: `a0:36:9f:9a:ce:24` / `.26` | 80GB Intel 320 SSD (OS) | Storage & Compute Worker |
-| `pc-node-05` | Mini-ITX PC (B650I EDGE) | Ryzen 5 7600 (6C/12T) / 32GB RAM / 1x 1TB NVMe SSD / NVIDIA RTX 4070 | **2.5GbE SFP+ Uplink**: Ceph-USW-Agg Port 3/4 | 2GB NVMe Partition (998GB Data) | GPU Worker (AI/ML & Transcoding) |
+| `sm-node-01`<br>(`edge01`) | Supermicro SYS-E300-9D-4CN8TP | Xeon D-2123IT (4C/8T) / 32GB RAM / 1x 2TB Sabrent NVMe + 2x 2TB MX500 SSD | **IPMI**: `3c:ec:ef:xx:xx:xx` (USW-24-G2 P11)<br>**10G SFP+ #1**: `3c:ec:ef:xx:xx:xx` (USW-Agg P2)<br>**10G SFP+ #2**: `3c:ec:ef:xx:xx:xx` (USW-Agg P1) | 16GB SATA SuperDOM | Control Plane 1 + Worker |
+| `sm-node-02`<br>(`edge02`) | Supermicro SYS-E300-9D-4CN8TP | Xeon D-2123IT (4C/8T) / 32GB RAM / 1x 2TB Sabrent NVMe + 2x 2TB MX500 SSD | **IPMI**: `3c:ec:ef:xx:xx:xx` (USW-24-G2 P15)<br>**10G SFP+ #1**: `3c:ec:ef:xx:xx:xx` (USW-Agg P4)<br>**10G SFP+ #2**: `3c:ec:ef:xx:xx:xx` (USW-Agg P3) | 16GB SATA SuperDOM | Control Plane 2 + Worker |
+| `sm-node-03`<br>(`main01`) | Supermicro 813M-3 Chassis | Xeon E5-2680 v4 (14C/28T) / 160GB RAM / 4x 2TB MX500 SSD | **IPMI**: `3c:ec:ef:xx:xx:xx` (USW-24-G2 P1)<br>**10G SFP+ #1**: `a0:36:9f:xx:xx:xx`<br>**10G SFP+ #2**: `a0:36:9f:xx:xx:xx` | Dual 16GB SATA SuperDOMs | Primary Control Plane + Heavy Worker |
+| `pc-node-04`<br>(`stor01`) | AMD Ryzen 7 3800X PC | Ryzen 7 3800X (8C/16T) / 64GB RAM / 27.0TB HDD Array (11 HDDs) + 490GB SATA SSDs | **1GbE Onboard**: `2c:f0:5d:xx:xx:xx`<br>**Dual 10G SFP+**: `a0:36:9f:xx:xx:xx` / `.xx` | 80GB Intel 320 SSD (OS) | Storage & Compute Worker |
+| `pc-node-05` | Mini-ITX PC (B650I EDGE) | Ryzen 5 7600 (6C/12T) / 32GB RAM / 1x 1TB NVMe SSD / NVIDIA RTX 4070 | **2.5GbE SFP+ Uplink**: Ceph-USW-Agg Port 3/4 | 1TB Sabrent Rocket (Crucial P3 Ceph OSD) | GPU Worker (AI/ML & Transcoding) |
 
 ### 3. Networking & Wireless Infrastructure (UniFi Stack)
 

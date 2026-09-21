@@ -45,6 +45,7 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 - [103 - Phase 1: Sidero Omni & Talos Bootstrap Guide](docs/103-phase1-omni-talos-bootstrap.md)
 - [104 - Phase 2: Rook-Ceph 3-Tier Storage Cluster](docs/104-phase2-rook-ceph-storage.md)
 - [105 - Global Resource Naming Conventions](docs/105-naming-conventions.md)
+- [106 - Phase 3: Observability Stack (Prometheus, Grafana & Ceph Monitoring)](docs/106-observability-prometheus-grafana.md)
 
 ### 🌐 Section 2: UniFi Networking & Infrastructure
 - [201 - UniFi Physical Cabling & Logical Topology Diagrams](docs/201-unifi-network-topology.md)
@@ -56,7 +57,6 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 - [301 - Network PXE Boot & Node Provisioning Instruction Manual](docs/301-pxe-boot-node-provisioning.md)
 - [302 - GitHub Actions ARC Self-Hosted CI/CD](docs/302-github-actions-runner-controller.md)
 - [303 - KubeVirt Bazzite Gaming VM (RTX 4070 Passthrough)](docs/303-kubevirt-bazzite-gpu-vm.md)
-- [304 - Automated Windows VM Setup with Ansible & Chocolatey](docs/304-windows-ansible-automation.md)
 - [305 - KubeVirt `omarchy-vm` Arch Linux VM](docs/305-kubevirt-arch-linux-vm.md)
 - [306 - Hybrid Local/Remote AI Development Architecture (MLX + K8s)](docs/306-hybrid-local-remote-ai-dev.md)
 

@@ -71,6 +71,13 @@ spec:
                   key: db-password
           ports:
             - containerPort: 5432
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 2048Mi
           volumeMounts:
             - name: db-data
               mountPath: /var/lib/postgresql/data
@@ -112,6 +119,13 @@ spec:
           image: redis:6.2-alpine
           ports:
             - containerPort: 6379
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
 ---
 apiVersion: v1
 kind: Service
@@ -143,9 +157,16 @@ spec:
     spec:
       containers:
         - name: machine-learning
-          image: ghcr.io/immich-app/immich-machine-learning:release
+          image: ghcr.io/immich-app/immich-machine-learning:v1.118.0
           ports:
             - containerPort: 3003
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: 2000m
+              memory: 3072Mi
 ---
 apiVersion: v1
 kind: Service
@@ -179,7 +200,14 @@ spec:
     spec:
       containers:
         - name: immich-server
-          image: ghcr.io/immich-app/immich-server:release
+          image: ghcr.io/immich-app/immich-server:v1.118.0
+          resources:
+            requests:
+              cpu: 150m
+              memory: 256Mi
+            limits:
+              cpu: 1500m
+              memory: 2048Mi
           env:
             - name: DB_HOSTNAME
               value: immich-postgres

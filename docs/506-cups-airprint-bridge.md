@@ -74,7 +74,7 @@ The printer's hardware MAC is pinned to a dedicated static IP on the Default LAN
 
 ```hcl
 resource "unifi_client" "brother_printer" {
-  mac             = var.printer_mac_address # 30:05:5c:18:d8:79
+  mac             = var.printer_mac_address # 30:05:5c:xx:xx:xx
   name            = "Brother DCP-7065DN Laser Printer"
   note            = "Physical monochrome laser multifunction printer connected to USW-24-G2 Port 23"
   fixed_ip        = var.printer_ip          # 10.0.1.25

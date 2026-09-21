@@ -44,10 +44,10 @@ Any AI agent or human operator can review this document to pick up exactly where
 
 | Node / Device | Role | Management / IPMI | 10G / High-Speed SFP+ | Connected Switch Ports | Status / Notes |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **`sm-node-01`** (`edge01`) | Control Plane 1 + Worker | IPMI: `3c:ec:ef:44:a4:2c`<br>IP: `10.0.1.190` | `eno7np2`: `3c:ec:ef:44:9b:50`<br>`eno8np3`: `3c:ec:ef:44:9b:51` | IPMI -> `USW-24-G2` Port 11<br>10G -> `USW-Agg #1` Ports 1 & 2 | Online; Supermicro Xeon D; HTML5 KVM ready at `https://10.0.1.190` |
-| **`sm-node-02`** (`edge02`) | Control Plane 2 + Worker | IPMI: `3c:ec:ef:6f:da:41`<br>IP: `10.0.1.208` | `10G-1`: `3c:ec:ef:6f:d4:bc`<br>`10G-2`: `3c:ec:ef:6f:d4:bd` | IPMI -> `USW-24-G2` Port 15<br>10G -> `USW-Agg #1` Ports 3 & 4 | Online; Supermicro Xeon D; HTML5 KVM ready at `https://10.0.1.208` |
-| **`sm-node-03`** (`main01`) | Primary Control Plane + Heavy Worker | IPMI: `3c:ec:ef:5b:9a:da`<br>IP: `10.0.1.228` | `10G-1`: `a0:36:9f:3b:0c:f8`<br>`10G-2`: `a0:36:9f:3b:0c:fa` | IPMI -> `USW-24-G2` Port 1<br>10G -> Core Aggregation Fabric | Online; Supermicro 813M Xeon E5; HTML5 KVM ready at `https://10.0.1.228` |
-| **`pc-node-04`** (`stor01`) | Storage Worker (11 HDDs) | 1GbE Onboard: `2c:f0:5d:57:7e:a4` | `10G-1`: `a0:36:9f:9a:ce:24`<br>`10G-2`: `a0:36:9f:9a:ce:26` | 10G -> USW-Agg #1 & #2 | Powered on; Ryzen 3800X; boots off Intel 320 SSD |
+| **`sm-node-01`** (`edge01`) | Control Plane 1 + Worker | IPMI: `3c:ec:ef:xx:xx:xx`<br>IP: `10.0.1.190` | `eno7np2`: `3c:ec:ef:xx:xx:xx`<br>`eno8np3`: `3c:ec:ef:xx:xx:xx` | IPMI -> `USW-24-G2` Port 11<br>10G -> `USW-Agg #1` Ports 1 & 2 | Online; Supermicro Xeon D; HTML5 KVM ready at `https://10.0.1.190` |
+| **`sm-node-02`** (`edge02`) | Control Plane 2 + Worker | IPMI: `3c:ec:ef:xx:xx:xx`<br>IP: `10.0.1.208` | `10G-1`: `3c:ec:ef:xx:xx:xx`<br>`10G-2`: `3c:ec:ef:xx:xx:xx` | IPMI -> `USW-24-G2` Port 15<br>10G -> `USW-Agg #1` Ports 3 & 4 | Online; Supermicro Xeon D; HTML5 KVM ready at `https://10.0.1.208` |
+| **`sm-node-03`** (`main01`) | Primary Control Plane + Heavy Worker | IPMI: `3c:ec:ef:xx:xx:xx`<br>IP: `10.0.1.228` | `10G-1`: `a0:36:9f:xx:xx:xx`<br>`10G-2`: `a0:36:9f:xx:xx:xx` | IPMI -> `USW-24-G2` Port 1<br>10G -> Core Aggregation Fabric | Online; Supermicro 813M Xeon E5; HTML5 KVM ready at `https://10.0.1.228` |
+| **`pc-node-04`** (`stor01`) | Storage Worker (11 HDDs) | 1GbE Onboard: `2c:f0:5d:xx:xx:xx` | `10G-1`: `a0:36:9f:xx:xx:xx`<br>`10G-2`: `a0:36:9f:xx:xx:xx` | 10G -> USW-Agg #1 & #2 | Powered on; Ryzen 3800X; boots off Intel 320 SSD |
 | **`pc-node-05`** (GPU PC) | GPU Worker (RTX 4070) | 1GbE USB: Available | 2.5GbE SFP+ Transceiver | SFP+ -> `Ceph-USW-Agg` Port 3/4 | Powered on; Ryzen 7600; AM5 ITX board |
 | **`omni-server`** (Dell Micro) | Sidero Omni Controller | 1GbE Onboard: Dell OptiPlex | N/A | 1GbE -> `USW-24-G2` / `USW-Agg` | Powered on; awaiting Sidero Omni boot media |
 
@@ -57,13 +57,13 @@ Any AI agent or human operator can review this document to pick up exactly where
 
 | Device Name | Model Identifier | MAC Address | Management IP | Primary Function |
 | :--- | :--- | :--- | :--- | :--- |
-| **UDM-Pro** | `UDMPRO` | `68:d7:9a:50:ee:2d` | `10.0.1.1` | L3 Gateway, DHCP Server, WAN Routing |
-| **USW-Aggregation** | `USL8A` | `f4:92:bf:a3:37:65` | `10.0.1.224` | Core 10G SFP+ Fabric (Ports 7/8 in 20G LAG) |
-| **Ceph-USW-Aggregation** | `USL8A` | `f4:e2:c6:5d:d6:f8` | `10.0.1.59` | Dedicated 10G SFP+ Storage Network (Ports 7/8 in 20G LAG) |
-| **USW-24-G2** | `USL24` | `24:5a:4c:60:bb:09` | `10.0.1.30` | 1G Access Switch for IPMI, Omni, and management |
-| **USW-Lite-8-PoE** | `USL8LP` | `78:45:58:82:8a:39` | `10.0.1.40` | Garage PoE Switch (powers G3-Flex & AP) |
-| **U7 Pro** | `U7PRO` | `94:2a:6f:c4:ec:04` | `10.0.1.214` | Primary House Wi-Fi 7 Access Point |
-| **U6-Lite** | `UAL6` | `24:5a:4c:13:ae:3c` | `10.0.1.45` | Garage Wi-Fi 6 Access Point |
+| **UDM-Pro** | `UDMPRO` | `68:d7:9a:xx:xx:xx` | `10.0.1.1` | L3 Gateway, DHCP Server, WAN Routing |
+| **USW-Aggregation** | `USL8A` | `f4:92:bf:xx:xx:xx` | `10.0.1.224` | Core 10G SFP+ Fabric (Ports 7/8 in 20G LAG) |
+| **Ceph-USW-Aggregation** | `USL8A` | `f4:e2:c6:xx:xx:xx` | `10.0.1.59` | Dedicated 10G SFP+ Storage Network (Ports 7/8 in 20G LAG) |
+| **USW-24-G2** | `USL24` | `24:5a:4c:xx:xx:xx` | `10.0.1.30` | 1G Access Switch for IPMI, Omni, and management |
+| **USW-Lite-8-PoE** | `USL8LP` | `78:45:58:xx:xx:xx` | `10.0.1.40` | Garage PoE Switch (powers G3-Flex & AP) |
+| **U7 Pro** | `U7PRO` | `94:2a:6f:xx:xx:xx` | `10.0.1.214` | Primary House Wi-Fi 7 Access Point |
+| **U6-Lite** | `UAL6` | `24:5a:4c:xx:xx:xx` | `10.0.1.45` | Garage Wi-Fi 6 Access Point |
 
 ---
 
@@ -139,9 +139,9 @@ Any AI agent or human operator can review this document to pick up exactly where
       - **Port 11** (`sm-node-01` / `edge01`): Native VLAN `MGMT-IPMI` (VLAN 10), Tagged VLANs `block_all`.
       - **Port 15** (`sm-node-02` / `edge02`): Native VLAN `MGMT-IPMI` (VLAN 10), Tagged VLANs `block_all`.
     - Created permanent static DHCP fixed IP reservations in UDM-Pro controller:
-      - `sm-node-01-ipmi` (`3c:ec:ef:44:a4:2c`) -> **`10.10.10.11`**
-      - `sm-node-02-ipmi` (`3c:ec:ef:6f:da:41`) -> **`10.10.10.12`**
-      - `sm-node-03-ipmi` (`3c:ec:ef:5b:9a:da`) -> **`10.10.10.13`**
+      - `sm-node-01-ipmi` (`3c:ec:ef:xx:xx:xx`) -> **`10.10.10.11`**
+      - `sm-node-02-ipmi` (`3c:ec:ef:xx:xx:xx`) -> **`10.10.10.12`**
+      - `sm-node-03-ipmi` (`3c:ec:ef:xx:xx:xx`) -> **`10.10.10.13`**
     - Verified `MGMT-IPMI` gateway (`10.10.10.1`) responsive and routing.
 
 13. **Pure Talos Linux Seed Architecture Selected for Dell OptiPlex Micro (`omni-server`)**:
@@ -151,13 +151,13 @@ Any AI agent or human operator can review this document to pick up exactly where
 
 14. **Dell OptiPlex Micro Hardware Discovery & Seed Config Preparation**:
     - **Physical Placement**: Connected Dell OptiPlex Micro to `USW-24-G2` Port 2 (configured with Native VLAN 10 `MGMT-IPMI`, tagged `block_all`).
-    - **Maintenance Mode Boot**: Booted via USB into Talos Linux v1.13.8. Node received temporary DHCP IP **`10.10.10.253`** (MAC `f4:8e:38:92:45:4b`).
+    - **Maintenance Mode Boot**: Booted via USB into Talos Linux v1.13.8. Node received temporary DHCP IP **`10.10.10.253`** (MAC `f4:8e:38:xx:xx:xx`).
     - **Hardware Topology via Talos gRPC API**:
       - Internal Target Disk: `Samsung SSD 860` 500 GB on **`/dev/sda`** (`naa.5002538e30a327a4`).
       - Installer USB: `Ultra USB 3.0` 15 GB on `/dev/sdb`.
-      - Physical Network Interface: **`enp2s0`** (MAC `f4:8e:38:92:45:4b`).
+      - Physical Network Interface: **`enp2s0`** (MAC `f4:8e:38:xx:xx:xx`).
     - **UniFi Static Reservation Created**:
-      - Programmed fixed IP mapping via UniFi API: `omni-server` (`f4:8e:38:92:45:4b`) -> **`10.10.10.5`** on `MGMT-IPMI`.
+      - Programmed fixed IP mapping via UniFi API: `omni-server` (`f4:8e:38:xx:xx:xx`) -> **`10.10.10.5`** on `MGMT-IPMI`.
     - **Declarative Talos Config & Patch Formulated**:
       - Base controlplane spec generated at `talos/omni-server/controlplane.yaml` (gitignored to protect cluster CA private keys).
       - Reusable declarative patch created at [`talos/omni-server/patches/omni-server.yaml`](file:///talos/omni-server/patches/omni-server.yaml):
@@ -217,12 +217,12 @@ Any AI agent or human operator can review this document to pick up exactly where
     - **Sidero Booter Deployed**: Running `ghcr.io/siderolabs/booter:v0.3.0` on `omni-server` with hostNetwork, serving TFTP on port 69, HTTP on :50084, and DHCP proxy on `enp2s0`.
 
 20. **First Bare-Metal Node Successfully Discovered (`pc-node-05`)**:
-    - **Node Hardware**: AMD Ryzen 5 7600 (12 vCPU), 32 GiB RAM, NVIDIA RTX 4070, onboard 2.5GbE Realtek (`04:7c:16:80:b2:62`).
+    - **Node Hardware**: AMD Ryzen 5 7600 (12 vCPU), 32 GiB RAM, NVIDIA RTX 4070, onboard 2.5GbE Realtek (`04:7c:16:xx:xx:xx`).
     - **Discovery Flow**: Machine UEFI PXE booted over 2.5G SFP+ adapter -> downloaded `ipxe.efi` from `10.10.10.5` -> streamed Talos v1.13.10 kernel + initramfs into RAM -> connected to Omni over SideroLink WireGuard.
 21. **Storage PC Node Discovered & Registered (`pc-node-04` / `stor01`)**:
     - **Cabling & UniFi Port Provisioning**: Connected onboard 2.5GbE interface to `Ceph-USW-Aggregation` Port 2 via multi-gig SFP+ adapter, alongside existing dual 10G SFP+ links on Ports 5 & 6.
     - **Automated Switch Port Config**: Programmed UniFi API to label Port 2 as `pc-node-04-2.5G` with Native VLAN 20 (`K8S-CONTROL`) and tagged VLANs allowed.
-    - **Discovery Flow**: Machine booted via UEFI Network Boot on onboard NIC (`MAC: 2c:f0:5d:57:7e:a4`), fetched `ipxe.efi` from `10.10.10.5` via TFTP, and downloaded Talos v1.13.10 kernel into RAM.
+    - **Discovery Flow**: Machine booted via UEFI Network Boot on onboard NIC (`MAC: 2c:f0:5d:xx:xx:xx`), fetched `ipxe.efi` from `10.10.10.5` via TFTP, and downloaded Talos v1.13.10 kernel into RAM.
     - **Omni Status**: Node registered in Omni under **Machines** (`UUID: 927ef8ab-872a-f416-acb4-2cf05d577ea4`) with WireGuard peer established.
 
 22. **Supermicro Control Plane 1 Discovered & Registered (`sm-node-01` / `edge01`)**:
@@ -232,13 +232,13 @@ Any AI agent or human operator can review this document to pick up exactly where
 
 23. **Supermicro Control Plane 2 Discovered & Registered (`sm-node-02` / `edge02`)**:
     - **BIOS Configuration**: Set `Onboard LAN Option ROM Type` to `[EFI]` and CPU PCIe slots to `[EFI]`.
-    - **Discovery Flow**: Booted via `<F11>` on `UEFI: PXE IPv4 Intel(R) Ethernet Connection X722 for 10GbE SFP+ (MAC: 3cecef6fd4bc)` on `USW-Agg #1` Port 3.
+    - **Discovery Flow**: Booted via `<F11>` on `UEFI: PXE IPv4 Intel(R) Ethernet Connection X722 for 10GbE SFP+ (MAC: 3cecefxxxxxx)` on `USW-Agg #1` Port 3.
     - **Omni Status**: Successfully downloaded `ipxe.efi`, streamed Talos v1.13.10 into RAM, established WireGuard peer, and registered in Omni under **Machines** (`UUID: 9983ae00-e364-11ea-8000-3cecef6fd61e`) in `MAINTENANCE` stage (`ready: true`).
 
 ---
 
 24. **Supermicro Primary Control Plane Discovered & Registered (`sm-node-03` / `main01`)**:
-    - **Hardware Topology**: Supermicro 813M Xeon E5-2680v4 (14C/28T, 64GB RAM), dual 10G SFP+ Intel X520 PCIe card (`a0:36:9f:3b:0c:f8` / `fa`) connected to `Ceph-USW-Aggregation` Ports 3 & 4.
+    - **Hardware Topology**: Supermicro 813M Xeon E5-2680v4 (14C/28T, 64GB RAM), dual 10G SFP+ Intel X520 PCIe card (`a0:36:9f:xx:xx:xx` / `xx`) connected to `Ceph-USW-Aggregation` Ports 3 & 4.
     - **BIOS Configuration**: Set `Above 4G Decoding: [Enabled]`, `RSC-RR1U-E16` 1U riser PCIe slots to `[EFI]`, `Onboard LAN OPROM Type: [EFI]`, Network Stack IPv4 PXE `[Enabled]`, and Boot Mode `[UEFI]`.
     - **Discovery Flow**: Booted via `<F11>` on `UEFI: IP4 Intel(R) Ethernet 10G 2P X520 Adapter`.
     - **Omni Status**: Downloaded `ipxe.efi` via TFTP -> streamed Talos v1.13.10 kernel into RAM -> established WireGuard connection -> registered in Omni under **Machines** (`UUID: 00000000-0000-0000-0000-3cecef58ed64`) in `MAINTENANCE` stage (`ready: true`).
@@ -531,7 +531,7 @@ Any AI agent or human operator can review this document to pick up exactly where
 38. **Brother DCP-7065DN Laser Multifunction & In-Cluster CUPS AirPrint Bridge (`printing.bar2sek.com`)**:
     - **Physical Hardware & Network Discovery**:
       - Connected physical Brother DCP-7065DN laser multifunction printer to Port 23 on `USW-24-G2` access switch (100 Mbps link).
-      - Discovered hardware MAC `30:05:5c:18:d8:79`.
+      - Discovered hardware MAC `30:05:5c:xx:xx:xx`.
     - **Declarative UniFi Network & DNS Infrastructure**:
       - Pinned static DHCP reservation `10.0.1.25` on Default corporate LAN in [`terraform/unifi/main.tf`](file:///terraform/unifi/main.tf) via `unifi_client.brother_printer`.
       - Configured authoritative split-horizon DNS records in [`terraform/unifi/dns.tf`](file:///terraform/unifi/dns.tf):
@@ -573,6 +573,15 @@ Any AI agent or human operator can review this document to pick up exactly where
         - `backup-postgres-databases`: Daily CronJob (03:30 UTC) running `pg_dump` on Immich and TeslaMate databases and streaming encrypted dumps to `s3-aws-backups-prod-use2-001/postgres/` (<50MB, ~$0.01/mo).
       - Created [`kubernetes/infrastructure/backups/README.md`](file:///kubernetes/infrastructure/backups/README.md) detailing configuration and step-by-step point-in-time disaster recovery runbooks.
 
+  - ### Milestone 17: Privacy Sanitization, Index Reconciliation & Container Hardening (2026-09-20)
+    - **Infrastructure Privacy & MAC Address Sanitization**:
+      - Audited and sanitized 22 physical hardware MAC addresses across [`docs/001-deployment-journal.md`](file:///docs/001-deployment-journal.md), [`docs/101-hardware-inventory.md`](file:///docs/101-hardware-inventory.md), [`docs/201-unifi-network-topology.md`](file:///docs/201-unifi-network-topology.md), and [`docs/506-cups-airprint-bridge.md`](file:///docs/506-cups-airprint-bridge.md) into standardized redacted forms (`OUI:xx:xx:xx`), restoring full compliance with `AGENTS.md` §4 Public-by-Default privacy hygiene.
+    - **Documentation Index Reconciliation**:
+      - Updated master documentation catalog in [`README.md`](file:///README.md): indexed [`docs/106-observability-prometheus-grafana.md`](file:///docs/106-observability-prometheus-grafana.md), confirmed [`docs/506-cups-airprint-bridge.md`](file:///docs/506-cups-airprint-bridge.md), and pruned dead reference `docs/304-windows-ansible-automation.md` (superseded by Bazzite gaming VM).
+    - **Container Resource Protection & Version Pinning**:
+      - Hardened [`kubernetes/apps/immich/immich.yaml`](file:///kubernetes/apps/immich/immich.yaml) with explicit CPU/memory requests and limits across Postgres, Redis, Server, and Machine Learning microservices, preventing unbounded model caching from creating node memory pressure.
+      - Pinned container image versions across workloads to semantic release tags ([`immich:v1.118.0`](file:///kubernetes/apps/immich/immich.yaml), [`actual-server:24.9.0`](file:///kubernetes/apps/finance/actual-budget.yaml), [`teslamate:1.32.0`](file:///kubernetes/apps/teslamate/teslamate.yaml), [`mosquitto:2.0.18`](file:///kubernetes/apps/teslamate/teslamate.yaml), and [`home-assistant:2024.9.1`](file:///kubernetes/apps/home-assistant/home-assistant.yaml)), eliminating surprise breaking upgrades from mutable `:latest` or `:stable` tags.
+
 ---
 
 ## 🎯 Immediate Next Actions & Infrastructure Backlog
@@ -580,8 +589,6 @@ Any AI agent or human operator can review this document to pick up exactly where
 1. **Local Synology NAS Bulk Backup Integration (Pending Hardware Onboarding)**:
    - Onboard physical Synology NAS on the local 10GbE network fabric.
    - Configure NFS/iSCSI target or local MinIO/S3 endpoint for heavy persistent volumes (specifically Immich 500GB bulk photo library) for zero-cloud-cost on-premises offsite backups.
-2. **Batch 3: Compliance, Documentation & Hygiene**:
-   - Redact and sanitize 22 hardware MAC addresses in documentation per `AGENTS.md` §4 privacy rules.
-   - Re-index README documentation links (prune obsolete 304, index 106 and 506).
-   - Pin container image tags and add CPU/RAM resource limits to `immich.yaml`.
+2. **GitOps Controller Evaluation (Flux CD)**:
+   - Evaluate deploying Flux CD source and kustomize controllers to enforce declarative reconciliation between GitHub and in-cluster states.
 

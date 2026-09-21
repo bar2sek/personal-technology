@@ -97,7 +97,7 @@ spec:
     spec:
       containers:
         - name: mosquitto
-          image: eclipse-mosquitto:2
+          image: eclipse-mosquitto:2.0.18
           ports:
             - containerPort: 1883
 ---
@@ -131,7 +131,7 @@ spec:
     spec:
       containers:
         - name: teslamate
-          image: teslamate/teslamate:latest
+          image: teslamate/teslamate:1.32.0
           env:
             - name: ENCRYPTION_KEY
               valueFrom:
@@ -191,7 +191,7 @@ spec:
     spec:
       containers:
         - name: grafana
-          image: teslamate/grafana:latest
+          image: teslamate/grafana:1.32.0
           env:
             - name: DATABASE_USER
               value: teslamate
