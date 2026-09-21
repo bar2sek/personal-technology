@@ -22,7 +22,7 @@ else
   echo "✅ Xcode Command Line Tools already installed."
 fi
 
-# 2. Check / Install Homebrew (for GUI casks & oMLX tap)
+# 2. Check / Install Homebrew (for GUI casks)
 if [ -x "/opt/homebrew/bin/brew" ]; then
   eval "$(/opt/homebrew/bin/brew shellenv)"
 fi
@@ -107,28 +107,6 @@ else
   echo "ℹ️  No local .dmg files found on USB drive."
 fi
 
-# A. oMLX (Fetch latest from GitHub if not already installed)
-if [ -d "/Applications/oMLX.app" ]; then
-  echo "✅ oMLX already installed."
-else
-  echo "--> Fetching latest oMLX.dmg from GitHub..."
-  OMLX_URL=$(curl -sL https://api.github.com/repos/jundot/omlx/releases/latest | grep "browser_download_url.*\.dmg" | tail -n 1 | cut -d '"' -f 4 || true)
-  if [ -n "$OMLX_URL" ]; then
-    OMLX_TMP="/tmp/oMLX.dmg"
-    if curl -fSL -o "$OMLX_TMP" "$OMLX_URL" 2>/dev/null; then
-      mount_dir=$(mktemp -d /tmp/dmg_mount.XXXXXX)
-      if hdiutil attach "$OMLX_TMP" -nobrowse -mountpoint "$mount_dir" -quiet 2>/dev/null; then
-        cp -R "$mount_dir"/*.app /Applications/ 2>/dev/null || true
-        hdiutil detach "$mount_dir" -quiet 2>/dev/null || true
-        echo "✅ Successfully installed oMLX.app."
-      fi
-      rm -rf "$mount_dir" "$OMLX_TMP"
-    else
-      echo "⚠️ Could not download oMLX.dmg. Download manually from https://github.com/jundot/omlx/releases"
-    fi
-  fi
-fi
-
 # 7. Check / Install Antigravity CLI (agy)
 if ! command -v agy &>/dev/null && [ ! -x "$HOME/.local/bin/agy" ]; then
   echo "--> Installing Antigravity CLI (agy)..."
@@ -142,7 +120,7 @@ echo ""
 echo "=========================================================="
 echo "✨ System Configuration Complete!"
 echo "• All apps, fonts, and CLI tools are installed."
-echo "• oMLX & Antigravity are ready in /Applications."
+echo "• Antigravity is ready in /Applications."
 echo "• Antigravity CLI (agy) ready in ~/.local/bin."
 echo "• VS Code & Ghostty are configured with JetBrainsMono Nerd Font."
 echo "• Dock & Finder preferences applied."

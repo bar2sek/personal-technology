@@ -1,6 +1,9 @@
-# Hybrid Local/Remote AI Development Architecture (Apple MLX + Kubernetes)
+# Hybrid Cloud & Remote AI Development Architecture
 
-This guide specifies the architecture, client configuration, and Kubernetes manifests for our **Hybrid Local/Remote AI Development Stack**. It combines zero-latency local code completion on Apple Silicon via **Apple MLX / oMLX** with unbounded remote agentic execution inside our on-premise Talos Kubernetes cluster.
+This guide specifies the architecture, client configuration, and Kubernetes manifests for our **Hybrid Cloud/Remote AI Development Stack**. It combines frontier cloud model inference on the macOS client with unbounded remote agentic execution inside our on-premise Talos Kubernetes cluster.
+
+> [!NOTE] Superseded local inference (September 2026)
+> This document previously described local Apple MLX / oMLX serving on ports `8080`/`8081`. That was decommissioned — the workstation now standardizes on cloud providers, freeing 25–34 GB of unified memory and ~59 GB of SSD. See [[nix-mac/Cloud AI Providers & Models|Cloud AI Providers & Models]] for the current model tiering.
 
 ---
 
@@ -9,9 +12,10 @@ This guide specifies the architecture, client configuration, and Kubernetes mani
 The system separates concerns into three distinct layers:
 
 1. **Client Layer (macOS / 48GB Unified RAM)**:
-   - Runs standard VS Code with the **Continue.dev** extension.
-   - Hosts local, zero-latency inference using **Apple MLX / oMLX** (Metal-accelerated C++ framework native to Apple Silicon).
+   - Runs standard VS Code with the **Continue.dev** extension, or Antigravity IDE with Roo Code.
+   - Inference is **entirely remote** — Anthropic, Google, and xAI APIs over HTTPS. No model weights on disk.
    - Zero Antigravity binaries installed locally; no local build tools required.
+   - The full 48 GB of unified memory stays available for containers, Nix builds, and the editor.
 
 2. **Cluster / Server Layer (`sm-node-03` / Kubernetes Pod)**:
    - Hosts persistent project repositories, compilers, build toolchains, linters, and the Antigravity CLI / background daemon (`agy`).
@@ -27,9 +31,10 @@ The system separates concerns into three distinct layers:
  |                    Client Layer (macOS / 48GB Unified RAM)                        |
  |                                                                                   |
  |  +--------------------+                     +----------------------------------+  |
- |  | VS Code            |                     | Apple MLX / oMLX Local Server    |  |
- |  | (Continue.dev UI)  |--- IPC (:8081) ---->| - Tab Autocomplete (Qwen 14B)    |  |
- |  |                    |--- IPC (:8080) ---->| - Deep Chat & Refactor (Qwen 32B)|  |
+ |  | VS Code            |                     | Cloud Provider APIs (HTTPS)      |  |
+ |  | (Continue.dev UI)  |--- HTTPS ---------->| - Autocomplete (Haiku 4.5)       |  |
+ |  | Antigravity + Roo  |--- HTTPS ---------->| - Chat & Refactor (Sonnet 5)     |  |
+ |  |                    |--- HTTPS ---------->| - Deep Reasoning (Opus 5)        |  |
  |  +--------------------+                     +----------------------------------+  |
  +-----------------------------------------------------------------------------------+
            |                                                    
@@ -60,84 +65,85 @@ The system separates concerns into three distinct layers:
 
 ## ⚡ Workload & Model Split
 
-| Layer | Engine / Interface | Model & Role | Memory Footprint (Weights + KV) |
+| Layer | Engine / Interface | Model & Role | Where it runs |
 | :--- | :--- | :--- | :--- |
-| **Tab Completion** | Continue.dev in VS Code | **Qwen 2.5 Coder 14B (4-bit MLX)**<br>Context: Strict 4,096 tokens (FIM ghost text) | ~8.8 GB |
-| **In-Editor Chat & Scoped Refactor** | Continue.dev Sidebar in VS Code | **Qwen 2.5 Coder 32B (4-bit MLX)**<br>Context: 32,768 tokens (diffs, unit tests) | ~22.0 GB |
-| **Autonomous Agent Automation** | Antigravity Remote Dashboard or `agy` CLI | **Antigravity Agent Platform**<br>Multi-file refactors, long-running test suites | Cluster Host Memory (`sm-node-03`) |
+| **Tab Completion** | Continue.dev in VS Code | **Claude Haiku 4.5**<br>Latency-critical inline completion | Anthropic API |
+| **In-Editor Chat & Scoped Refactor** | Continue.dev sidebar / Roo Code | **Claude Sonnet 5**<br>Diffs, unit tests, routine implementation | Anthropic API |
+| **Deep Reasoning & Architecture** | Roo Code in Antigravity IDE | **Claude Opus 5**<br>Multi-file refactors, architectural tie-breakers | Anthropic API |
+| **Autonomous Agent Automation** | Antigravity Remote Dashboard or `agy` CLI | **Antigravity Agent Platform**<br>Long-running test suites, multi-file refactors | Cluster host (`sm-node-03`) |
 
 ---
 
-## 🍏 Why Apple MLX / oMLX Over Ollama on macOS?
+## ☁️ Why Cloud Over Local Inference
 
-1. **Native Metal Architecture**: MLX was designed from scratch by Apple's machine learning research team for Apple Silicon unified memory. It avoids the translation overhead and CPU-GPU synchronization bottlenecks present in llama.cpp wrappers.
-2. **Direct Unified Memory Access**: Zero memory copying—Metal shaders operate directly on model weight tensors in RAM, achieving peak memory bandwidth (up to 150–300+ GB/s).
-3. **Dynamic Buffer Allocation**: MLX allocates Metal memory on-demand and immediately frees KV cache pages without holding rigid allocations.
-4. **OpenAI-Compatible Server API**: oMLX and `mlx-lm.server` expose standard `http://localhost:8000/v1` endpoints that drop directly into VS Code extensions.
+1. **Capability**: Frontier cloud models substantially outperform anything that fits in 48 GB of unified memory. The largest locally viable model was a 4-bit 32B quantization — a meaningful step down in reasoning quality.
+2. **Memory economics**: Two resident models consumed ~31 GB, leaving barely 8 GB of headroom. That memory now serves OrbStack containers, Nix derivations, and native builds — the workloads that genuinely cannot be moved off this machine.
+3. **No Metal ceiling tuning**: The old setup required raising `iogpu.wired_mem_limit` above the macOS default, a global system change with real stability implications under memory pressure. No longer needed.
+4. **Zero maintenance surface**: No weight downloads, no quantization selection, no server process to supervise, no port conflicts.
+
+The tradeoff is honest: cloud inference costs money per token and requires connectivity. Autocomplete latency is also higher — see the latency discussion in [[nix-mac/Cloud AI Providers & Models|Cloud AI Providers & Models]].
 
 ---
 
 ## 💾 Client Memory Budget (48GB Unified RAM Envelope)
 
-Under simultaneous load with both models resident in Metal memory:
+With no model weights resident:
 
-- **Qwen 2.5 Coder 14B (4-bit) + 4k KV Cache**: ~8.8 GB
-- **Qwen 2.5 Coder 32B (4-bit) + 32k KV Cache**: ~22.0 GB
 - **macOS System Overhead & VS Code UI**: ~9.0 GB
-- **Safety Margin / Working Headroom**: ~8.2 GB
-- **Total In-Use**: **~39.8 GB / 48.0 GB** (Safely avoids disk swapping).
+- **OrbStack / container workloads**: variable, previously constrained
+- **Available for builds, Nix, and containers**: **~39 GB**
+
+The former budget committed ~31 GB to model weights and KV cache, leaving ~8 GB of working headroom. That inversion is the main practical benefit of the migration.
 
 ---
 
 ## 🛠 macOS Client Configuration
 
-### 1. Metal VRAM Ceiling Tuning
-By default, macOS limits any single process to ~70% of unified memory. Run this command to raise the Metal wired allocation ceiling to 40 GB:
+### 1. API Credentials
+Export provider keys in your shell profile — never commit them:
 
 ```bash
-sudo sysctl iogpu.wired_mem_limit=40960
-```
-To persist this across reboots, add to `/etc/sysctl.conf`:
-```text
-iogpu.wired_mem_limit=40960
+export ANTHROPIC_API_KEY="..."   # Claude via Continue / Roo Code / Claude Code
+export GEMINI_API_KEY="..."      # Antigravity native agent
+export XAI_API_KEY="..."         # Grok via Roo Code
 ```
 
-### 2. Automated Installation Script & Justfile Shortcuts
-Run [`client-tools/ai-dev/setup-mac-mlx.sh`](../client-tools/ai-dev/setup-mac-mlx.sh) or execute via `Justfile`:
+> [!CAUTION]
+> Treat every repository here as public. A committed key is compromised the moment it lands, and rotation is the only remedy — see the Security section of `AGENTS.md`.
 
-```bash
-# Set up Metal ceiling and pre-cache models via Astral uv
-./client-tools/ai-dev/setup-mac-mlx.sh
-
-# Launch dual-port MLX servers (:8081 Tab Autocomplete + :8080 Deep Chat)
-just serve-ai
-```
-
-### 3. VS Code Continue.dev Configuration
-Deploy [`client-tools/ai-dev/continue-config.json`](../client-tools/ai-dev/continue-config.json) to `~/.continue/config.json` (also managed declaratively via `nix-mac`):
+### 2. VS Code Continue.dev Configuration
+Deploy [`client-tools/ai-dev/continue-config.json`](../client-tools/ai-dev/continue-config.json) to `~/.continue/config.json`, replacing the `REPLACE_WITH_ANTHROPIC_API_KEY` placeholders with a real key (the deployed copy is outside version control):
 
 ```json
 {
-  "tabAutocompleteModel": {
-    "title": "Local Qwen 14B Autocomplete (MLX)",
-    "provider": "openai",
-    "model": "mlx-community/Qwen2.5-Coder-14B-Instruct-4bit",
-    "apiBase": "http://localhost:8081/v1",
-    "contextLength": 4096
-  },
   "models": [
     {
-      "title": "Local Qwen 32B Chat (oMLX)",
-      "provider": "openai",
-      "model": "mlx-community/Qwen2.5-Coder-32B-Instruct-4bit",
-      "apiBase": "http://localhost:8080/v1",
-      "contextLength": 32768
+      "title": "Claude Opus 5 (Deep Reasoning)",
+      "provider": "anthropic",
+      "model": "claude-opus-5",
+      "contextLength": 1000000,
+      "apiKey": "REPLACE_WITH_ANTHROPIC_API_KEY"
+    },
+    {
+      "title": "Claude Sonnet 5 (Daily Driver)",
+      "provider": "anthropic",
+      "model": "claude-sonnet-5",
+      "contextLength": 1000000,
+      "apiKey": "REPLACE_WITH_ANTHROPIC_API_KEY"
     }
-  ]
+  ],
+  "tabAutocompleteModel": {
+    "title": "Claude Haiku 4.5 (Autocomplete)",
+    "provider": "anthropic",
+    "model": "claude-haiku-4-5",
+    "contextLength": 200000,
+    "apiKey": "REPLACE_WITH_ANTHROPIC_API_KEY"
+  }
 }
 ```
 
----
+> [!TIP]
+> Use the exact model ID strings — never append date suffixes such as `claude-opus-5-20260401`. Dated variants are a convention from older model generations and will be rejected.
 
 ---
 

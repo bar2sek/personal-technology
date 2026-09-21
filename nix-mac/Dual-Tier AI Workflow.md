@@ -1,17 +1,18 @@
 ---
 title: Dual-Tier AI Workflow
+date: 2026-09-20
 tags:
   - workflow
   - architecture
-  - local-llm
+  - ai/cloud
   - antigravity
-  - qwen
-created: 2026-08-24
+status: evergreen
+aliases: []
 ---
 
 # ⚡ The Unified Agentic Developer Workflow
 
-Combining **local M5 Pro hardware** with **frontier cloud models** inside a single unified canvas (**Antigravity IDE**) yields the optimal balance of speed, zero token exhaustion, and deep reasoning:
+Routing work across **frontier cloud providers** inside a single unified canvas (**Antigravity IDE**) balances speed, cost, and depth of reasoning. The tiers below are ordered by how often you should reach for them, not by capability — escalate only when the cheaper tier stalls.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -21,7 +22,7 @@ Combining **local M5 Pro hardware** with **frontier cloud models** inside a sing
 ├──────────────────────────────┬──────────────────────────────┤
 │ PRIMARY: Native AGY Agent    │ EXTENSION: Roo Code Switcher │
 ├──────────────────────────────┼──────────────────────────────┤
-│ • Gemini Flash / Pro (Cloud) │ • Claude Sonnet 4.6 / Opus 5 │
+│ • Gemini Flash / Pro (Cloud) │ • Claude Sonnet 5 / Opus 5   │
 │ • Multi-file Planning & Docs │ • xAI Grok (API)             │
 │ • Subagent Orchestration     │ • Deep Audits & Alternative  │
 │ • Terminal Sandbox Tools     │ • Rate-Limit Relief Valve    │
@@ -43,10 +44,11 @@ Combining **local M5 Pro hardware** with **frontier cloud models** inside a sing
 
 ---
 
-## Tier 2: Frontier Multi-Model Engine (Claude Sonnet 4.6 & Opus 5 via Roo Code)
+## Tier 2: Frontier Multi-Model Engine (Claude Sonnet 5 & Opus 5 via Roo Code)
 * **Goal:** Alternative reasoning perspective, deep architectural tie-breakers, and maximum-reasoning audits.
 * **Provider:** Anthropic API (Pay-As-You-Go with spending limits).
-* **Environment:** Toggle dropdown in Roo Code inside Antigravity IDE (`Claude Sonnet 4.6` for fast, cost-efficient edits; `Claude Opus 5` for heavy reasoning).
+* **Environment:** Toggle dropdown in Roo Code inside Antigravity IDE — `claude-sonnet-5` for fast, cost-efficient edits; `claude-opus-5` for heavy reasoning.
+* **Model reference:** see [[Cloud AI Providers & Models]] for the full tiering table and exact model ID strings.
 
 ---
 
@@ -59,15 +61,15 @@ Combining **local M5 Pro hardware** with **frontier cloud models** inside a sing
 
 ## Summary Comparison of Antigravity Flavors
 
-| Antigravity Flavor | Has In-Editor Code Canvas? | Multi-Model Extension Support? | Can Host Local MLX via Roo Code? | Primary Focus |
-| :--- | :--- | :--- | :--- | :--- |
-| **Antigravity IDE** | Yes (VS Code base) | Yes (VS Code Extensions) | Yes (via Roo Code sidebar) | **Daily Driver: All-in-one coding & agent IDE** |
-| **Antigravity Desktop 2.0**| No (Companion app) | No | No | High-level agent mission control & cron dashboard |
-| **Antigravity CLI (`agy`)** | Terminal CLI | CLI Tools / MCP | CLI integrations | Scriptable terminal pair programming |
+| Antigravity Flavor | Has In-Editor Code Canvas? | Multi-Model Extension Support? | Primary Focus |
+| :--- | :--- | :--- | :--- |
+| **Antigravity IDE** | Yes (VS Code base) | Yes (VS Code Extensions) | **Daily Driver: All-in-one coding & agent IDE** |
+| **Antigravity Desktop 2.0**| No (Companion app) | No | High-level agent mission control & cron dashboard |
+| **Antigravity CLI (`agy`)** | Terminal CLI | CLI Tools / MCP | Scriptable terminal pair programming |
 
 ---
 
 ## Related Notes
 * [[System Architecture]]
-* [[Local LLMs with MLX]]
+* [[Cloud AI Providers & Models]]
 * [[Nix-Darwin Guide]]

@@ -1,6 +1,6 @@
 # 🖥️ Declarative Mac AI Workstation (`nix-mac`)
 
-> Fully declarative, single-command bootstrap for an Apple Silicon Mac workstation. Combines **`nix-darwin`**, **Homebrew**, **Apple MLX / oMLX** local coding models, and **Visual Studio Code** into a clean, reproducible, anti-bloat system.
+> Fully declarative, single-command bootstrap for an Apple Silicon Mac workstation. Combines **`nix-darwin`**, **Homebrew**, cloud-first AI tooling, and **Visual Studio Code** into a clean, reproducible, anti-bloat system.
 
 ---
 
@@ -35,34 +35,28 @@ bash templates/bootstrap.sh
 **What the bootstrap script automates:**
 * Installs **Xcode Command Line Tools**, **Homebrew**, and the official **Determinate Systems Nix** daemon.
 * Builds and applies the **`nix-darwin`** system state from `templates/flake.nix`.
-* Installs all GUI applications: **Visual Studio Code, Ghostty, Google Drive, Obsidian, OrbStack, AppCleaner, and oMLX**.
+* Installs all GUI applications: **Visual Studio Code, Ghostty, Google Drive, Obsidian, OrbStack, and AppCleaner**.
 * Installs modern CLI utilities: `git`, `uv`, `ripgrep`, `fd`, `jq`, `just`, `eza`, `bat`, `zoxide`, `fzf`, and `p10k`.
 * Installs cloud infrastructure CLIs: `awscli`, `azure-cli`, `terraform`, and `node`.
 * Deploys **JetBrainsMono Nerd Font** system-wide.
 * Auto-configures **Visual Studio Code** (`Default Dark+` theme, font ligatures, Material Icons, and declarative extensions).
-* Deploys **Continue.dev** pre-configured for local Qwen model endpoints.
+* Deploys **Continue.dev** pre-configured for Anthropic Claude endpoints.
 * Configures **Ghostty** and **Zsh** with Powerlevel10k (colors, icons, Git status).
 * Arranges the macOS Dock in a tidy 3-tier layout and eliminates telemetry from Edge and Brave.
 * Purges GarageBand, iMovie, and sound libraries to reclaim **~5–8 GB** of SSD space.
 
 ---
 
-## 🧠 Local LLM Serving (Apple MLX + oMLX)
+## 🧠 Cloud AI Model Routing
 
-This workstation runs local models natively on Apple Silicon's Unified Memory Architecture with zero host Python bloat (managed ephemerally via `uvx` or standalone `oMLX.app`).
+This workstation runs **no local model weights**. All inference is remote, which keeps the full 48 GB of unified memory available for builds, containers, and Nix derivations.
 
-### Model Split & Port Allocation
-* **Port 8081 — Tab Autocomplete (FIM):** `Qwen 2.5 Coder 14B (4-bit)` for sub-50ms ghost-text completions.
-* **Port 8080 — Chat & Scoped Refactor:** `Qwen 2.5 Coder 32B (4-bit)` utilizing **oMLX Paged SSD KV Caching** for instant multi-turn agent latency ($< 0.5\text{s}$ TTFT).
+### Model Tiering
+* **`claude-haiku-4-5`** — tab autocomplete, where latency dominates quality.
+* **`claude-sonnet-5`** — daily driver for implementation, review, and tests.
+* **`claude-opus-5`** — deep reasoning, multi-file refactors, architecture decisions.
 
-### Launching Local Models
-```bash
-# Run both Autocomplete (:8081) and Chat (:8080) simultaneously:
-just serve-all
-
-# Or launch Qwen 32B exclusively via oMLX:
-just serve-omlx-32b
-```
+Gemini is reached through the Antigravity IDE native agent; Claude and xAI Grok through the Roo Code switcher. See [[Cloud AI Providers & Models]] for the full routing table and credential handling.
 
 ---
 
@@ -75,8 +69,6 @@ This repository includes a [`Justfile`](templates/Justfile) with handy shortcuts
 | `just switch` | Rebuild and apply the active `nix-darwin` configuration. |
 | `just update` | Update Nix flake inputs (`flake.lock`) and apply system updates. |
 | `just code` | Launch Visual Studio Code on the current directory. |
-| `just serve-all` | Start both Tab Autocomplete (:8081) and Deep Chat (:8080) servers. |
-| `just serve-omlx-32b`| Launch Qwen 32B with Paged SSD KV Caching on port 8080. |
 | `just gc` | Garbage collect old Nix generations to free disk space. |
 | `just prune-all` | Deep clean `uv`, `nix`, `brew`, and container caches. |
 | `just debloat` | Purge pre-installed GarageBand/iMovie files from `/Library/Application Support`. |
@@ -87,7 +79,7 @@ This repository includes a [`Justfile`](templates/Justfile) with handy shortcuts
 
 Visual Studio Code is configured with a curated suite of extensions managed declaratively in `flake.nix`:
 
-* **AI & Completion:** [Continue.dev](https://continue.dev) (wired to local oMLX / MLX endpoints).
+* **AI & Completion:** [Continue.dev](https://continue.dev) (wired to Anthropic Claude endpoints).
 * **Containers & Remote:** Dev Containers, Docker, and Remote - SSH (pairs natively with [OrbStack](https://orbstack.dev)).
 * **Cloud & DevOps:** AWS Toolkit, Microsoft Kubernetes Tools, and HashiCorp Terraform.
 * **Tooling & Themes:** Nix IDE, Material Icon Theme, and JetBrainsMono Nerd Font.
@@ -99,13 +91,13 @@ Visual Studio Code is configured with a curated suite of extensions managed decl
 The root of this repository contains an Obsidian-compatible documentation vault detailing every design decision:
 
 * [[Pre-Flight Preparation & Unboxing Master Plan]] — The 15-minute 1-click bootstrap pipeline.
-* [[System Architecture]] — Hybrid bare-metal LLM + containerized applications paradigm.
-* [[Dual-Tier AI Workflow]] — Pairing local Qwen (micro-typist) with agentic platforms (macro-architect).
-* [[Hardware & Memory Budget]] — Unified memory allocation (48GB), model quantization, and headroom math.
+* [[System Architecture]] — Containerized applications paradigm and the Metal GPU access boundary.
+* [[Dual-Tier AI Workflow]] — Routing work between fast and deep cloud model tiers.
+* [[Hardware & Memory Budget]] — Unified memory allocation (48GB) and headroom math.
 * [[Hardware Protection & Keyboard Care]] — Step-by-step Barekey decal application & screen buffer setup.
 * [[Container Strategy]] — Why OrbStack replaces Docker Desktop for minimal CPU/RAM overhead.
-* [[IDE Configuration Guide]] — Step-by-step configuration for VS Code, Continue.dev, and local endpoints.
-* [[Local LLMs with MLX]] — Running Qwen 2.5 Coder via Apple MLX and oMLX with zero system bloat.
+* [[IDE Configuration Guide]] — Step-by-step configuration for VS Code, Continue.dev, and Antigravity.
+* [[Cloud AI Providers & Models]] — Model tiering, provider routing per tool, and credential hygiene.
 * [[Mac Cleanliness & Anti-Bloat Guide]] — Best practices for keeping macOS pristine (`uv`, Homebrew zap, cache pruning).
 * [[Cloud Storage & Google Drive Guide]] — Disabling iCloud syncing and configuring Google Drive for Desktop.
 * [[Setup Checklist]] — Printable unboxing and software checklist.

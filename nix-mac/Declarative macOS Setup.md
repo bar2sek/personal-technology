@@ -109,13 +109,14 @@ Instead of remembering complex `uvx` or `docker` flags, use **[`just`](https://g
 
 ### Example `Justfile`:
 ```makefile
-# Start local 32B Qwen server
-serve-32b:
-    uvx --from mlx-lm mlx_lm.server --model mlx-community/Qwen2.5-Coder-32B-Instruct-4bit --port 8080
+# Rebuild and apply the active nix-darwin configuration
+switch:
+    sudo -H darwin-rebuild switch --flake ~/.config/nix-darwin#MacBook-Pro
 
-# Start lightweight 14B Qwen server
-serve-14b:
-    uvx --from mlx-lm mlx_lm.server --model mlx-community/Qwen2.5-Coder-14B-Instruct-4bit --port 8080
+# Update the flake lockfile and rebuild
+update:
+    nix flake update --flake ~/.config/nix-darwin
+    sudo -H darwin-rebuild switch --flake ~/.config/nix-darwin#MacBook-Pro
 
 # Clean all system caches (uv, brew, docker)
 prune:
@@ -166,4 +167,4 @@ If you want to take declarativeness to the extreme:
 ## Related Notes
 * [[Mac Cleanliness & Anti-Bloat Guide]]
 * [[Setup Checklist]]
-* [[Local LLMs with MLX]]
+* [[Cloud AI Providers & Models]]

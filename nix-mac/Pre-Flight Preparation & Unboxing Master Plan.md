@@ -115,5 +115,5 @@ After running the bootstrap script:
 * [[Hardware Protection & Keyboard Care]]
 * [[Nix-Darwin Guide]]
 * [[IDE Configuration Guide]]
-* [[Local LLMs with MLX]]
+* [[Cloud AI Providers & Models]]
 * [[Cloud Storage & Google Drive Guide]]

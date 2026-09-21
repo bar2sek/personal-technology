@@ -92,6 +92,6 @@ Follow this step-by-step checklist when unboxing your new MacBook Pro to ensure 
 
 ## Related Notes
 * [[Index]]
-* [[Local LLMs with MLX]]
+* [[Cloud AI Providers & Models]]
 * [[Container Strategy]]
 * [[Mac Cleanliness & Anti-Bloat Guide]]

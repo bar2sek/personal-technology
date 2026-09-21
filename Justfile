@@ -181,17 +181,7 @@ bazzite-restart:
     virtctl restart --force --grace-period=0 bazzite-gaming-vm -n vms
 
 # ------------------------------------------------------------------------------
-# 5. Local AI (Apple MLX / oMLX on macOS)
-# ------------------------------------------------------------------------------
-
-# Launch dual-port local MLX servers (:8081 for Tab Autocomplete, :8080 for Chat)
-serve-ai:
-    @echo "Starting Tab Autocomplete (:8081) and Deep Chat (:8080)..."
-    @uvx --from mlx-lm mlx_lm.server --model mlx-community/Qwen2.5-Coder-14B-Instruct-4bit --port 8081 --chat-template-name chatml & \
-     uvx --from mlx-lm mlx_lm.server --model mlx-community/Qwen2.5-Coder-32B-Instruct-4bit --port 8080 --chat-template-name chatml
-
-# ------------------------------------------------------------------------------
-# 6. Workstation Management (nix-darwin)
+# 5. Workstation Management (nix-darwin)
 # ------------------------------------------------------------------------------
 
 # Rebuild and apply the active nix-darwin configuration

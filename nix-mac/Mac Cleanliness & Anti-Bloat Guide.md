@@ -147,4 +147,4 @@ Historically, apps like *Monolingual* stripped foreign language `.lproj` folders
 * [[Setup Checklist]]
 * [[Nix-Darwin Guide]]
 * [[Container Strategy]]
-* [[Local LLMs with MLX]]
+* [[Cloud AI Providers & Models]]

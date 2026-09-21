@@ -138,6 +138,6 @@ Configure your user settings (`~/Library/Application Support/Antigravity/User/se
 
 ## Related Notes
 * [[Dual-Tier AI Workflow]]
-* [[Local LLMs with MLX]]
+* [[Cloud AI Providers & Models]]
 * [[Nix-Darwin Guide]]
 * [[Setup Checklist]]

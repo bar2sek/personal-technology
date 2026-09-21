@@ -42,7 +42,7 @@ Running local AI workflows alongside isolated development environments on Apple 
 ### 1. Metal GPU Access Boundary
 * **The Reality:** Linux containers running on macOS (whether via Docker, OrbStack, or Apple Container) run inside a Linux VM managed by macOS `Virtualization.framework`.
 * **The Limitation:** Linux guest VMs do **not** have direct pass-through access to Apple's Metal GPU API.
-* **The Solution:** Always execute LLM inference natively on macOS using Apple's [[Local LLMs with MLX|MLX]] or Metal-accelerated backends to achieve full GPU compute speeds and zero-copy memory throughput.
+* **The Consequence:** Any GPU-bound workload on this machine must run natively on macOS, never inside a container. In practice this constraint is now mostly moot for AI work — inference runs on [[Cloud AI Providers & Models|cloud providers]], and the cluster RTX 4070 covers workloads that genuinely need a local GPU.
 
 ### 2. Application & Dev Isolation
 * Keep the host macOS clean of language runtime clutter (Node versions, Rust toolchains, Postgres/Redis daemons).
@@ -56,6 +56,6 @@ Running local AI workflows alongside isolated development environments on Apple 
 
 ## Related Notes
 * [[Hardware & Memory Budget]]
-* [[Local LLMs with MLX]]
+* [[Cloud AI Providers & Models]]
 * [[Container Strategy]]
 * [[Mac Cleanliness & Anti-Bloat Guide]]

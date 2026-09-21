@@ -1,30 +1,27 @@
 {
-  "tabAutocompleteModel": {
-    "title": "Local Qwen 14B Autocomplete (MLX)",
-    "provider": "openai",
-    "model": "mlx-community/Qwen2.5-Coder-14B-Instruct-4bit",
-    "apiBase": "http://localhost:8081/v1",
-    "contextLength": 4096,
-    "apiKey": "EMPTY"
-  },
   "models": [
     {
-      "title": "Local Qwen 32B Chat (oMLX)",
-      "provider": "openai",
-      "model": "mlx-community/Qwen2.5-Coder-32B-Instruct-4bit",
-      "apiBase": "http://localhost:8080/v1",
-      "contextLength": 32768,
-      "apiKey": "EMPTY"
+      "title": "Claude Opus 5 (Deep Reasoning)",
+      "provider": "anthropic",
+      "model": "claude-opus-5",
+      "contextLength": 1000000,
+      "apiKey": "REPLACE_WITH_ANTHROPIC_API_KEY"
     },
     {
-      "title": "Local Qwen 14B Chat (MLX)",
-      "provider": "openai",
-      "model": "mlx-community/Qwen2.5-Coder-14B-Instruct-4bit",
-      "apiBase": "http://localhost:8080/v1",
-      "contextLength": 16384,
-      "apiKey": "EMPTY"
+      "title": "Claude Sonnet 5 (Daily Driver)",
+      "provider": "anthropic",
+      "model": "claude-sonnet-5",
+      "contextLength": 1000000,
+      "apiKey": "REPLACE_WITH_ANTHROPIC_API_KEY"
     }
   ],
+  "tabAutocompleteModel": {
+    "title": "Claude Haiku 4.5 (Autocomplete)",
+    "provider": "anthropic",
+    "model": "claude-haiku-4-5",
+    "contextLength": 200000,
+    "apiKey": "REPLACE_WITH_ANTHROPIC_API_KEY"
+  },
   "customCommands": [
     {
       "name": "refactor",

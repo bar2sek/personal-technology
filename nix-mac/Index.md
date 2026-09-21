@@ -21,13 +21,13 @@ Welcome to the **Mac AI Workstation** notes vault. This workspace documents the 
 * [[Pre-Flight Preparation & Unboxing Master Plan]] — The 15-minute 1-click bootstrap pipeline and pre-flight checklist.
 
 ### 1. Architecture & Hardware
-* [[System Architecture]] — The hybrid bare-metal LLM + containerized applications paradigm.
-* [[Dual-Tier AI Workflow]] — Pairing local Qwen (micro/tab completions) with Antigravity (macro/agentic planning).
-* [[Hardware & Memory Budget]] — Unified memory allocation (48GB), model quantization, and headroom math.
+* [[System Architecture]] — The containerized applications paradigm and Metal GPU access boundary.
+* [[Dual-Tier AI Workflow]] — Routing work between fast and deep cloud model tiers.
+* [[Hardware & Memory Budget]] — Unified memory allocation (48GB) and headroom math.
 * [[Hardware Protection & Keyboard Care]] — Step-by-step Barekey decal application & screen buffer setup.
 
-### 2. LLM Serving & MLX
-* [[Local LLMs with MLX]] — Running Qwen 2.5 Coder (14B/32B) via Apple's MLX and `uv` with zero global system bloat.
+### 2. Cloud AI & Model Routing
+* [[Cloud AI Providers & Models]] — Model tiering, provider routing per tool, and credential hygiene.
 * [[IDE Configuration Guide]] — Step-by-step config for VS Code + Continue.dev and Antigravity.
 
 ### 3. Containerization & Isolation

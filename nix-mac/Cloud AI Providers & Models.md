@@ -1,139 +1,91 @@
 ---
-title: Local LLMs with MLX (Archived)
-status: archive
+title: "Cloud AI Providers & Models"
+date: 2026-09-20
 tags:
-  - mlx
+  - ai/cloud
   - llm
-  - qwen
-  - archive
-created: 2026-08-24
+status: evergreen
+aliases:
+  - "Local LLMs with MLX"
 ---
 
-# ⚡ Local LLMs with Apple MLX (Archived)
+# ☁️ Cloud AI Providers & Models
 
-> [!NOTE]
-> **Decommissioned & Archived (September 2026)**:
-> Local model serving via `oMLX` and `mlx-lm` was retired to reclaim ~59 GB of SSD storage and 25–34 GB of Apple Silicon unified memory. The workstation has standardized on a cloud-first architecture: native Gemini in Antigravity IDE paired with Claude and Grok via Roo Code. This document is preserved for historical reference.
+The workstation runs **no local model weights**. All inference is remote, over provider APIs. This note is the reference for which model to reach for, which tool routes to which provider, and how credentials are handled.
 
-## Why Apple MLX?
-[Apple MLX](https://github.com/ml-explore/mlx) is an open-source machine learning framework engineered specifically for Apple Silicon and Metal GPU acceleration. 
-
-* **Zero-copy memory sharing:** CPU and GPU share the same memory without PCIe transfer overhead.
-* **Native 4-bit / 8-bit quantization:** Minimizes memory footprint while preserving accuracy.
-* **Optimized token generation:** Outperforms generic CPU/cross-platform runtimes on M-series chips.
+> [!IMPORTANT] Why cloud-first
+> A 48 GB M5 Pro can host a 32B model at 6-bit, but only by surrendering 25–34 GB of unified memory that native builds, OrbStack containers, and Nix derivations need. Frontier cloud models outperform anything that fits locally, and the memory stays available for actual development work. Retiring local serving reclaimed ~59 GB of SSD alongside that memory.
 
 ---
 
-## Zero-Bloat Execution with `uv`
+## 🧠 Model Tiering
 
-To avoid polluting your global macOS environment with Python packages, use **`uv`** (by Astral) to run `mlx-lm` in ephemeral virtual environments.
+Pick the cheapest tier that clears the task's quality bar. Escalating is cheap; discovering a subtle wrong answer later is not.
 
-### 1. Install `uv`
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
-
-### 2. Launch OpenAI-Compatible MLX Server
-
-Run the server on-demand without installing anything permanently into system Python:
-
-#### Primary Workhorse: Qwen 2.5 Coder 32B (High-Quant 6-bit / 8-bit)
-```bash
-# Launch via oMLX (preferred for Paged SSD KV Caching)
-just serve-omlx
-
-# Or run ephemeral server via uvx:
-uvx --from mlx-lm mlx_lm.server \
-  --model mlx-community/Qwen2.5-Coder-32B-Instruct-6bit \
-  --port 8080 \
-  --chat-template-name chatml
-```
-
-> [!TIP]
-> **Quantization Selection for 48GB M5 Pro:**
-> * **6-bit (`Qwen2.5-Coder-32B-Instruct-6bit`):** ~25GB VRAM. Provides >99.7% float16 accuracy while leaving a 13GB+ cushion for OrbStack and Antigravity IDE.
-> * **8-bit (`Qwen2.5-Coder-32B-Instruct-8bit`):** ~33.5GB VRAM. Near-lossless precision, utilizing the maximum safe Metal memory boundary on 48GB.
-> * Smaller models (1.5B and 14B) have been retired to eliminate background memory contention.
-
----
-
-## 🚀 Primary Inference Engine: oMLX
-
-[oMLX](https://github.com/jundot/omlx) is your **primary, dedicated inference engine** for local coding models on Apple Silicon. Installed declaratively via `nix-mac` as `/Applications/oMLX.app`, it provides high-throughput token generation paired with **Paged SSD KV Caching**.
-
-### Why oMLX is the Standard for Agentic & Multi-Turn Coding
-In multi-turn coding sessions (chat, follow-ups, or agent loops), assistants repeatedly re-send large prompt prefixes (system instructions + codebase files + chat history).
-* With vanilla `mlx-lm` or `llama.cpp`, the server recomputes the entire context from scratch on every turn, causing **5–15 second latency delays (Time-to-First-Token)**.
-* **Paged SSD KV Caching:** oMLX persists historical and branched KV cache blocks to your Mac's internal NVMe SSD in `safetensors` format (`~/.omlx/cache`). When VS Code sends a new turn with a known prefix, oMLX restores the cached state in milliseconds, dropping TTFT to **$< 0.5$ seconds**.
-
-### Key Features of oMLX
-1. **Multi-Model Continuous Batching:** Simultaneously handles concurrent requests (e.g. Chat and Tab Autocomplete) without blocking.
-2. **Auto Model Discovery:** Automatically discovers models cached in `~/.cache/huggingface/hub/` without manual copying.
-3. **Dual API Compatibility:** Exposes standard **OpenAI** (`/v1/chat/completions`) and **Anthropic** (`/v1/messages`) endpoints on `localhost:8080`.
-4. **Native macOS Menu Bar App:** Monitor token speeds, VRAM, and active requests with zero Electron bloat.
-
-### Launching oMLX
-```bash
-# Start multi-model server on port 8080 (via Justfile):
-just serve-omlx
-
-# Or start as a managed background daemon:
-just omlx-start
-
-# Check health and menu bar status:
-just omlx-status
-```
-
----
-
-## 🛠️ Secondary Fallback: `mlx-lm` via `uv`
-
-For quick CLI tests and one-off benchmarks (without launching the full server), use `uvx` for ephemeral execution:
-
-```bash
-# 5-second CLI generation benchmark
-uvx --from mlx-lm mlx_lm.generate \
-  --model mlx-community/Qwen2.5-Coder-14B-Instruct-4bit \
-  --prompt "Write a Python script that benchmarks GPU memory bandwidth on Apple Silicon."
-```
-
----
-
----
-
-## ✍️ Tab Autocomplete (FIM) vs. Chat / Agent Models
-
-Tab autocomplete has fundamentally different latency and architectural requirements than chat/agent pair-programming:
-
-| Modality | Target Latency | Best Local Model Size | Recommended Tooling |
+| Tier | Model ID | Context | Use for |
 | :--- | :--- | :--- | :--- |
-| **Tab Autocomplete (FIM)** | `< 50ms` per keystroke | **Qwen 2.5 Coder 1.5B / 7B (Base)** | **VS Code + Continue.dev** |
-| **Chat, Refactoring & Agents** | `200ms – 1s` | **Qwen 2.5 Coder 32B (Instruct)** | **Antigravity**, **Cursor**, **Aider** |
+| **Deep reasoning** | `claude-opus-5` | 1M | Multi-file refactors, architecture decisions, debugging with incomplete information |
+| **Daily driver** | `claude-sonnet-5` | 1M | Routine implementation, code review, writing tests, documentation |
+| **Latency-critical** | `claude-haiku-4-5` | 200K | Tab autocomplete, where response time dominates output quality |
 
-### How IDEs Handle Local Tab Completion:
-1. **VS Code + [Continue.dev](https://continue.dev)**: The industry standard for local tab-completion and inline code generation. Allows you to set `tabAutocompleteModel` to your local MLX/Ollama endpoint using a lightweight model (`qwen2.5-coder:1.5b-base`).
-2. **Antigravity IDE**: Uses **Antigravity Tab** (Google DeepMind's proprietary next-intent speculative decoding engine). It is optimized for cloud sub-50ms latency and does not natively support rerouting autocomplete to a custom local endpoint.
-3. **Cursor**: Features built-in custom OpenAI API support for chat, while its proprietary "Cursor Tab" routes through Cursor's multi-token prediction engine.
+> [!TIP] Use the exact model ID strings
+> Do **not** append date suffixes (`claude-opus-5`, never `claude-opus-5-20260401`). Dated variants are a stale convention from older model generations and will fail.
 
 ---
 
-## Model Cache Location & Cleanup
+## 🔀 Provider Routing by Tool
 
-MLX caches downloaded Hugging Face model weights in:
-`~/.cache/huggingface/hub/`
+Each editor reaches a different provider. Knowing which is which avoids configuring the wrong surface.
 
-To inspect or clean up model storage:
-```bash
-# Check size of downloaded models
-du -sh ~/.cache/huggingface/hub/
+| Tool | Provider | Notes |
+| :--- | :--- | :--- |
+| **Antigravity IDE** | Google Gemini | Native agent canvas. Antigravity Tab uses Google's proprietary speculative decoding for autocomplete — it cannot be rerouted to another provider. |
+| **Roo Code** | Anthropic Claude, xAI Grok | Model switcher inside the IDE; the path for Claude and Grok. |
+| **VS Code + Continue** | Anthropic Claude | Config template at `client-tools/ai-dev/continue-config.json`. |
+| **Claude Code** | Anthropic Claude | Terminal-native agent, installed declaratively via `pkgs.claude-code` in the flake. |
 
-# Delete a specific model to free disk space
-rm -rf ~/.cache/huggingface/hub/models--mlx-community--Qwen2.5-Coder-32B-Instruct-4bit
-```
+---
+
+## 🔐 Credential Hygiene
+
+API keys are the one genuinely sensitive part of this setup.
+
+* **Never commit a key.** The tracked `continue-config.json` carries `REPLACE_WITH_ANTHROPIC_API_KEY` placeholders. Substitute real values only in your local copy at `~/.continue/config.json`, which is outside version control.
+* **Prefer the environment.** Export `ANTHROPIC_API_KEY` / `GEMINI_API_KEY` / `XAI_API_KEY` in your shell profile, or let the tool store them in the macOS keychain.
+* **Treat this repository as public** regardless of its current visibility — a key in git history is compromised the moment it lands, and rotating it is the only remedy.
+
+---
+
+## ✍️ Tab Autocomplete vs. Chat
+
+These have genuinely different requirements, and the split survived the move to cloud:
+
+| Modality | Target latency | Model choice |
+| :--- | :--- | :--- |
+| **Tab autocomplete** | `< 200ms` per pause | Smallest capable model — `claude-haiku-4-5` |
+| **Chat, refactoring, agents** | `1–30s` acceptable | `claude-sonnet-5`, escalating to `claude-opus-5` |
+
+The old local setup targeted `< 50ms` autocomplete because inference was on-device. Over a network that budget is unreachable, so cloud autocomplete triggers on pause rather than per keystroke. If autocomplete latency becomes intrusive, prefer Antigravity Tab — it is purpose-built for this and is the one place a proprietary engine beats a general-purpose model.
+
+---
+
+## 🗄️ Decommissioning Record (September 2026)
+
+Retained for context on what was removed and what to expect if you find stale references:
+
+* **Removed:** `oMLX.app`, ephemeral `mlx-lm` servers on ports `8080`/`8081`, the `serve-ai` Justfile recipe, and `client-tools/ai-dev/setup-mac-mlx.sh`.
+* **Reclaimed:** ~59 GB SSD (Hugging Face weight cache at `~/.cache/huggingface/hub/`), 25–34 GB unified memory.
+* **Leftover cache:** if that directory still exists on an older machine image, it is safe to delete:
+  ```bash
+  du -sh ~/.cache/huggingface/hub/
+  rm -rf ~/.cache/huggingface/hub/
+  ```
 
 ---
 
 ## Related Notes
+* [[Dual-Tier AI Workflow]]
 * [[Hardware & Memory Budget]]
+* [[IDE Configuration Guide]]
 * [[System Architecture]]
 * [[Mac Cleanliness & Anti-Bloat Guide]]

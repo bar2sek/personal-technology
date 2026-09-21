@@ -76,10 +76,9 @@ Whether operating at the root vault level or inside any child repository, you **
 * **macOS Metadata**: Keep `.DS_Store` and AppleDouble files ignored and untracked across all repositories.
 * **Binary Hygiene**: Never commit installers, disk images (`*.dmg`, `*.pkg`, `*.iso`), build caches, or temporary runtime state.
 * **Python Discipline**: Never install Python packages globally or mutate macOS system Python. Use **`uv`** and **`uvx`** exclusively for isolated, ephemeral environments.
-* **Apple MLX Local AI Standard**:
-  * Local model inference is powered by Apple's native **MLX** framework (`mlx-lm` / `oMLX`).
-  * **Port 8080**: Qwen 2.5 Coder 32B (4-bit) for Deep Chat & Scoped Refactor.
-  * **Port 8081**: Qwen 2.5 Coder 14B (4-bit) for Instant Tab Autocomplete (FIM).
+* **Cloud-First AI Standard**:
+  * Primary intelligence, deep refactoring, and agentic pairing are powered by cloud models: Gemini in Antigravity IDE, Anthropic Claude (Sonnet/Opus), and xAI Grok (via Roo Code).
+  * Workstation RAM and storage are preserved for native development workloads, Nix builds, and container runtimes rather than local model weights.
 
 ---
 

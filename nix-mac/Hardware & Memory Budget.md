@@ -42,4 +42,4 @@ The **48GB Unified Memory Architecture (UMA)** allows dynamic sharing between th
 
 ## Related Notes
 * [[System Architecture]]
-* [[Local LLMs with MLX]]
+* [[Cloud AI Providers & Models]]
