@@ -1,0 +1,94 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: k8s-backup-sa
+  namespace: backups
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: k8s-backup-cluster-role
+rules:
+  - apiGroups: ["*"]
+    resources: ["*"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: k8s-backup-cluster-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: k8s-backup-cluster-role
+subjects:
+  - kind: ServiceAccount
+    name: k8s-backup-sa
+    namespace: backups
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: backup-cluster-state
+  namespace: backups
+spec:
+  schedule: "0 3 * * *" # Daily at 03:00 UTC (10:00 PM CDT)
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: k8s-backup-sa
+          restartPolicy: OnFailure
+          containers:
+            - name: cluster-backup
+              image: alpine:3.20
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -euo pipefail
+                  TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+                  BACKUP_DIR="/tmp/k8s-backup-${TIMESTAMP}"
+                  ARCHIVE_FILE="/tmp/k8s-cluster-state-${TIMESTAMP}.tar.gz"
+
+                  if [ "${AWS_ACCESS_KEY_ID}" = "REPLACE_WITH_AWS_BACKUP_ACCESS_KEY_ID" ] || [ -z "${AWS_ACCESS_KEY_ID}" ]; then
+                    echo "ERROR: AWS credentials not configured in secret 's3-backup-credentials'."
+                    exit 1
+                  fi
+
+                  echo "Installing backup dependencies (aws-cli, curl, tar, gzip)..."
+                  apk add --no-cache aws-cli curl tar gzip
+
+                  echo "Installing kubectl CLI..."
+                  curl -fsSL https://dl.k8s.io/release/v1.31.0/bin/linux/amd64/kubectl -o /usr/local/bin/kubectl
+                  chmod +x /usr/local/bin/kubectl
+
+                  mkdir -p "${BACKUP_DIR}/cluster-scoped" "${BACKUP_DIR}/namespaces"
+
+                  echo "Dumping Custom Resource Definitions (CRDs)..."
+                  kubectl get crd -o yaml > "${BACKUP_DIR}/cluster-scoped/crds.yaml" || true
+
+                  echo "Dumping Cluster-Scoped Resources (StorageClasses, PVs, Nodes, ClusterRoles)..."
+                  kubectl get storageclass,persistentvolume,nodes,clusterroles,clusterrolebindings,ingressclasses -o yaml > "${BACKUP_DIR}/cluster-scoped/cluster-resources.yaml" || true
+
+                  echo "Dumping Namespaced Resources across all namespaces..."
+                  for ns in $(kubectl get namespaces -o jsonpath='{.items[*].metadata.name}'); do
+                    mkdir -p "${BACKUP_DIR}/namespaces/${ns}"
+                    echo " -> Backing up namespace: ${ns}..."
+                    kubectl get all,configmap,secret,persistentvolumeclaim,ingress,networkpolicy -n "${ns}" -o yaml > "${BACKUP_DIR}/namespaces/${ns}/all-resources.yaml" 2>/dev/null || true
+                  done
+
+                  echo "Compressing declarative cluster state archive..."
+                  tar -czf "${ARCHIVE_FILE}" -C "${BACKUP_DIR}" .
+
+                  echo "Uploading cluster state archive to AWS S3..."
+                  aws s3 cp "${ARCHIVE_FILE}" "s3://${S3_BUCKET}/cluster-state/k8s-cluster-state-${TIMESTAMP}.tar.gz" --storage-class STANDARD
+
+                  rm -rf "${BACKUP_DIR}" "${ARCHIVE_FILE}"
+                  echo "Kubernetes declarative cluster backup successfully completed and uploaded to S3."
+              envFrom:
+                - secretRef:
+                    name: s3-backup-credentials

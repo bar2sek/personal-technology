@@ -582,6 +582,18 @@ Any AI agent or human operator can review this document to pick up exactly where
       - Hardened [`kubernetes/apps/immich/immich.yaml`](file:///kubernetes/apps/immich/immich.yaml) with explicit CPU/memory requests and limits across Postgres, Redis, Server, and Machine Learning microservices, preventing unbounded model caching from creating node memory pressure.
       - Pinned container image versions across workloads to semantic release tags ([`immich:v1.118.0`](file:///kubernetes/apps/immich/immich.yaml), [`actual-server:24.9.0`](file:///kubernetes/apps/finance/actual-budget.yaml), [`teslamate:1.32.0`](file:///kubernetes/apps/teslamate/teslamate.yaml), [`mosquitto:2.0.18`](file:///kubernetes/apps/teslamate/teslamate.yaml), and [`home-assistant:2024.9.1`](file:///kubernetes/apps/home-assistant/home-assistant.yaml)), eliminating surprise breaking upgrades from mutable `:latest` or `:stable` tags.
 
+  - ### Milestone 18: Declarative Cluster State Backup Engine & Live Verification (2026-09-20)
+    - **Native In-Cluster RBAC Architecture**:
+      - Bypassed external Sidero Omni web PGP session constraints (which expire every 24h and cannot run headless in cron containers) by deploying Option A: native in-cluster ServiceAccount (`k8s-backup-sa`) with read-only ClusterRole.
+      - Authored [`kubernetes/infrastructure/backups/cronjob-cluster-state.yaml`](file:///kubernetes/infrastructure/backups/cronjob-cluster-state.yaml), running daily at 03:00 UTC to comprehensively dump all cluster CRDs, cluster-scoped resources (StorageClasses, PVs, Nodes, ClusterRoles), and all namespaced definitions (Deployments, StatefulSets, Secrets, ConfigMaps, PVCs, Ingresses, NetworkPolicies) across all 18 namespaces.
+    - **Live End-to-End S3 Backup Verification**:
+      - Applied manifests and triggered manual test job `cluster-backup-test`.
+      - Verified successful archive packaging and upload to S3 (`s3://s3-aws-backups-prod-use2-001/cluster-state/k8s-cluster-state-20260921_021005.tar.gz`).
+      - Total archive size: 5.8 MiB (<$0.001/month storage footprint). Cleaned up test job artifacts upon completion.
+    - **Runbook & Documentation Alignment**:
+      - Updated [`kubernetes/infrastructure/backups/README.md`](file:///kubernetes/infrastructure/backups/README.md) with complete disaster recovery and restoration steps for both declarative cluster state and Postgres database dumps.
+      - Pruned deprecated `cronjob-etcd.yaml`.
+
 ---
 
 ## 🎯 Immediate Next Actions & Infrastructure Backlog
