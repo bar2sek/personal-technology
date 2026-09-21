@@ -61,5 +61,9 @@ resource "unifi_dns_record" "printing" {
   ttl         = "300s"
 }
 
-
-
+resource "unifi_dns_record" "k8s" {
+  name        = "k8s.${var.public_domain}"
+  record_type = "A"
+  value       = "10.10.20.10"
+  ttl         = "300s"
+}

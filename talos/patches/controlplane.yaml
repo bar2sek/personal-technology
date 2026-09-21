@@ -12,6 +12,8 @@ machine:
         vlans:
           - vlanId: 20
             dhcp: true
+            vip:
+              ip: 10.10.20.10
           # Dedicated 10G SFP+ Ceph Storage Replication Network (VLAN 40)
           - vlanId: 40
             dhcp: true

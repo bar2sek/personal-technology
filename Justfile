@@ -10,17 +10,17 @@ default:
 # 1. Talos Linux Cluster Administration
 # ------------------------------------------------------------------------------
 
-# Check health of the Talos Linux control plane (sm-node-01, sm-node-02, sm-node-03)
+# Check health of the Talos Linux control plane (sm-node-01, sm-node-02, sm-node-03 via HA VIP)
 talos-health:
-    talosctl --nodes 10.10.20.131 health
+    talosctl --nodes 10.10.20.10 health
 
 # List all Talos cluster members and roles
 talos-members:
-    talosctl --nodes 10.10.20.131 get members
+    talosctl --nodes 10.10.20.10 get members
 
 # Check etcd cluster status and quorum
 talos-etcd:
-    talosctl --nodes 10.10.20.131 service etcd
+    talosctl --nodes 10.10.20.10 service etcd
 
 # Inspect physical node reboot / uptime statistics
 talos-uptime:

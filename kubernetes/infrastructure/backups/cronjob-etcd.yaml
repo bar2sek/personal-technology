@@ -1,0 +1,52 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: backup-etcd-snapshot
+  namespace: backups
+spec:
+  schedule: "0 3 * * *" # Daily at 03:00 UTC (10:00 PM CDT)
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: etcd-backup
+              image: amazon/aws-cli:2.15.30
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -euo pipefail
+                  TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+                  BACKUP_FILE="/tmp/etcd-${TIMESTAMP}.snapshot"
+
+                  echo "Downloading talosctl CLI..."
+                  curl -fsSL https://github.com/siderolabs/talos/releases/download/v1.13.10/talosctl-linux-amd64 -o /usr/local/bin/talosctl
+                  chmod +x /usr/local/bin/talosctl
+
+                  echo "Generating Talos etcd snapshot via HA VIP (10.10.20.10)..."
+                  talosctl --talosconfig /etc/talos/talosconfig -n 10.10.20.10 etcd snapshot "${BACKUP_FILE}"
+
+                  echo "Compressing snapshot..."
+                  gzip "${BACKUP_FILE}"
+
+                  echo "Uploading snapshot to S3: s3://${S3_BUCKET}/etcd/etcd-${TIMESTAMP}.snapshot.gz..."
+                  aws s3 cp "${BACKUP_FILE}.gz" "s3://${S3_BUCKET}/etcd/etcd-${TIMESTAMP}.snapshot.gz" --storage-class STANDARD
+
+                  echo "Etcd snapshot successfully completed and offloaded to S3."
+              envFrom:
+                - secretRef:
+                    name: s3-backup-credentials
+              volumeMounts:
+                - name: talosconfig
+                  mountPath: /etc/talos
+                  readOnly: true
+          volumes:
+            - name: talosconfig
+              secret:
+                secretName: talos-admin-config
+                optional: true

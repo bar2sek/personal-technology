@@ -1,0 +1,55 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: backup-postgres-databases
+  namespace: backups
+spec:
+  schedule: "30 3 * * *" # Daily at 03:30 UTC (10:30 PM CDT)
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: postgres-backup
+              image: postgres:16-alpine
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -euo pipefail
+                  apk add --no-cache aws-cli gzip
+                  TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+
+                  echo "Dumping Immich PostgreSQL database..."
+                  PGPASSWORD="${IMMICH_DB_PASSWORD}" pg_dump -h immich-postgres.immich.svc.cluster.local -U postgres -d immich | gzip > "/tmp/immich_${TIMESTAMP}.sql.gz"
+                  echo "Uploading Immich database backup to S3..."
+                  aws s3 cp "/tmp/immich_${TIMESTAMP}.sql.gz" "s3://${S3_BUCKET}/postgres/immich/immich_${TIMESTAMP}.sql.gz" --storage-class STANDARD
+                  rm -f "/tmp/immich_${TIMESTAMP}.sql.gz"
+
+                  echo "Dumping TeslaMate PostgreSQL database..."
+                  PGPASSWORD="${TESLAMATE_DB_PASSWORD}" pg_dump -h teslamate-db.teslamate.svc.cluster.local -U teslamate -d teslamate | gzip > "/tmp/teslamate_${TIMESTAMP}.sql.gz"
+                  echo "Uploading TeslaMate database backup to S3..."
+                  aws s3 cp "/tmp/teslamate_${TIMESTAMP}.sql.gz" "s3://${S3_BUCKET}/postgres/teslamate/teslamate_${TIMESTAMP}.sql.gz" --storage-class STANDARD
+                  rm -f "/tmp/teslamate_${TIMESTAMP}.sql.gz"
+
+                  echo "All database backups uploaded successfully to S3."
+              envFrom:
+                - secretRef:
+                    name: s3-backup-credentials
+              env:
+                - name: IMMICH_DB_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: immich-db-credentials
+                      key: db-password
+                      optional: true
+                - name: TESLAMATE_DB_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: teslamate-db-credentials
+                      key: db-password
+                      optional: true

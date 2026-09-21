@@ -562,13 +562,26 @@ Any AI agent or human operator can review this document to pick up exactly where
     - **VLAN 20 DHCP & MetalLB Collision Prevention**:
       - Adjusted VLAN 20 DHCP allocation range in [`bootstrap/unifi/main.tf`](file:///bootstrap/unifi/main.tf) to `10.10.20.100 - 10.10.20.254`, carving out and safeguarding `10.10.20.10 - 10.10.20.99` for static node assignments and MetalLB Layer 2 VIP pools (`10.10.20.50 - 10.10.20.60`).
 
+  - ### Milestone 16: High Availability VIP & Offsite S3 Backup Engine (2026-09-20)
+    - **Talos Native Control Plane VRRP Virtual IP**:
+      - Configured native Talos VRRP VIP `10.10.20.10` on VLAN 20 in [`talos/patches/controlplane.yaml`](file:///talos/patches/controlplane.yaml), enabling automated <1s failover across `sm-node-01`, `sm-node-02`, and `sm-node-03`.
+      - Added local split-horizon DNS record `k8s.bar2sek.com` -> `10.10.20.10` in [`bootstrap/unifi/dns.tf`](file:///bootstrap/unifi/dns.tf).
+      - Updated root [`Justfile`](file:///Justfile) administrative recipes (`talos-health`, `talos-members`, `talos-etcd`) to target the floating HA VIP `10.10.20.10` rather than the single physical node `10.10.20.131`.
+    - **Tiered Cost-Effective Disaster Recovery to AWS S3**:
+      - Created automated backup manifests in [`kubernetes/infrastructure/backups/`](file:///kubernetes/infrastructure/backups/):
+        - `backup-etcd-snapshot`: Daily CronJob (03:00 UTC) capturing Talos etcd cluster state directly via HA VIP and shipping gzip-compressed snapshots to `s3-aws-backups-prod-use2-001/etcd/` (<35MB, ~$0.01/mo).
+        - `backup-postgres-databases`: Daily CronJob (03:30 UTC) running `pg_dump` on Immich and TeslaMate databases and streaming encrypted dumps to `s3-aws-backups-prod-use2-001/postgres/` (<50MB, ~$0.01/mo).
+      - Created [`kubernetes/infrastructure/backups/README.md`](file:///kubernetes/infrastructure/backups/README.md) detailing configuration and step-by-step point-in-time disaster recovery runbooks.
+
 ---
 
-## 🎯 Immediate Next Actions
+## 🎯 Immediate Next Actions & Infrastructure Backlog
 
-1. **Batch 2: High Availability & Offsite Backup Integration**:
-   - Declare native Talos VRRP Control Plane VIP on VLAN 20 (`10.10.20.10`).
-   - Implement automated Talos etcd snapshot CronJob to the provisioned AWS S3 offsite backup bucket.
-2. **Batch 3: Documentation Hygiene & GitOps Reconciler**:
-   - Redact hardware MAC addresses in documentation per `AGENTS.md` §4 sanitization rules.
-   - Re-index README documentation links.
+1. **Local Synology NAS Bulk Backup Integration (Pending Hardware Onboarding)**:
+   - Onboard physical Synology NAS on the local 10GbE network fabric.
+   - Configure NFS/iSCSI target or local MinIO/S3 endpoint for heavy persistent volumes (specifically Immich 500GB bulk photo library) for zero-cloud-cost on-premises offsite backups.
+2. **Batch 3: Compliance, Documentation & Hygiene**:
+   - Redact and sanitize 22 hardware MAC addresses in documentation per `AGENTS.md` §4 privacy rules.
+   - Re-index README documentation links (prune obsolete 304, index 106 and 506).
+   - Pin container image tags and add CPU/RAM resource limits to `immich.yaml`.
+
