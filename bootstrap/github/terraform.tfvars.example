@@ -8,6 +8,11 @@ github_owner          = "bar2sek"
 repository_name       = "infra-cloud-deployments"
 repository_visibility = "private"
 
+# Escape hatch for a deliberate history rewrite. Branch protection rejects
+# force-pushes to `main` with GH006 even for admins. Set true, apply, push,
+# then set back to false and re-apply. Leave false during normal operation.
+# allow_force_push_main = false
+
 # Azure OIDC Federation Parameters (retrieved from 'bootstrap/azure' outputs):
 # azure_client_id       = "00000000-0000-0000-0000-000000000000"
 # azure_tenant_id       = "00000000-0000-0000-0000-000000000000"

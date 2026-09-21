@@ -27,6 +27,19 @@ variable "repository_visibility" {
   default     = "private"
 }
 
+variable "allow_force_push_main" {
+  type        = bool
+  description = <<-EOT
+    Temporarily permit force-pushes to `main`. Defaults to false; branch
+    protection otherwise rejects them with GH006 even for repository admins
+    (`enforce_admins` governs reviews and status checks, not force-pushes).
+
+    Set true ONLY for a deliberate history rewrite (e.g. purging a leaked
+    secret with git-filter-repo), then set it back to false and re-apply.
+  EOT
+  default     = false
+}
+
 # ------------------------------------------------------------------------------
 # Azure OIDC Federation Parameters (Injected into GitHub Environment)
 # ------------------------------------------------------------------------------

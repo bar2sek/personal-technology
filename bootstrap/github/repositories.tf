@@ -170,6 +170,13 @@ resource "github_branch_protection" "main" {
 
   enforce_admins = false
 
+  # Declared explicitly rather than left to the provider default: this is a
+  # security control, and an implicit value is easy to misread. Force-pushes
+  # are blocked for everyone including admins — `enforce_admins` covers
+  # reviews and status checks, not force-pushes — so a deliberate history
+  # rewrite requires flipping this, pushing, then flipping it back.
+  allows_force_pushes = var.allow_force_push_main
+
   required_pull_request_reviews {
     dismiss_stale_reviews           = true
     required_approving_review_count = 0
