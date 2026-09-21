@@ -31,4 +31,7 @@ locals {
   # Standardized Hierarchy Labels (Reference)
   management_group_name = "mg-${var.platform}-infrastructure-${var.env}-${local.tenant_4}"
   subscription_name     = "subcr-${var.platform}-${var.product}-${var.env}-${local.tenant_4}"
+
+  # GitHub Immutable ID Format (GitHub Actions OIDC assertion)
+  github_repo_immutable = "bar2sek@6226865/infra-cloud-deployments@1378897273"
 }

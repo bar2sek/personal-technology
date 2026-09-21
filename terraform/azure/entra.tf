@@ -81,24 +81,34 @@ resource "azuread_service_principal" "github_actions" {
   description                  = "Enterprise service principal for GitHub Actions deployment runner"
 }
 
-# OIDC Trust for GitHub Environment 'production'
+# OIDC Trust for GitHub Environment 'production' (Immutable ID format)
 resource "azuread_application_federated_identity_credential" "github_env_prod" {
   application_id = azuread_application.github_actions.id
   display_name   = "github-env-production"
   description    = "OIDC trust for GitHub Actions production environment deployment"
   audiences      = ["api://AzureADTokenExchange"]
   issuer         = "https://token.actions.githubusercontent.com"
-  subject        = "repo:${var.github_repo_name}:environment:production"
+  subject        = "repo:${local.github_repo_immutable}:environment:production"
 }
 
-# OIDC Trust for Pull Requests (PR Validation & Planning)
+# OIDC Trust for Pull Requests (PR Validation & Planning - Immutable ID format)
 resource "azuread_application_federated_identity_credential" "github_pr" {
   application_id = azuread_application.github_actions.id
   display_name   = "github-pull-request"
   description    = "OIDC trust for GitHub Actions pull request validation and planning"
   audiences      = ["api://AzureADTokenExchange"]
   issuer         = "https://token.actions.githubusercontent.com"
-  subject        = "repo:${var.github_repo_name}:pull_request"
+  subject        = "repo:${local.github_repo_immutable}:pull_request"
+}
+
+# OIDC Trust for Branch 'main' (Direct workflow dispatch / push - Immutable ID format)
+resource "azuread_application_federated_identity_credential" "github_branch_main" {
+  application_id = azuread_application.github_actions.id
+  display_name   = "github-branch-main"
+  description    = "OIDC trust for GitHub Actions main branch runs"
+  audiences      = ["api://AzureADTokenExchange"]
+  issuer         = "https://token.actions.githubusercontent.com"
+  subject        = "repo:${local.github_repo_immutable}:ref:refs/heads/main"
 }
 
 # Assign Contributor role on the target Azure Subscription
