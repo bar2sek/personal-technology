@@ -23,13 +23,31 @@ spec:
                   set -euo pipefail
                   TIMESTAMP=$(date +%Y%m%d_%H%M%S)
                   BACKUP_FILE="/tmp/etcd-${TIMESTAMP}.snapshot"
+                  export HOME=/tmp
+
+                  if [ "${AWS_ACCESS_KEY_ID}" = "REPLACE_WITH_AWS_BACKUP_ACCESS_KEY_ID" ] || [ -z "${AWS_ACCESS_KEY_ID}" ]; then
+                    echo "ERROR: AWS credentials not configured in secret 's3-backup-credentials'."
+                    echo "Please edit kubernetes/infrastructure/backups/backup-credentials.yaml with active credentials and re-apply."
+                    exit 1
+                  fi
+
+                  if [ ! -f /etc/talos/talosconfig ]; then
+                    echo "ERROR: Talos admin configuration not found at /etc/talos/talosconfig."
+                    echo "Please create the secret 'talos-admin-config' in namespace 'backups':"
+                    echo "  kubectl create secret generic talos-admin-config --from-file=talosconfig=<path-to-talosconfig> -n backups"
+                    exit 1
+                  fi
+
+                  echo "Copying talosconfig to writable runtime environment..."
+                  cp /etc/talos/talosconfig /tmp/talosconfig
+                  chmod 600 /tmp/talosconfig
 
                   echo "Downloading talosctl CLI..."
                   curl -fsSL https://github.com/siderolabs/talos/releases/download/v1.13.10/talosctl-linux-amd64 -o /usr/local/bin/talosctl
                   chmod +x /usr/local/bin/talosctl
 
                   echo "Generating Talos etcd snapshot via HA VIP (10.10.20.10)..."
-                  talosctl --talosconfig /etc/talos/talosconfig -n 10.10.20.10 etcd snapshot "${BACKUP_FILE}"
+                  talosctl --talosconfig /tmp/talosconfig -n 10.10.20.10 etcd snapshot "${BACKUP_FILE}"
 
                   echo "Compressing snapshot..."
                   gzip "${BACKUP_FILE}"

@@ -63,6 +63,8 @@ talos/omni-server/kubeconfig
 secrets.yaml
 *.secrets.yaml
 *.secret.yaml
+*credentials*.yaml
+!*credentials*.example.yaml
 *.sops.yaml.dec
 client-tools/*.json
 client-tools/*.discovered

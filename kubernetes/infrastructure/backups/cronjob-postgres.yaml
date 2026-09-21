@@ -21,22 +21,37 @@ spec:
                 - -c
                 - |
                   set -euo pipefail
-                  apk add --no-cache aws-cli gzip
                   TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
-                  echo "Dumping Immich PostgreSQL database..."
-                  PGPASSWORD="${IMMICH_DB_PASSWORD}" pg_dump -h immich-postgres.immich.svc.cluster.local -U postgres -d immich | gzip > "/tmp/immich_${TIMESTAMP}.sql.gz"
-                  echo "Uploading Immich database backup to S3..."
-                  aws s3 cp "/tmp/immich_${TIMESTAMP}.sql.gz" "s3://${S3_BUCKET}/postgres/immich/immich_${TIMESTAMP}.sql.gz" --storage-class STANDARD
-                  rm -f "/tmp/immich_${TIMESTAMP}.sql.gz"
+                  if [ "${AWS_ACCESS_KEY_ID}" = "REPLACE_WITH_AWS_BACKUP_ACCESS_KEY_ID" ] || [ -z "${AWS_ACCESS_KEY_ID}" ]; then
+                    echo "ERROR: AWS credentials not configured in secret 's3-backup-credentials'."
+                    echo "Please edit kubernetes/infrastructure/backups/backup-credentials.yaml with active credentials and re-apply."
+                    exit 1
+                  fi
 
-                  echo "Dumping TeslaMate PostgreSQL database..."
-                  PGPASSWORD="${TESLAMATE_DB_PASSWORD}" pg_dump -h teslamate-db.teslamate.svc.cluster.local -U teslamate -d teslamate | gzip > "/tmp/teslamate_${TIMESTAMP}.sql.gz"
-                  echo "Uploading TeslaMate database backup to S3..."
-                  aws s3 cp "/tmp/teslamate_${TIMESTAMP}.sql.gz" "s3://${S3_BUCKET}/postgres/teslamate/teslamate_${TIMESTAMP}.sql.gz" --storage-class STANDARD
-                  rm -f "/tmp/teslamate_${TIMESTAMP}.sql.gz"
+                  apk add --no-cache aws-cli gzip
 
-                  echo "All database backups uploaded successfully to S3."
+                  if [ -n "${IMMICH_DB_PASSWORD:-}" ] && nc -z -w 3 immich-postgres.immich.svc.cluster.local 5432 2>/dev/null; then
+                    echo "Dumping Immich PostgreSQL database..."
+                    PGPASSWORD="${IMMICH_DB_PASSWORD}" pg_dump -h immich-postgres.immich.svc.cluster.local -U postgres -d immich | gzip > "/tmp/immich_${TIMESTAMP}.sql.gz"
+                    echo "Uploading Immich database backup to S3..."
+                    aws s3 cp "/tmp/immich_${TIMESTAMP}.sql.gz" "s3://${S3_BUCKET}/postgres/immich/immich_${TIMESTAMP}.sql.gz" --storage-class STANDARD
+                    rm -f "/tmp/immich_${TIMESTAMP}.sql.gz"
+                  else
+                    echo "Skipping Immich DB backup (immich-postgres service not currently reachable or uninstalled)."
+                  fi
+
+                  if [ -n "${TESLAMATE_DB_PASSWORD:-}" ] && nc -z -w 3 teslamate-db.teslamate.svc.cluster.local 5432 2>/dev/null; then
+                    echo "Dumping TeslaMate PostgreSQL database..."
+                    PGPASSWORD="${TESLAMATE_DB_PASSWORD}" pg_dump -h teslamate-db.teslamate.svc.cluster.local -U teslamate -d teslamate | gzip > "/tmp/teslamate_${TIMESTAMP}.sql.gz"
+                    echo "Uploading TeslaMate database backup to S3..."
+                    aws s3 cp "/tmp/teslamate_${TIMESTAMP}.sql.gz" "s3://${S3_BUCKET}/postgres/teslamate/teslamate_${TIMESTAMP}.sql.gz" --storage-class STANDARD
+                    rm -f "/tmp/teslamate_${TIMESTAMP}.sql.gz"
+                  else
+                    echo "Skipping TeslaMate DB backup (teslamate-db service not currently reachable or uninstalled)."
+                  fi
+
+                  echo "PostgreSQL backup cycle finished."
               envFrom:
                 - secretRef:
                     name: s3-backup-credentials
