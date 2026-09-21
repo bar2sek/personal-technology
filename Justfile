@@ -102,8 +102,8 @@ tf-plan-all:
     cd terraform/aws && terraform plan
     @echo "===> Planning AWS Organization & Accounts..."
     cd terraform/aws_organization && terraform plan
-    @echo "===> Planning Azure Infrastructure & Entra ID..."
-    cd terraform/azure && terraform plan
+    @echo "===> Planning Azure Infrastructure & Entra ID (Bootstrap)..."
+    cd bootstrap/azure && terraform plan
 
 # Run Terraform plan in a specific directory (usage: just tf-plan unifi or just tf-plan azure)
 tf-plan dir:
@@ -140,12 +140,11 @@ tf-plan-github:
 tf-apply-github:
     cd bootstrap/github && terraform apply
 
-# Quick shortcuts for Cloud roots
 tf-plan-azure:
-    cd terraform/azure && terraform plan
+    cd bootstrap/azure && terraform plan
 
 tf-apply-azure:
-    cd terraform/azure && terraform apply
+    cd bootstrap/azure && terraform apply
 
 
 # ------------------------------------------------------------------------------
