@@ -51,11 +51,11 @@ Before the delivery truck arrives, ensure you have:
 │    • Open Terminal & run: `bash templates/bootstrap.sh`     │
 │    • Nix-Darwin installs all tools, apps, fonts & configs   │
 │                              │                              │
-│ 4. INSTALL oMLX & LAUNCH QWEN (2 mins)                      │
-│    • Download `oMLX.dmg` & drag to Applications             │
-│    • Run: `just serve-omlx-32b`                             │
+│ 4. EXPORT AI PROVIDER API KEYS (1 min)                      │
+│    • ANTHROPIC_API_KEY · GEMINI_API_KEY · XAI_API_KEY       │
+│    • Add to ~/.zshrc (never commit them)                    │
 │                              │                              │
-│ 5. START CODING IN ZED & ANTIGRAVITY 🎉                     │
+│ 5. START CODING IN VS CODE & ANTIGRAVITY 🎉                 │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -69,7 +69,7 @@ Located in `templates/bootstrap.sh`, this script executes the entire workstation
 2. **Homebrew:** Installs Homebrew and sets up shell paths.
 3. **Determinate Nix:** Installs the modern, reliable Nix package manager daemon.
 4. **Nix-Darwin System Build:**
-   * Installs **Brave Browser, Microsoft Edge, Google Drive, Microsoft OneNote, Keymapp, Obsidian, AppCleaner, Visual Studio Code, Ghostty, OrbStack, and oMLX**.
+   * Installs **Brave Browser, Microsoft Edge, Google Drive, Microsoft OneNote, Keymapp, Obsidian, AppCleaner, Visual Studio Code, Ghostty, and OrbStack**.
    * Installs **JetBrainsMono Nerd Font** system-wide.
    * **Auto-writes `~/.config/ghostty/config`** with matching fonts, ligatures, and Tokyo Night theme.
    * **Organizes the Dock in your custom 3-section order**:
@@ -93,9 +93,14 @@ cd ~/Downloads
 # 2. Run the 1-click bootstrap installer
 bash "Mac AI Workstation/templates/bootstrap.sh"
 
-# 3. Launch your local 32B Qwen MLX server
-just serve-omlx-32b
+# 3. Export your AI provider keys (add these to ~/.zshrc to persist)
+export ANTHROPIC_API_KEY="..."
+export GEMINI_API_KEY="..."
+export XAI_API_KEY="..."
 ```
+
+> [!CAUTION]
+> Keys belong in your shell profile or the macOS keychain only. Never commit one — treat every repository here as public, where a leaked key is compromised the moment it lands.
 
 ---
 

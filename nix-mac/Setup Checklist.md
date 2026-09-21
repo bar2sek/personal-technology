@@ -61,16 +61,23 @@ Follow this step-by-step checklist when unboxing your new MacBook Pro to ensure 
 
 ---
 
-## Phase 3: MLX & oMLX Local Qwen Coder Setup
-- [ ] Install **oMLX** via official `.dmg` from [github.com/jundot/omlx/releases](https://github.com/jundot/omlx/releases):
-  * Drag `oMLX.app` to `/Applications` to get pre-compiled Metal kernels & native menu bar app without needing Full Xcode.
-- [ ] Start serving Qwen 2.5 Coder 32B with Paged SSD KV Caching:
+## Phase 3: AI Provider Credentials
+- [ ] Create API keys for the providers you use: Anthropic (Claude), Google (Gemini), xAI (Grok).
+- [ ] Export them from your shell profile — **never** commit them to any repository:
   ```bash
-  just serve-omlx-32b
+  export ANTHROPIC_API_KEY="..."
+  export GEMINI_API_KEY="..."
+  export XAI_API_KEY="..."
   ```
-- [ ] Verify API endpoint response:
+- [ ] Verify the Anthropic key resolves and is authorized:
   ```bash
-  curl http://localhost:8080/v1/models
+  curl -sS https://api.anthropic.com/v1/models \
+    -H "x-api-key: $ANTHROPIC_API_KEY" \
+    -H "anthropic-version: 2023-06-01" | head -20
+  ```
+- [ ] Confirm no key leaked into tracked files:
+  ```bash
+  git grep -nE "sk-ant-[A-Za-z0-9]" -- . || echo "clean"
   ```
 
 ---
@@ -80,12 +87,12 @@ Follow this step-by-step checklist when unboxing your new MacBook Pro to ensure 
   ```bash
   which code
   ```
-- [ ] Install and configure **Continue.dev** extension with local MLX endpoint (see [[IDE Configuration Guide]]).
+- [ ] Install and configure **Continue.dev**, copying `client-tools/ai-dev/continue-config.json` to `~/.continue/config.json` and substituting your real API key (see [[IDE Configuration Guide]]).
 - [ ] Verify **Antigravity CLI (`agy`)** and Desktop app are installed (automated via `bootstrap.sh`):
   ```bash
   agy --version
   ```
-- [ ] Test local inline code generation inside VS Code (`Cmd + I`).
+- [ ] Test inline code generation inside VS Code (`Cmd + I`).
 - [ ] Test agentic workflow inside Antigravity on your workspace (`agy` or `Antigravity.app`).
 
 ---

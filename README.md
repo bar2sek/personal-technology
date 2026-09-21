@@ -58,7 +58,7 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 - [302 - GitHub Actions ARC Self-Hosted CI/CD](docs/302-github-actions-runner-controller.md)
 - [303 - KubeVirt Bazzite Gaming VM (RTX 4070 Passthrough)](docs/303-kubevirt-bazzite-gpu-vm.md)
 - [305 - KubeVirt `omarchy-vm` Arch Linux VM](docs/305-kubevirt-arch-linux-vm.md)
-- [306 - Hybrid Local/Remote AI Development Architecture (MLX + K8s)](docs/306-hybrid-local-remote-ai-dev.md)
+- [306 - Hybrid Cloud & Remote AI Development Architecture](docs/306-hybrid-local-remote-ai-dev.md)
 
 
 ### ☁️ Section 4: Hybrid Multi-Cloud (AWS + Azure Arc & Entra ID)
@@ -91,7 +91,7 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 ## 📁 Repository Codebase Structure
 
 ```
-├── Justfile                   # Central command runner for Talos, K8s, Terraform & MLX
+├── Justfile                   # Central command runner for Talos, K8s & Terraform
 ├── .github/workflows/         # Actions Runner Controller (ARC) CI/CD pipelines
 │   ├── provision-aws-account.yml # Automated AWS account provisioning GitOps
 │   ├── terraform-ci.yml       # Multi-directory Terraform lint/validate CI
@@ -109,13 +109,13 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 │   ├── START_HERE.txt         # Offline CLI bootstrap instructions
 │   ├── Antigravity.dmg        # (Gitignored offline installer for USB drives)
 │   ├── templates/             # Canonical flake.nix, Justfile & bootstrap scripts
-│   └── *.md                   # Workstation architecture, MLX serving & care guides
+│   └── *.md                   # Workstation architecture, cloud AI routing & care guides
 ├── ansible/                   # Ansible configuration management for VMs
 │   ├── ansible.cfg            # WinRM & SSH connection defaults
 │   ├── inventory/             # Bazzite Gaming VM hosts
 │   └── playbooks/             # Automated post-install configuration (NVIDIA, Sunshine)
 ├── client-tools/              # Workstation client configuration & bootstrap scripts
-│   └── ai-dev/                # Apple MLX / oMLX & Continue.dev local setup
+│   └── ai-dev/                # Continue.dev cloud model config & SSH snippets
 ├── docker/                    # Custom container images
 │   └── dev-agent/             # Remote Antigravity dev container & toolchains
 ├── docs/                      # Comprehensive homelab architecture documentation

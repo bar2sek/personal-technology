@@ -35,7 +35,7 @@ STEP 3: 1-CLICK BOOTSTRAP INSTALLER
 
 What this single command does automatically:
 • Installs Xcode CLI Tools, Homebrew, and Determinate Nix.
-• Installs Visual Studio Code, Ghostty, Google Drive, Obsidian, OrbStack, AppCleaner, and oMLX.
+• Installs Visual Studio Code, Ghostty, Google Drive, Obsidian, OrbStack, and AppCleaner.
 • Installs AWS CLI, Azure CLI, Terraform, Node.js/npm, and uv (isolated Python).
 • Installs JetBrainsMono Nerd Font system-wide.
 • Auto-configures Ghostty & Zsh with Powerlevel10k (Apple icon , Git status, Eza file icons, Bat syntax colors).
@@ -45,16 +45,34 @@ What this single command does automatically:
 • Purges GarageBand and iMovie bloatware to reclaim ~5–8 GB of SSD space.
 
 --------------------------------------------------------------------------------
-STEP 4: LAUNCH YOUR LOCAL QWEN 32B MODEL
+STEP 4: SET UP YOUR AI PROVIDER KEYS
 --------------------------------------------------------------------------------
-1. Download oMLX.dmg from: https://github.com/jundot/omlx/releases
-2. Drag oMLX.app to your Applications folder.
-3. Open Terminal and run:
+This workstation runs no local models. All inference is remote, so the only
+setup needed is credentials.
 
-   just serve-omlx-32b
+1. Create API keys for the providers you use:
+   - Anthropic (Claude)  https://console.anthropic.com
+   - Google (Gemini)     https://aistudio.google.com
+   - xAI (Grok)          https://console.x.ai
 
-4. Open Visual Studio Code: Connect via Continue.dev extension to your local model
-   at http://localhost:8080!
+2. Add them to ~/.zshrc so they persist across sessions:
+
+   export ANTHROPIC_API_KEY="..."
+   export GEMINI_API_KEY="..."
+   export XAI_API_KEY="..."
+
+3. Reload your shell:  source ~/.zshrc
+
+4. Copy the Continue config and substitute your real key:
+
+   cp client-tools/ai-dev/continue-config.json ~/.continue/config.json
+
+5. Open Visual Studio Code and use Continue.dev (Cmd + L for chat,
+   Cmd + I for inline edits). Antigravity IDE uses Gemini natively, with
+   Claude and Grok available through the Roo Code switcher.
+
+!! NEVER commit an API key. Treat every repo here as public -- a leaked key
+   is compromised the moment it lands, and rotating it is the only fix.
 
 ================================================================================
 Enjoy your clean, declarative Mac AI Workstation!

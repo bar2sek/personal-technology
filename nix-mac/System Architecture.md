@@ -1,38 +1,42 @@
 ---
-title: System Architecture
+title: "System Architecture"
+date: 2026-09-20
 tags:
   - architecture
   - macos
-  - hybrid-model
-  - mlx
-created: 2026-08-24
+  - ai/cloud
+status: evergreen
+aliases: []
 ---
 
 # 🏗️ System Architecture
 
-## The Hybrid Host + Container Model
+## The Thin-Client + Container Model
 
-Running local AI workflows alongside isolated development environments on Apple Silicon requires a **hybrid architecture**:
+The workstation is a **thin client for inference and a heavy host for builds**. Reasoning happens over the network; unified memory is spent on containers and compilers:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                       macOS Host                            │
 │                                                             │
 │   ┌──────────────────────────────────────────────────────┐  │
-│   │  Bare-Metal LLM Engine (Zero System Bloat via `uv`)  │  │
-│   │  • Apple MLX (`mlx-lm`) / Ollama                     │  │
-│   │  • Qwen 2.5 Coder (14B / 32B @ 4-bit)                │  │
-│   │  • Direct Metal GPU & 48GB Unified Memory Access     │  │
-│   │  • Exposes OpenAI-compatible API (localhost:8080)    │  │
+│   │  Editors & Agents (thin clients, no model weights)   │  │
+│   │  • VS Code + Continue.dev                            │  │
+│   │  • Antigravity IDE + Roo Code switcher               │  │
+│   │  • Claude Code (terminal-native agent)               │  │
 │   └──────────────────────────┬───────────────────────────┘  │
-│                              │ API Calls (JSON / SSE)       │
+│                              │ HTTPS (provider APIs)        │
 │   ┌──────────────────────────┴───────────────────────────┐  │
 │   │  Isolated Application & Dev Container Layer          │  │
 │   │  • Apple Container (`apple/container`) or OrbStack   │  │
 │   │  • DevContainers, Databases, Node/Rust Toolchains    │  │
-│   │  • IDEs (VS Code / Antigravity) connect to port 8080 │  │
+│   │  • Free to use the full unified memory envelope      │  │
 │   └──────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
+                              │
+                              │ HTTPS
+                              ▼
+        Anthropic · Google · xAI  (see [[Cloud AI Providers & Models]])
 ```
 
 ---
@@ -48,9 +52,10 @@ Running local AI workflows alongside isolated development environments on Apple 
 * Keep the host macOS clean of language runtime clutter (Node versions, Rust toolchains, Postgres/Redis daemons).
 * Run all project dependencies, microservices, and databases inside [[Container Strategy|lightweight containers]] or [[Mac Cleanliness & Anti-Bloat Guide|isolated virtual environments]].
 
-### 3. Unified OpenAI-Compatible API Layer
-* The host MLX server exposes a standard endpoint: `http://localhost:8080/v1`.
-* All tools (IDEs, DevContainers, web frontends, CLI agents) interface with local models using standard OpenAI client libraries or API keys (set as dummy values like `EMPTY`).
+### 3. Provider API Layer
+* Every tool talks to a hosted provider over HTTPS — there is no local endpoint to start, supervise, or contend for a port.
+* Credentials come from the shell environment or the editor keychain, never from tracked config. See [[Cloud AI Providers & Models]] for the routing table and credential hygiene.
+* **Gotcha:** because inference is now off-box, connectivity is a hard dependency. There is no offline fallback; plan accordingly for flights and outages.
 
 ---
 

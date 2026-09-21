@@ -1,11 +1,12 @@
 ---
-title: Hardware & Memory Budget
+title: "Hardware & Memory Budget"
+date: 2026-09-20
 tags:
   - hardware
   - memory
   - m5-pro
-  - qwen
-created: 2026-08-24
+status: evergreen
+aliases: []
 ---
 
 # 🧠 Hardware & Memory Budget
@@ -14,32 +15,42 @@ created: 2026-08-24
 * **Machine:** MacBook Pro
 * **Processor:** Apple M5 Pro
 * **Unified Memory:** 48 GB
-* **Storage Consideration:** Fast internal NVMe (essential for rapid model weight loading)
+* **Storage:** Fast internal NVMe
 
 ---
 
-## Model Sizing & RAM Allocation
+## Where the 48 GB Goes
 
-The **48GB Unified Memory Architecture (UMA)** allows dynamic sharing between the CPU, GPU, and OS. Below is the realistic memory allocation breakdown:
+The **48 GB Unified Memory Architecture (UMA)** shares one pool between CPU, GPU, and OS. With inference moved to cloud providers, that pool now serves development workloads exclusively:
 
-| Workload Scenario | Qwen Model & Quantization | Model Weight RAM | Context Buffer (32k) | OS & Base Apps | Free / Container RAM |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **Max RAM Utilization (8-bit)** | **Qwen 2.5 Coder 32B (8-bit)** | ~33.5 GB | ~3.8 GB | ~6.0 GB | **~4.7 GB** |
-| **High Precision Sweet Spot (6-bit)** | **Qwen 2.5 Coder 32B (6-bit)** | ~25.0 GB | ~3.5 GB | ~6.0 GB | **~13.5 GB** |
-| **Standard Baseline (4-bit)** | **Qwen 2.5 Coder 32B (4-bit)** | ~18.5 GB | ~3.5 GB | ~6.0 GB | **~20.0 GB** |
+| Consumer | Typical | Peak | Notes |
+| :--- | :--- | :--- | :--- |
+| **macOS + system daemons** | ~6.0 GB | ~8.0 GB | Baseline; grows with login items |
+| **Editor (VS Code / Antigravity)** | ~2.5 GB | ~5.0 GB | Per window; language servers dominate |
+| **Browser** | ~3.0 GB | ~8.0 GB | Scales with tab count |
+| **OrbStack VM + containers** | ~4.0 GB | ~16.0 GB | Databases and Dev Containers |
+| **Nix builds / compilers** | ~2.0 GB | ~12.0 GB | Parallel `nix build` and Rust/Go links are the real spikes |
+| **Headroom** | — | **~10 GB** | Absorbs peaks without swapping |
+
+The important property is that **nothing holds a permanent reservation**. Memory is claimed and released as work happens, so a heavy `nix build` and a full container stack can coexist as long as they peak at different moments.
 
 ---
 
-## Key Takeaways for 48GB Configuration
+## Why This Replaced the Old Model-Sizing Budget
 
-> [!TIP]
-> **High-Quantization on Apple Silicon (6-bit vs 8-bit):**
-> * **8-bit (`mlx-community/Qwen2.5-Coder-32B-Instruct-8bit`):** Maximizes hardware investment, preserving full 16-bit weight fidelity with zero degradation. Consumes ~37GB total under full 32k context, leaving ~5GB for OS and Antigravity IDE.
-> * **6-bit (`mlx-community/Qwen2.5-Coder-32B-Instruct-6bit`):** Captures >99.7% of full precision while leaving a generous ~13.5GB buffer for OrbStack containers, Antigravity IDE, and browser tabs.
-> * Small tab-completion models (1.5B/14B) are completely decommissioned to dedicate 100% of GPU compute and unified memory to high-reasoning agent models.
+This note used to be a quantization table. A 32B model at 6-bit consumed ~25 GB of weights plus ~3.5 GB of KV cache — a **standing** reservation held for as long as the server ran, leaving roughly 13 GB for everything else. At 8-bit it left about 5 GB, which is below what a container stack plus a compiler needs.
+
+That is the trade the cloud-first migration bought back: a fixed ~31 GB commitment became zero, and the machine stopped being memory-bound during normal development.
+
+> [!TIP] Diagnosing memory pressure
+> Watch the **Memory Pressure** graph in Activity Monitor, not the "Memory Used" figure — macOS deliberately uses free RAM for file cache, so high usage is normal and not itself a problem. Yellow or red pressure, or a rising swap figure, is the real signal. `vm_stat 5` shows compressor and pageout activity live.
+
+> [!NOTE] Storage
+> Fast NVMe still matters, but for build caches, container layers, and Nix store operations rather than model-weight loading. Decommissioning local inference reclaimed ~59 GB of SSD; see [[Cloud AI Providers & Models]] for the cleanup command if a stale weight cache remains.
 
 ---
 
 ## Related Notes
 * [[System Architecture]]
 * [[Cloud AI Providers & Models]]
+* [[Mac Cleanliness & Anti-Bloat Guide]]

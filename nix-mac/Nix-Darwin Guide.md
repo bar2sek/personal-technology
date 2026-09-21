@@ -40,7 +40,7 @@ Nix has historically had a reputation for having a steep learning curve because 
 
 | Scenario | What You Do | What Nix Does |
 | :--- | :--- | :--- |
-| **Daily Coding & LLMs** | **Zero interaction.** You just use your terminal, MLX, IDE, and `uv`. | Runs silently in the background. |
+| **Daily Coding & AI Agents** | **Zero interaction.** You just use your terminal, IDE, and `uv`. | Runs silently in the background. |
 | **Installing a New App** | Ask your AI agent to add it to `flake.nix`. | Pulls binary or triggers Homebrew cask automatically. |
 | **Changing macOS Setting** | Ask your AI agent to update `system.defaults`. | Re-links macOS plist files and restarts Dock/Finder. |
 | **Getting a New Mac** | Clone your repo and run one command. | 100% of your machine is reconstructed identically. |

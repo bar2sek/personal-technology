@@ -21,7 +21,7 @@ To keep your new M5 Pro fast, organized, and free of background clutter over tim
 | :--- | :--- | :--- | :--- |
 | **GUI Applications** | `brew install --cask` | Obsidian, Cursor, OrbStack, AppCleaner | Centrally tracked; updated & uninstalled via one command |
 | **System CLI Utilities** | `brew install` | `git`, `ripgrep`, `fd`, `jq`, `htop` | Cleanly contained in `/opt/homebrew/`, no `/usr/local` mess |
-| **Python & Local AI** | `uv` / `uvx` / `uv tool` | `mlx-lm`, `ruff`, `ipython`, ML packages | Completely isolated; never touches macOS system Python |
+| **Python Tooling** | `uv` / `uvx` / `uv tool` | `ruff`, `ipython`, `git-filter-repo`, data packages | Completely isolated; never touches macOS system Python |
 | **Databases & Services** | Containers (OrbStack / Apple Container) | PostgreSQL, Redis, RabbitMQ | Zero host daemons; wipeable with `docker rm` |
 | **Node.js / Web Dev** *(optional host)* | `fnm` (Fast Node Manager) or DevContainers | Node LTS, Bun, pnpm | Fast single-binary manager; zero global npm permission mess |
 | **Rust / Go** *(optional host)* | `rustup` / `brew install go` | `rustc`, `cargo`, `go` | Standard clean toolchains in `~/.cargo` or `/opt/homebrew` |
@@ -36,9 +36,10 @@ Never use `pip install` globally or modify system Python.
   uv tool install ruff
   uv tool install ipython
   ```
-* **Run one-off scripts/servers ephemerally:**
+* **Run one-off tools ephemerally (nothing is installed):**
   ```bash
-  uvx --from mlx-lm mlx_lm.server ...
+  uvx git-filter-repo --analyze
+  uvx ruff check .
   ```
 * **Project Virtual Environments:**
   ```bash
@@ -97,7 +98,7 @@ Not every application is on Homebrew or in containers. A `.dmg` (Disk Image) is 
 
 | Component | Cache Location | Cleanup Command |
 | :--- | :--- | :--- |
-| **Hugging Face / MLX Models** | `~/.cache/huggingface/` | `rm -rf ~/.cache/huggingface/hub/<model-folder>` |
+| **Leftover model weights** *(pre-cloud migration)* | `~/.cache/huggingface/` | `rm -rf ~/.cache/huggingface/` — safe to delete entirely; nothing serves models locally any more |
 | **`uv` Package Cache** | `~/.cache/uv/` | `uv cache clean` |
 | **OrbStack / Docker Images** | OrbStack data store | `docker system prune -a --volumes` |
 | **Homebrew Downloads** | `~/Library/Caches/Homebrew/` | `brew cleanup -s` |

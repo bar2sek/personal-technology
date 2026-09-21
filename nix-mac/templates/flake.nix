@@ -398,18 +398,21 @@
         fi
 
         echo "--> Deploying declarative Antigravity IDE & AI configuration..."
-        # Declarative Roo Code multi-model profiles (Claude Sonnet 4.6 + Grok xAI + Claude Opus 5)
+        # Declarative Roo Code multi-model profiles (Claude Sonnet 5 + Grok xAI + Claude Opus 5)
+        # Model IDs are exact strings — never append date suffixes (e.g. claude-opus-5-20260401).
+        # apiKey is intentionally empty: Roo Code reads ANTHROPIC_API_KEY / XAI_API_KEY from the
+        # environment, so no credential is ever written into the Nix store (world-readable).
         mkdir -p "$USER_HOME/.config/roo-code"
         cat << 'EOF' > "$USER_HOME/.config/roo-code/settings.json"
 {
   "providerProfiles": {
-    "currentApiConfigName": "Claude Sonnet 4.6",
+    "currentApiConfigName": "Claude Sonnet 5",
     "apiConfigs": {
-      "Claude Sonnet 4.6": {
-        "id": "claude-sonnet-4-6",
+      "Claude Sonnet 5": {
+        "id": "claude-sonnet-5",
         "apiProvider": "anthropic",
         "apiKey": "",
-        "apiModelId": "claude-sonnet-4-6"
+        "apiModelId": "claude-sonnet-5"
       },
       "Grok (xAI)": {
         "id": "grok-xai",

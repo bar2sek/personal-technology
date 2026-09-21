@@ -124,7 +124,7 @@
     <h3>What this single script does automatically:</h3>
     <ul>
       <li>Installs Xcode CLI Tools, Homebrew, and Determinate Nix.</li>
-      <li>Installs <strong>Visual Studio Code, Ghostty, Google Drive, Obsidian, OrbStack, AppCleaner, and oMLX</strong>.</li>
+      <li>Installs <strong>Visual Studio Code, Ghostty, Google Drive, Obsidian, OrbStack, and AppCleaner</strong>.</li>
       <li>Installs <strong>JetBrainsMono Nerd Font</strong> system-wide.</li>
       <li>Auto-configures <strong>Ghostty</strong> (matching fonts, ligatures, Tokyo Night theme).</li>
       <li>Arranges your <strong>Dock</strong> in your exact 3-section layout (Browsers &rarr; Apple Core &rarr; Dev Tools).</li>
@@ -134,12 +134,22 @@
   </div>
 
   <div class="card">
-    <h2><span class="step-number">4</span> Launching Your Local Qwen 32B Model</h2>
-    <p>Once the bootstrap script completes, download <strong>oMLX.dmg</strong> from <a href="https://github.com/jundot/omlx/releases" target="_blank">github.com/jundot/omlx/releases</a>, drag <code>oMLX.app</code> to <code>/Applications</code>, then run in Terminal:</p>
-    
-    <pre><code>just serve-omlx-32b</code></pre>
+    <h2><span class="step-number">4</span> Setting Up Your AI Provider Keys</h2>
+    <p>This workstation runs <strong>no local models</strong> &mdash; all inference is remote, so the only setup needed is credentials.</p>
 
-    <p>Open <strong>Visual Studio Code</strong> &rarr; Connect via Continue.dev extension to your local model on <code>localhost:8080</code> (<code>Cmd + L</code>, <code>Cmd + I</code>)!</p>
+    <p>Create API keys for the providers you use (<a href="https://console.anthropic.com" target="_blank">Anthropic</a>, <a href="https://aistudio.google.com" target="_blank">Google AI Studio</a>, <a href="https://console.x.ai" target="_blank">xAI</a>), then add them to <code>~/.zshrc</code> so they persist:</p>
+
+    <pre><code>export ANTHROPIC_API_KEY="..."
+export GEMINI_API_KEY="..."
+export XAI_API_KEY="..."</code></pre>
+
+    <p>Reload your shell with <code>source ~/.zshrc</code>, then copy the Continue config and substitute your real key:</p>
+
+    <pre><code>cp client-tools/ai-dev/continue-config.json ~/.continue/config.json</code></pre>
+
+    <p>Open <strong>Visual Studio Code</strong> and use Continue.dev (<code>Cmd + L</code> for chat, <code>Cmd + I</code> for inline edits). <strong>Antigravity IDE</strong> uses Gemini natively, with Claude and Grok available through the Roo Code switcher.</p>
+
+    <p><strong>&#9888; Never commit an API key.</strong> Treat every repository here as public &mdash; a leaked key is compromised the moment it lands, and rotating it is the only fix.</p>
   </div>
 
 </body>

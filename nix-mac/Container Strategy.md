@@ -37,7 +37,7 @@ Docker Desktop adds significant overhead on macOS (heavy Electron UI, background
 For most developers, **OrbStack** offers the best balance of speed, battery efficiency, and zero-friction compatibility with existing tools:
 * Completely replaces Docker Desktop.
 * Works seamlessly with `docker`, `docker compose`, and VS Code **Dev Containers**.
-* Seamless network bridge (`http://host.docker.internal:8080` allows containers to talk directly to your host MLX server).
+* Seamless network bridge (`host.docker.internal` lets containers reach services running on the macOS host).
 
 ### Native Pure CLI Alternative: Apple Container
 If you prefer 100% official Apple open-source software:
@@ -47,12 +47,18 @@ If you prefer 100% official Apple open-source software:
 
 ---
 
-## Accessing Host MLX from Containers
+## Calling AI Providers from Containers
 
-When running apps or services inside containers that need to query the host LLM:
-* Inside Docker / OrbStack containers, connect to:
-  `http://host.docker.internal:8080/v1`
-* This routes requests directly to the bare-metal MLX instance running on macOS.
+Containers reach model providers the same way the host does — straight out over HTTPS. There is no host inference server to bridge to.
+
+* Pass credentials in explicitly; they are deliberately not baked into images:
+  ```bash
+  docker run --rm -e ANTHROPIC_API_KEY "$IMAGE"
+  ```
+* In a Dev Container, list the variable under `remoteEnv` in `devcontainer.json` so it inherits from your shell rather than being committed.
+
+> [!CAUTION]
+> Never put an API key in a `Dockerfile`, a build arg, or a committed `devcontainer.json`. Build args persist in image history, so a key added that way is exposed to anyone who pulls the image.
 
 ---
 

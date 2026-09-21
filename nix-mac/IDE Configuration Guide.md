@@ -1,13 +1,14 @@
 ---
-title: IDE Configuration Guide (VS Code + Antigravity)
+title: "IDE Configuration Guide (VS Code + Antigravity)"
+date: 2026-09-20
 tags:
   - ide
   - vscode
   - continue
   - configuration
-  - setup
   - macos
-created: 2026-08-24
+status: evergreen
+aliases: []
 ---
 
 # ⚡ Antigravity IDE + Multi-Model Setup
@@ -15,8 +16,8 @@ created: 2026-08-24
 **Antigravity IDE** is your primary development environment on macOS—combining the familiarity and extension ecosystem of Code OSS with Google's native agentic architecture and **Roo Code** as a multi-model backup switcher.
 
 * **Unified Agent Canvas:** Seamlessly integrates native Antigravity agent workflows (Gemini Flash/Pro) directly alongside the editor canvas, visual diffs, and terminal.
-* **Multi-Model Backup Switcher (Roo Code):** Provides an instant toggle between **Local Qwen 2.5 Coder 32B** (`http://localhost:8080/v1`), **Claude Sonnet 4.6**, and **Claude Opus 5** (Anthropic API) whenever AGY tokens are exhausted.
-* **Zero Bloat:** Replaces standalone VS Code entirely; tab-autocomplete background models are removed to free up 100% of local GPU memory.
+* **Multi-Model Switcher (Roo Code):** Provides an instant toggle between **Claude Sonnet 5** and **Claude Opus 5** (Anthropic API) whenever AGY tokens are exhausted or a second opinion is wanted.
+* **Zero Bloat:** Replaces standalone VS Code entirely, and runs no local inference — the unified memory stays available for builds and containers.
 
 ---
 
@@ -41,7 +42,7 @@ homebrew.casks = [
 Install the recommended extensions to match the workstation's typography, aesthetics, and autonomous backup capabilities:
 
 ```bash
-# Autonomous Multi-Model Agent (Local MLX + Claude API Backup)
+# Autonomous Multi-Model Agent (Claude via Anthropic API)
 agy-ide --install-extension RooVeterinaryInc.roo-cline
 
 # Aesthetics & Typography
@@ -64,24 +65,21 @@ agy-ide --install-extension ms-kubernetes-tools.vscode-kubernetes-tools
 
 Roo Code profiles are managed **declaratively** via `~/.config/roo-code/settings.json` and automatically imported into Antigravity IDE on startup via `"roo-cline.autoImportSettingsPath"`.
 
-### Profile 1: Local M5 Pro MLX ($0 / Unlimited)
-* **Provider:** `OpenAI Compatible`
-* **Base URL:** `http://localhost:8080/v1`
-* **Model ID:** `mlx-community--Qwen2.5-Coder-32B-Instruct-6bit`
-* **Use Case:** Free autonomous file edits, unit test generation, log diagnosis, and offline work.
-
-### Profile 2: Claude Sonnet 4.6 (Frontier Backup)
+### Profile 1: Claude Sonnet 5 (Daily Driver)
 * **Provider:** `Anthropic`
-* **API Key:** Stored securely in your environment (`sk-ant-...`)
-* **Model ID:** `claude-sonnet-4-6`
-* **Prompt Caching:** Enabled (slashes multi-turn API costs by ~90%)
-* **Use Case:** High-reasoning fallback when Antigravity rate limits are triggered.
+* **API Key:** Read from the environment (`ANTHROPIC_API_KEY`) — never written into a tracked file
+* **Model ID:** `claude-sonnet-5`
+* **Prompt Caching:** Enabled (cuts multi-turn costs substantially on repeated prefixes)
+* **Use Case:** Routine implementation, code review, unit tests, log diagnosis, and the fallback when Antigravity rate limits trigger.
 
-### Profile 3: Claude Opus 5 (Deep Reasoning & Complex Architecture)
+### Profile 2: Claude Opus 5 (Deep Reasoning & Complex Architecture)
 * **Provider:** `Anthropic`
-* **API Key:** Stored securely in your environment (`sk-ant-...`)
+* **API Key:** Read from the environment (`ANTHROPIC_API_KEY`)
 * **Model ID:** `claude-opus-5`
-* **Use Case:** Top-tier frontier reasoning, architectural reviews, and benchmark evaluations.
+* **Use Case:** Top-tier frontier reasoning, architectural reviews, and multi-file refactors.
+
+> [!TIP] Use the exact model ID strings
+> Never append date suffixes such as `claude-opus-5-20260401`. Dated variants are a convention from older model generations and are rejected. Previous-generation IDs like `claude-sonnet-4-6` still resolve but are a step down — see [[Cloud AI Providers & Models]] for the current tiering.
 
 ---
 
@@ -120,16 +118,16 @@ Configure your user settings (`~/Library/Application Support/Antigravity/User/se
 ┌─────────────────────────────────────────────────────────────┐
 │                    DAILY CODING ROUTINE                     │
 │                                                             │
-│ 1. Launch local MLX server:                                 │
-│    `just serve-omlx` (Port 8080: Qwen 2.5 Coder 32B)        │
+│ 1. Confirm API keys are exported in your shell:             │
+│    ANTHROPIC_API_KEY · GEMINI_API_KEY · XAI_API_KEY         │
 │                                                             │
 │ 2. Primary Development in ANTIGRAVITY IDE:                  │
 │    • Use Native Antigravity Agent for high-level tasks      │
 │    • Autonomous builds, tests, and multi-repo planning      │
 │                                                             │
-│ 3. Token Quota Reached or Scoped Offline Work:              │
+│ 3. Token Quota Reached or Deeper Reasoning Needed:          │
 │    • Click ROO CODE in the same Antigravity IDE sidebar     │
-│    • Toggle to Local Qwen 32B ($0), Sonnet 4.6, or Opus 5   │
+│    • Toggle to Sonnet 5 (routine) or Opus 5 (hard problems) │
 │    • Continue executing without interrupting context        │
 └─────────────────────────────────────────────────────────────┘
 ```

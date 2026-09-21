@@ -1,17 +1,18 @@
 ---
-title: Mac AI Workstation Index
+title: "Mac AI Workstation Index"
+date: 2026-09-20
 tags:
   - macos
-  - ai
-  - mlx
+  - ai/cloud
   - containers
   - obsidian
-created: 2026-08-24
+status: evergreen
+aliases: []
 ---
 
 # 🖥️ Mac AI Workstation (M5 Pro 48GB)
 
-Welcome to the **Mac AI Workstation** notes vault. This workspace documents the architecture, setup, configuration, and maintenance routines for running local coding LLMs (Qwen 2.5 Coder) alongside a clean, containerized development environment.
+Welcome to the **Mac AI Workstation** notes vault. This workspace documents the architecture, setup, configuration, and maintenance routines for a cloud-first AI development environment — frontier models over provider APIs, with the machine's unified memory reserved for containers, compilers, and Nix builds.
 
 ---
 
