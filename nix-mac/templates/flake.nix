@@ -453,6 +453,7 @@ EOF
   "git.autoRepositoryDetection": true,
   "git.repositoryScanMaxDepth": 2,
   "scm.repositories.visible": 10,
+  "scm.repositories.selectionMode": "multiple",
   "git.scanRepositories": [
     "food-diet-nutrition",
     "home-projects",
