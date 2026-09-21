@@ -101,8 +101,15 @@ Entra ID evaluates incoming JWTs against the configured `subject` string:
 The deployment repository and its governance are declared in `bootstrap/github/`:
 * **`github_repository.infra_cloud_deployments`**: Creates the standalone deployment repo with automated security alerts.
 * **`github_repository_environment.production`**: Enforces branch policies (deployments restricted to `main`).
-* **`github_actions_environment_variable`**: Declaratively sets `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, and `AZURE_SUBSCRIPTION_ID`.
+* **`github_actions_variable.shared` / `github_actions_environment_variable.production`**: Declaratively set `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AWS_ROLE_TO_ASSUME`, and `AWS_REGION` at **both** repository and environment scope, driven from a single `locals` map.
+* **`github_actions_secret.shared` / `github_actions_environment_secret.production`**: Set `AWS_TF_STATE_BUCKET` as a masked secret at both scopes.
 * **`github_branch_protection.main`**: Requires pull requests before code merges to `main`.
+
+> [!IMPORTANT] Why both scopes
+> GitHub resolves lookups with precedence `environment > repository > organization`. The PR `plan` job in `aws-deploy.yml` / `azure-deploy.yml` declares **no** `environment:` key—deliberately, since adding one would subject every pull request to the `production` approval gate and defeat the speculative plan. Environment-scoped values are therefore invisible to it, and a repository-scoped baseline is required. The environment-scoped copies remain as `production` overrides and as the extension point for future `staging`/`dev` environments.
+
+> [!WARNING] Variables vs. secrets
+> `AWS_TF_STATE_BUCKET` is a **secret**, not a variable, because the bucket name embeds the AWS account ID and is interpolated into a `run:` command—which Actions echoes verbatim into publicly readable logs. Secrets are masked to `***`; variables are not. The OIDC identifiers stay variables: they confer no access without a matching federated credential, and keeping them readable preserves Terraform drift detection (`github_actions_secret` is write-only, so Terraform tracks only a hash).
 
 ### 2. Azure Entra ID & State Storage (`bootstrap/azure/`)
 Azure identity and backend resources are declared in `bootstrap/azure/`:

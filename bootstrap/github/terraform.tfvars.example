@@ -8,7 +8,17 @@ github_owner          = "bar2sek"
 repository_name       = "infra-cloud-deployments"
 repository_visibility = "private"
 
-# Azure OIDC Federation Parameters (retrieved from 'terraform/azure' outputs):
+# Azure OIDC Federation Parameters (retrieved from 'bootstrap/azure' outputs):
 # azure_client_id       = "00000000-0000-0000-0000-000000000000"
 # azure_tenant_id       = "00000000-0000-0000-0000-000000000000"
 # azure_subscription_id = "00000000-0000-0000-0000-000000000000"
+
+# AWS OIDC Federation Parameters (retrieved from 'bootstrap/aws' outputs).
+# Both of these embed the AWS account ID — keep them out of version control.
+# The role ARN is published as a non-secret Actions variable (an ARN grants
+# nothing without a matching IAM trust policy); the state bucket is published
+# as a masked Actions SECRET, because it is interpolated into a `run:` command
+# that GitHub echoes verbatim into publicly readable workflow logs.
+# aws_role_arn        = "arn:aws:iam::000000000000:role/role-aws-github-actions-prod-admin"
+# aws_region          = "us-east-2"
+# aws_tf_state_bucket = "s3-aws-tfstate-prod-use2-000000000000"

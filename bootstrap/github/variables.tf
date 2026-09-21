@@ -64,3 +64,10 @@ variable "aws_region" {
   description = "Target AWS Region for deployment runner"
   default     = "us-east-2"
 }
+
+variable "aws_tf_state_bucket" {
+  type        = string
+  description = "S3 bucket holding remote Terraform state. Injected as a masked GitHub Actions SECRET (not a variable) because the bucket name embeds the AWS account ID and `run:` commands are echoed into workflow logs."
+  default     = ""
+  sensitive   = true
+}

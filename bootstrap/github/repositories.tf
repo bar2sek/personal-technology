@@ -45,49 +45,122 @@ resource "github_repository_environment" "production" {
   }
 }
 
-# 3. Environment Variables for Azure OIDC Workload Identity Federation
-# These variables eliminate static secrets; the GitHub Actions runner authenticates
-# using transient JWTs exchanged with Microsoft Entra ID.
+# 3. OIDC Workload Identity Federation Configuration
+#
+# These carry NO static credentials. Under OIDC the runner authenticates with a
+# transient JWT; a client ID or role ARN grants nothing without a federated
+# credential whose subject claim matches this repository and environment.
+#
+# Scoping: GitHub resolves lookups with precedence
+#   environment > repository > organization
+#
+# Each value is therefore declared at BOTH scopes:
+#   * Repository scope — what the PR `plan` job reads. That job deliberately
+#     declares no `environment:` (adding one would subject every pull request
+#     to the production approval gate and defeat the speculative plan), so
+#     environment-scoped values are invisible to it.
+#   * Environment scope — lets `production` override the shared baseline, and
+#     gives future `staging`/`dev` environments a place to differ.
+#
+# Empty inputs are filtered out, so an unset variable provisions nothing.
 
-resource "github_actions_environment_variable" "azure_client_id" {
-  count         = var.azure_client_id != "" ? 1 : 0
-  repository    = github_repository.infra_cloud_deployments.name
-  environment   = github_repository_environment.production.environment
-  variable_name = "AZURE_CLIENT_ID"
-  value         = var.azure_client_id
+locals {
+  # Non-secret identifiers. Readable by collaborators and unmasked in logs —
+  # acceptable, because possession of them confers no access.
+  actions_variables = {
+    for name, value in {
+      AZURE_CLIENT_ID       = var.azure_client_id
+      AZURE_TENANT_ID       = var.azure_tenant_id
+      AZURE_SUBSCRIPTION_ID = var.azure_subscription_id
+      AWS_ROLE_TO_ASSUME    = var.aws_role_arn
+      AWS_REGION            = var.aws_region
+    } : name => value if value != ""
+  }
+
+  # Values that must never surface in a workflow log. The state bucket name
+  # embeds the AWS account ID and is interpolated into a `run:` command, which
+  # Actions echoes verbatim — as a secret it is masked to `***` instead.
+  actions_secrets = {
+    AWS_TF_STATE_BUCKET = var.aws_tf_state_bucket
+  }
+
+  # Terraform forbids sensitive values as `for_each` arguments, since instance
+  # keys are recorded in plaintext in state addresses. The secret *names* are
+  # not sensitive, so iterate over those and look the value up by key.
+  # `nonsensitive` wraps only the emptiness test — it reveals whether a value
+  # was supplied, never the value itself.
+  actions_secret_names = toset([
+    for name, value in local.actions_secrets : name
+    if !nonsensitive(value == "")
+  ])
 }
 
-resource "github_actions_environment_variable" "azure_tenant_id" {
-  count         = var.azure_tenant_id != "" ? 1 : 0
+resource "github_actions_variable" "shared" {
+  for_each = local.actions_variables
+
   repository    = github_repository.infra_cloud_deployments.name
-  environment   = github_repository_environment.production.environment
-  variable_name = "AZURE_TENANT_ID"
-  value         = var.azure_tenant_id
+  variable_name = each.key
+  value         = each.value
 }
 
-resource "github_actions_environment_variable" "azure_subscription_id" {
-  count         = var.azure_subscription_id != "" ? 1 : 0
+resource "github_actions_environment_variable" "production" {
+  for_each = local.actions_variables
+
   repository    = github_repository.infra_cloud_deployments.name
   environment   = github_repository_environment.production.environment
-  variable_name = "AZURE_SUBSCRIPTION_ID"
-  value         = var.azure_subscription_id
+  variable_name = each.key
+  value         = each.value
 }
 
-# 4. Environment Variables for AWS OIDC Workload Identity Federation
-resource "github_actions_environment_variable" "aws_role_to_assume" {
-  count         = var.aws_role_arn != "" ? 1 : 0
-  repository    = github_repository.infra_cloud_deployments.name
-  environment   = github_repository_environment.production.environment
-  variable_name = "AWS_ROLE_TO_ASSUME"
-  value         = var.aws_role_arn
+resource "github_actions_secret" "shared" {
+  for_each = local.actions_secret_names
+
+  repository  = github_repository.infra_cloud_deployments.name
+  secret_name = each.value
+  value       = local.actions_secrets[each.value]
 }
 
-resource "github_actions_environment_variable" "aws_region" {
-  count         = var.aws_region != "" ? 1 : 0
-  repository    = github_repository.infra_cloud_deployments.name
-  environment   = github_repository_environment.production.environment
-  variable_name = "AWS_REGION"
-  value         = var.aws_region
+resource "github_actions_environment_secret" "production" {
+  for_each = local.actions_secret_names
+
+  repository  = github_repository.infra_cloud_deployments.name
+  environment = github_repository_environment.production.environment
+  secret_name = each.value
+  value       = local.actions_secrets[each.value]
+}
+
+# 4. State Address Migration
+#
+# The five variables above were previously declared as individually named,
+# `count`-guarded resources. Switching to `for_each` changes their state
+# addresses, which Terraform would otherwise read as destroy-then-create.
+# These `moved` blocks re-map the addresses in place so the plan shows
+# additions only. A block whose source is absent from state is a no-op, so
+# these stay safe even if an input was never populated.
+
+moved {
+  from = github_actions_environment_variable.azure_client_id[0]
+  to   = github_actions_environment_variable.production["AZURE_CLIENT_ID"]
+}
+
+moved {
+  from = github_actions_environment_variable.azure_tenant_id[0]
+  to   = github_actions_environment_variable.production["AZURE_TENANT_ID"]
+}
+
+moved {
+  from = github_actions_environment_variable.azure_subscription_id[0]
+  to   = github_actions_environment_variable.production["AZURE_SUBSCRIPTION_ID"]
+}
+
+moved {
+  from = github_actions_environment_variable.aws_role_to_assume[0]
+  to   = github_actions_environment_variable.production["AWS_ROLE_TO_ASSUME"]
+}
+
+moved {
+  from = github_actions_environment_variable.aws_region[0]
+  to   = github_actions_environment_variable.production["AWS_REGION"]
 }
 
 # 5. Branch Protection Rules for 'main'
