@@ -450,7 +450,16 @@ EOF
   "git.enableSmartCommit": false,
   "git.confirmSync": false,
   "git.autorefresh": true,
+  "git.autoRepositoryDetection": true,
   "git.repositoryScanMaxDepth": 2,
+  "scm.repositories.visible": 10,
+  "git.scanRepositories": [
+    "food-diet-nutrition",
+    "home-projects",
+    "infra-cloud-deployments",
+    "personal-technology",
+    "professional-technology"
+  ],
   "roo-cline.autoImportSettingsPath": "~/Library/Application Support/Antigravity IDE/User/globalStorage/rooveterinaryinc.roo-cline/settings/roo-settings.json",
   "files.watcherExclude": {
     "**/.git/objects/**": true,
