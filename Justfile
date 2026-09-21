@@ -90,7 +90,7 @@ ssh-dev:
 # 3. Terraform Infrastructure as Code
 # ------------------------------------------------------------------------------
 
-# Plan all 6 Terraform roots (bootstrap + cloud roots)
+# Plan all 6 Bootstrap roots
 tf-plan-all:
     @echo "===> Planning UniFi Network (Bootstrap)..."
     cd bootstrap/unifi && terraform plan -parallelism=1
@@ -98,10 +98,10 @@ tf-plan-all:
     cd bootstrap/cloudflare && terraform plan
     @echo "===> Planning GitHub Multi-Cloud GitOps (Bootstrap)..."
     cd bootstrap/github && terraform plan
-    @echo "===> Planning AWS Foundation Resources..."
-    cd terraform/aws && terraform plan
-    @echo "===> Planning AWS Organization & Accounts..."
-    cd terraform/aws_organization && terraform plan
+    @echo "===> Planning AWS OIDC & State Storage (Bootstrap)..."
+    cd bootstrap/aws && terraform plan
+    @echo "===> Planning AWS Organization & Accounts (Bootstrap)..."
+    cd bootstrap/aws_organization && terraform plan
     @echo "===> Planning Azure Infrastructure & Entra ID (Bootstrap)..."
     cd bootstrap/azure && terraform plan
 
@@ -139,6 +139,18 @@ tf-plan-github:
 
 tf-apply-github:
     cd bootstrap/github && terraform apply
+
+tf-plan-aws:
+    cd bootstrap/aws && terraform plan
+
+tf-apply-aws:
+    cd bootstrap/aws && terraform apply
+
+tf-plan-aws-org:
+    cd bootstrap/aws_organization && terraform plan
+
+tf-apply-aws-org:
+    cd bootstrap/aws_organization && terraform apply
 
 tf-plan-azure:
     cd bootstrap/azure && terraform plan

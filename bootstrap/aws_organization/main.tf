@@ -67,10 +67,11 @@ resource "aws_controltower_control" "prevent_s3_public" {
   target_identifier  = aws_organizations_organizational_unit.infrastructure.arn
 }
 
-# 6. AWS IAM Identity Center Permission Set
+# 6. AWS IAM Identity Center Permission Set (Active once SSO instance exists)
 data "aws_ssoadmin_instances" "org" {}
 
 resource "aws_ssoadmin_permission_set" "admin" {
+  count            = length(data.aws_ssoadmin_instances.org.arns) > 0 ? 1 : 0
   name             = local.pset_admin
   description      = "Full Administrator Access for Authentik SAML Federated Users"
   instance_arn     = tolist(data.aws_ssoadmin_instances.org.arns)[0]
@@ -78,7 +79,8 @@ resource "aws_ssoadmin_permission_set" "admin" {
 }
 
 resource "aws_ssoadmin_managed_policy_attachment" "admin_policy" {
+  count              = length(data.aws_ssoadmin_instances.org.arns) > 0 ? 1 : 0
   instance_arn       = tolist(data.aws_ssoadmin_instances.org.arns)[0]
   managed_policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
-  permission_set_arn = aws_ssoadmin_permission_set.admin.arn
+  permission_set_arn = aws_ssoadmin_permission_set.admin[0].arn
 }

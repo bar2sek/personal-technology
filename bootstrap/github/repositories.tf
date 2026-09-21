@@ -73,7 +73,24 @@ resource "github_actions_environment_variable" "azure_subscription_id" {
   value         = var.azure_subscription_id
 }
 
-# 4. Branch Protection Rules for 'main'
+# 4. Environment Variables for AWS OIDC Workload Identity Federation
+resource "github_actions_environment_variable" "aws_role_to_assume" {
+  count         = var.aws_role_arn != "" ? 1 : 0
+  repository    = github_repository.infra_cloud_deployments.name
+  environment   = github_repository_environment.production.environment
+  variable_name = "AWS_ROLE_TO_ASSUME"
+  value         = var.aws_role_arn
+}
+
+resource "github_actions_environment_variable" "aws_region" {
+  count         = var.aws_region != "" ? 1 : 0
+  repository    = github_repository.infra_cloud_deployments.name
+  environment   = github_repository_environment.production.environment
+  variable_name = "AWS_REGION"
+  value         = var.aws_region
+}
+
+# 5. Branch Protection Rules for 'main'
 resource "github_branch_protection" "main" {
   repository_id = github_repository.infra_cloud_deployments.name
   pattern       = "main"

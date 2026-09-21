@@ -48,3 +48,19 @@ variable "azure_subscription_id" {
   description = "Azure Subscription ID"
   default     = ""
 }
+
+# ------------------------------------------------------------------------------
+# AWS OIDC Federation Parameters (Injected into GitHub Environment)
+# ------------------------------------------------------------------------------
+
+variable "aws_role_arn" {
+  type        = string
+  description = "AWS IAM Role ARN for GitHub Actions OIDC assume-role"
+  default     = ""
+}
+
+variable "aws_region" {
+  type        = string
+  description = "Target AWS Region for deployment runner"
+  default     = "us-east-2"
+}
