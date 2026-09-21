@@ -63,7 +63,7 @@ Guardrails are automated governance rules that enforce security and operational 
 
 ---
 
-## 📦 Terraform Module (`terraform/aws_organization/main.tf`)
+## 📦 Terraform Module (`bootstrap/aws_organization/main.tf`)
 
 ```hcl
 # Dynamic Naming Construction Following Global Conventions Specification (Without Agency Node)

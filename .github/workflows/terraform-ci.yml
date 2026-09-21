@@ -6,11 +6,13 @@ on:
       - main
     paths:
       - "terraform/**"
+      - "bootstrap/**"
   pull_request:
     branches:
       - main
     paths:
       - "terraform/**"
+      - "bootstrap/**"
 
 jobs:
   validate:
@@ -20,10 +22,12 @@ jobs:
       fail-fast: false
       matrix:
         dir:
-          - "terraform/aws"
-          - "terraform/aws_organization"
           - "terraform/cloudflare"
           - "terraform/unifi"
+          - "bootstrap/aws"
+          - "bootstrap/aws_organization"
+          - "bootstrap/azure"
+          - "bootstrap/github"
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4

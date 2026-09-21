@@ -5,12 +5,12 @@ on:
     branches:
       - main
     paths:
-      - "terraform/aws_organization/**"
+      - "bootstrap/aws_organization/**"
   pull_request:
     branches:
       - main
     paths:
-      - "terraform/aws_organization/**"
+      - "bootstrap/aws_organization/**"
 
 jobs:
   terraform:
@@ -27,17 +27,17 @@ jobs:
 
       - name: Terraform Format Check
         run: terraform fmt -check
-        working-directory: ./terraform/aws_organization
+        working-directory: ./bootstrap/aws_organization
 
       - name: Terraform Init
         run: terraform init
-        working-directory: ./terraform/aws_organization
+        working-directory: ./bootstrap/aws_organization
 
       - name: Terraform Plan
         run: terraform plan -no-color
-        working-directory: ./terraform/aws_organization
+        working-directory: ./bootstrap/aws_organization
 
       - name: Terraform Apply (Main Branch Only)
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: terraform apply -auto-approve
-        working-directory: ./terraform/aws_organization
+        working-directory: ./bootstrap/aws_organization

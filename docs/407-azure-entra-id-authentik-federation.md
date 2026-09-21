@@ -68,7 +68,7 @@ To brand directory identities with `@bar2sek.com` instead of the default `@<tena
 
 ## 🛠️ Declarative Entra ID Provisioning via Terraform
 
-In accordance with our [[105-naming-conventions|Enterprise Naming Standards]], all Entra ID objects are managed as declarative code in `terraform/azure/`:
+In accordance with our [[105-naming-conventions|Enterprise Naming Standards]], all Entra ID objects are managed as declarative code in `bootstrap/azure/`:
 
 ### 1. Naming Conventions Applied
 * **Application Registration**: `app-azure-authentik-prod-001`
@@ -80,7 +80,7 @@ In accordance with our [[105-naming-conventions|Enterprise Naming Standards]], a
 
 *(Note: `<tenant-4>` is dynamically derived from the first 4 characters of the Azure Tenant ID GUID).*
 
-### 2. Declarative HCL (`terraform/azure/entra.tf`)
+### 2. Declarative HCL (`bootstrap/azure/entra.tf`)
 ```hcl
 # Entra ID App Registration for Authentik
 resource "azuread_application" "authentik" {
@@ -171,7 +171,7 @@ When discussing this architecture in senior platform or cloud engineering interv
 
 1. **Verify Terraform Azure State**:
    ```bash
-   cd terraform/azure && terraform plan
+   cd bootstrap/azure && terraform plan
    ```
 2. **Test OIDC Discovery Metadata**:
    ```bash

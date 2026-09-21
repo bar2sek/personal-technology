@@ -57,7 +57,7 @@ graph TD
 
 ---
 
-## 🛠️ Declarative Terraform Provisioning (`terraform/azure/arc.tf`)
+## 🛠️ Declarative Terraform Provisioning (`bootstrap/azure/arc.tf`)
 
 In accordance with our [[105-naming-conventions|Enterprise Naming Standards]], all Azure Arc resources are managed declaratively:
 

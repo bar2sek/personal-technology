@@ -111,10 +111,9 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 │   ├── templates/             # Canonical flake.nix, Justfile & bootstrap scripts
 │   └── *.md                   # Workstation architecture, MLX serving & care guides
 ├── ansible/                   # Ansible configuration management for VMs
-│   ├── ansible.cfg            # WinRM & connection defaults
-│   ├── inventory/             # Windows 11 Gaming VM hosts
-│   ├── playbooks/             # Automated Chocolatey & Sunshine setup
-│   └── files/                 # Unattend.xml sysprep bootstrap answer file
+│   ├── ansible.cfg            # WinRM & SSH connection defaults
+│   ├── inventory/             # Bazzite Gaming VM hosts
+│   └── playbooks/             # Automated post-install configuration (NVIDIA, Sunshine)
 ├── client-tools/              # Workstation client configuration & bootstrap scripts
 │   └── ai-dev/                # Apple MLX / oMLX & Continue.dev local setup
 ├── docker/                    # Custom container images
@@ -123,9 +122,10 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 ├── kubernetes/                # Declarative Kubernetes manifests
 │   ├── infrastructure/        # Core platform services
 │   │   ├── rook-ceph/         # 3-tier Ceph cluster & StorageClasses
+│   │   ├── backups/           # Native S3 declarative state dumps & PostgreSQL backups
 │   │   ├── cloudflare/        # Cloudflare Tunnel HA deployment
 │   │   ├── tailscale/         # Tailscale operator & subnet router
-│   │   ├── kubevirt/          # Windows 11 (GPU passthrough) & Arch VMs
+│   │   ├── kubevirt/          # Bazzite Gaming VM (GPU passthrough) & Arch VMs
 │   │   ├── arc/               # Actions Runner Controller AutoscalingRunnerSet
 │   │   ├── floci/             # In-cluster local AWS cloud emulator
 │   │   ├── authentik/         # Authentik master IdP & PostgreSQL/Redis
@@ -137,15 +137,10 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 │       ├── mealie/            # Mealie recipe manager
 │       ├── immich/            # Immich photo backup (pgvector + ML)
 │       └── home-assistant/    # Home Assistant smart home automation
-├── talos/                     # Talos Linux machine configurations & patches
-│   ├── talosconfig.example    # talosctl client configuration template
-│   └── patches/               # Node-specific configuration patches
-│       ├── controlplane.yaml  # Supermicro HA control plane (allowSchedulingOnControlPlanes)
-│       ├── storage-worker.yaml# pc-node-04 11-disk bulk HDD storage worker
-│       └── gpu-worker.yaml    # pc-node-05 AM5 Ryzen 7600 + RTX 4070 VFIO passthrough
-└── terraform/                 # Multi-cloud Infrastructure as Code (Cloud Target)
-    ├── aws/                   # Route53, encrypted S3 backups, EKS Connector role
-    ├── aws_organization/      # Multi-account Landing Zone, Control Tower, SSO
-    ├── azure/                 # Entra ID App Registrations, Log Analytics, Azure Arc, State Storage
-    └── backend-config.example.tf # Remote state configuration reference
+└── talos/                     # Talos Linux machine configurations & patches
+    ├── talosconfig.example    # talosctl client configuration template
+    └── patches/               # Node-specific configuration patches
+        ├── controlplane.yaml  # Supermicro HA control plane (allowSchedulingOnControlPlanes, VIP)
+        ├── storage-worker.yaml# pc-node-04 11-disk bulk HDD storage worker
+        └── gpu-worker.yaml    # pc-node-05 AM5 Ryzen 7600 + RTX 4070 VFIO passthrough
 ```

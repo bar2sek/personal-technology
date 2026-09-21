@@ -27,7 +27,7 @@ graph TD
     subgraph Repo1["bar2sek/personal-technology (Documentation & IaC Specs)"]
         Vault["Obsidian Vault / Knowledge Base"]
         Docs["Architecture Notes & Playbooks"]
-        TF_Roots["Declarative IaC Definitions (bootstrap/github, terraform/azure)"]
+        TF_Roots["Declarative IaC Definitions (bootstrap/github, bootstrap/azure)"]
     end
 
     subgraph Repo2["bar2sek/infra-cloud-deployments (Automated CI/CD Engine)"]
@@ -104,8 +104,8 @@ The deployment repository and its governance are declared in `bootstrap/github/`
 * **`github_actions_environment_variable`**: Declaratively sets `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, and `AZURE_SUBSCRIPTION_ID`.
 * **`github_branch_protection.main`**: Requires pull requests before code merges to `main`.
 
-### 2. Azure Entra ID & State Storage (`terraform/azure/`)
-Azure identity and backend resources are declared in `terraform/azure/`:
+### 2. Azure Entra ID & State Storage (`bootstrap/azure/`)
+Azure identity and backend resources are declared in `bootstrap/azure/`:
 * **`azuread_application.github_actions`**: App registration `app-azure-github-actions-prod-001`.
 * **`azuread_service_principal.github_actions`**: Service principal `sp-azure-github-actions-prod-001`.
 * **`azuread_application_federated_identity_credential`**: Maps GitHub subject claims to Entra ID.
