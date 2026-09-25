@@ -43,6 +43,7 @@ Each editor reaches a different provider. Knowing which is which avoids configur
 | **Roo Code** | Anthropic Claude, xAI Grok | Model switcher inside the IDE; the path for Claude and Grok. |
 | **VS Code + Continue** | Anthropic Claude | Config template at `client-tools/ai-dev/continue-config.json`. |
 | **Claude Code** | Anthropic Claude | Terminal-native agent, installed declaratively via `pkgs.claude-code` in the flake. |
+| **Claude Desktop** | Anthropic Claude | Official macOS desktop application, installed declaratively via Homebrew cask `claude`. |
 
 ---
 

@@ -163,6 +163,7 @@
 
           # Developer, AI & Remote Access
           "antigravity-ide"
+          "claude"
           "ghostty"
           "orbstack"
           "tailscale-app"
@@ -216,6 +217,7 @@
             "/Applications/Microsoft OneNote.app"
 
             # 3. Developer & AI Workstation Tools (Farthest Right)
+            "/Applications/Claude.app"
             "/Applications/Antigravity IDE.app"
             "/Applications/Ghostty.app"
             "/Applications/Obsidian.app"
