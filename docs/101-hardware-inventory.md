@@ -51,6 +51,12 @@ This document tracks the physical hardware available in the homelab and their in
 | **Home Wireless AP** | UniFi U7 Pro WAP | Connected to UDM-Pro / USW Switch | Primary Home Wi-Fi 7 Access Point |
 | **Garage Wireless AP** | UniFi U6-Lite WAP | PoE Powered via USW-Lite-8-PoE | Garage Wi-Fi 6 Access Point |
 
+### 4. Dedicated Storage & Disaster Recovery Appliances (Out-of-Cluster)
+
+| Device | Hardware Type | Specs (Storage & RAID) | Network / Uplink | Physical Location | Role |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `synology-nas` | 2-Bay Synology NAS | 2x 2TB HDDs (SHR / RAID 1, 2.0TB Usable) | 1GbE RJ45 to USW-Lite-8-PoE Port 2 | Garage Workshop | Tier 3 Bulk Backup Target (Immich mirror, K8s state / Postgres local replica), Apple Time Machine Server (`nix-mac`), Out-of-Band DR |
+
 ---
 
 ## Key Architecture & Design Considerations
@@ -65,4 +71,5 @@ This document tracks the physical hardware available in the homelab and their in
    - **Tier 1 Storage (High IOPS NVMe Pool)**: **2x 2TB NVMe SSDs** (`sm-node-01`/`02`) + **1x 1TB NVMe SSD** (`pc-node-05`) = **5TB raw NVMe storage**. Ideal for etcd WAL directories, high-performance database volumes, and fast caching for Ollama AI models.
    - **Tier 2 Storage (SATA SSD Capacity Pool)**: All **8x 2TB Crucial MX500 SSDs** (16TB raw capacity across the 3 Supermicro servers) remain 100% available for distributed storage engines like **Rook-Ceph**, **Longhorn**, or **OpenEBS Mayastor**. Extra SATA SSDs in `pc-node-04` (250GB Crucial + 240GB Kingston) available for scratch cache.
    - **Tier 3 Storage (Bulk HDD Storage Pool)**: **11x Mechanical HDDs** in `pc-node-04` (**4x 4TB Seagate IronWolf NAS** + **2x 2TB Seagate Constellation ES.3 Enterprise** + 1x 3TB Seagate BarraCuda + 1x 1.5TB WD Green + 2x 1TB Seagate Barracuda + 1x 500GB HGST = **27.0TB raw HDD capacity**). Ideal for Rook-Ceph bulk erasure-coded storage pools, MinIO S3 object store, Velero cluster backups, and media archives.
+   - **Out-of-Band Isolated Backup Storage (Garage Appliance)**: The 2-Bay Synology NAS (2x 2TB HDDs in SHR / RAID 1 = 2.0TB usable) operates independently from the main rack in the garage on `USW-Lite-8-PoE` (Port 2), providing a physically segregated failure domain for macOS Time Machine (`nix-mac`), Immich media mirroring, and offline cluster recovery.
    - **High-Speed Networking (10GbE SFP+)**: 4 out of 5 nodes (`sm-node-01`, `sm-node-02`, `sm-node-03`, `pc-node-04`) have **Dual 10GbE SFP+ NICs** (Intel 82599/X520-DA2 chipset & Xeon D integrated). This enables a dedicated 10G SFP+ network VLAN for Rook-Ceph storage replication traffic.

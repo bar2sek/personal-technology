@@ -598,9 +598,14 @@ Any AI agent or human operator can review this document to pick up exactly where
 
 ## 🎯 Immediate Next Actions & Infrastructure Backlog
 
-1. **Local Synology NAS Bulk Backup Integration (Pending Hardware Onboarding)**:
-   - Onboard physical Synology NAS on the local 10GbE network fabric.
-   - Configure NFS/iSCSI target or local MinIO/S3 endpoint for heavy persistent volumes (specifically Immich 500GB bulk photo library) for zero-cloud-cost on-premises offsite backups.
+1. **Local Synology NAS Bulk Backup & Time Machine Integration (Garage Onboarding)**:
+   - **Hardware & Placement**: 2-Bay Synology NAS with 2x 2TB HDDs in SHR / RAID 1 (2.0 TB usable). Physically deployed in the garage workshop, connected via 1GbE Cat6 to `USW-Lite-8-PoE` (Port 2).
+   - **Failure Domain Isolation**: Establishes a true isolated on-premises disaster recovery zone physically separated from the main server rack and Ceph storage cluster.
+   - **Storage Partitioning & Quota Architecture**:
+     - `TimeMachine-MacBook` (~1.0 TB quota): Native Apple Time Machine destination over SMB/Bonjour for continuous background workstation backup (`nix-mac`).
+     - `Immich-Media-Mirror` (~600 GB quota): NFS/rsync bulk target for raw photos, videos, and persistent volume media (eliminating cloud egress).
+     - `K8s-Cluster-Snapshots` (~400 GB quota): Local secondary replication target for declarative cluster state archives and PostgreSQL dumps, plus KubeVirt ISO caching.
+   - **Network & Security**: Assign static DHCP reservation on VLAN 10 (`MGMT-IPMI`) or dedicated storage VLAN. Apply firewall rules permitting SMB from Mac LAN, and NFS/rsync strictly from Kubernetes node CIDR (`10.10.20.0/24`).
 2. **GitOps Controller Evaluation (Flux CD)**:
    - Evaluate deploying Flux CD source and kustomize controllers to enforce declarative reconciliation between GitHub and in-cluster states.
 

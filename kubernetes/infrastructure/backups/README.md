@@ -10,7 +10,7 @@ This directory defines the automated backup infrastructure for the hybrid homela
 | :--- | :--- | :--- | :--- | :--- |
 | **Tier 1: Control Plane & Cluster State** | Declarative K8s State (CRDs, PVs, namespaces, secrets, workloads) | `backup-cluster-state` CronJob (Daily 03:00 UTC) | AWS S3 (`s3-aws-backups-prod-use2-001/cluster-state/`) | ~$0.01 / month |
 | **Tier 2: Relational Databases** | Immich & TeslaMate PostgreSQL dumps | `backup-postgres-databases` CronJob (Daily 03:30 UTC) | AWS S3 (`s3-aws-backups-prod-use2-001/postgres/`) | ~$0.01 / month |
-| **Tier 3: Bulk Media & PVC Volumes** | Immich Photo Library (500GB+), Home Assistant, persistent volumes | Synology NAS via NFS/iSCSI (Local Backup Pipeline) | Local Synology NAS (10GbE network) | $0.00 cloud cost |
+| **Tier 3: Bulk Media & PVC Volumes** | Immich Photo Library (500GB+), Home Assistant, persistent volumes | Synology NAS via NFS/rsync (Garage 1GbE Isolated Pipeline) | Garage Synology NAS via `USW-Lite-8-PoE` (Isolated Failure Domain) | $0.00 cloud cost |
 
 ---
 

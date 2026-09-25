@@ -32,8 +32,10 @@ This document details the physical network topology, switch interconnects, WAN c
   - Dedicated access switch for Out-of-Band IPMI/BMC ports, Omni Mini PC 1GbE NIC, and 1GbE management interfaces.
   - Uplink: Port 8 connected to UDM-Pro / USW-Aggregation.
 - **Access Switch (Garage)**: 1x **UniFi Switch Lite 8 PoE (USW-Lite-8-PoE)** (`78:45:58:xx:xx:xx` - `10.0.1.40`)
-  - 8-port Gigabit switch with 802.3at PoE+ located in the garage to power garage AP and peripheral hardware.
-  - Uplink: 1GbE RJ45 connection (Port 8) to core USW-24-G2 (Port 24).
+  - 8-port Gigabit switch with 802.3at PoE+ located in the garage to power garage AP, garage peripherals, and isolated backup storage.
+  - Uplink: 1GbE RJ45 connection (Port 1) to core UDM-Pro (Port 2).
+  - Port 2: Synology NAS 2-Bay (2x 2TB HDDs - Tier 3 bulk backup target, macOS Time Machine server, and isolated DR vault).
+  - Port 8: PoE+ connection to U6-Lite WAP.
 - **Wireless Infrastructure (Access Points)**:
   - **Home Wi-Fi 7 AP**: 1x **UniFi U7 Pro WAP** (`94:2a:6f:xx:xx:xx` - `10.0.1.214`) connected to USW-24-G2 Port 6 for primary household wireless coverage.
   - **Garage Wi-Fi 6 AP**: 1x **UniFi U6-Lite WAP** (`24:5a:4c:xx:xx:xx` - `10.0.1.45`) connected to USW-Lite-8-PoE Port 1 for garage/outdoor IoT and vehicle wireless coverage.
@@ -55,8 +57,9 @@ graph TD
     UDMP_P1["UDM-Pro Port 1 (1G RJ45)"] -->|Cat6 RJ45| U7PRO["U7 Pro WAP (Home Wi-Fi 7)"]
     UDMP_P2["UDM-Pro Port 2 (1G RJ45)"] -->|Cat6 RJ45| LITE8_P1["USW-Lite-8-PoE Port 1 (Garage Switch)"]
 
-    %% Garage Switch & AP
+    %% Garage Switch, AP & Storage
     LITE8_P8["USW-Lite-8-PoE Port 8 (802.3at PoE)"] -->|Cat6 RJ45| U6LITE["U6-Lite WAP (Garage Wi-Fi 6)"]
+    LITE8_P2["USW-Lite-8-PoE Port 2 (1G RJ45)"] -->|Cat6 RJ45| SYNOLOGY["Synology NAS 2-Bay (Garage DR & Time Machine)"]
 
     %% Core Switch Aggregation 20G LAG Backbone
     AGG1_P7["USW-Agg #1 Port 7 (10G SFP+)"] ===|10G SFP+ DAC - 20G LAG| AGG2_P7["USW-Agg #2 Port 7 (10G SFP+)"]
@@ -115,6 +118,7 @@ graph LR
     subgraph MANAGEMENT["Out-of-Band & Provisioning Layer"]
         OMNI_SRV["omni-server (10.10.10.5 / 10.10.20.5)"]
         IPMI_NODES["Supermicro IPMIs (10.10.10.11-13)"]
+        SYN_NAS["Synology NAS 2-Bay (Garage DR Vault / Time Machine)"]
     end
 
     subgraph K8S_CLUSTER["Talos Linux Kubernetes Cluster"]
@@ -129,7 +133,7 @@ graph LR
     GF --> UNIFI
     CF -->|Cloudflare Tunnel| APPS
     TS -->|Encrypted WireGuard| CP_NODES & VMS
-    V10 --> OMNI_SRV & IPMI_NODES
+    V10 --> OMNI_SRV & IPMI_NODES & SYN_NAS
     V20 --> CP_NODES & ARC
     V40 --> CEPH
     V50 --> APPS
