@@ -97,8 +97,7 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 │   ├── terraform-ci.yml       # Multi-directory Terraform lint/validate CI
 │   └── k8s-validate.yml       # YAML and Kubernetes manifest validation
 ├── terraform/                 # On-premises homelab infrastructure (applied locally from workstation)
-│   ├── unifi/                 # UDM-Pro VLANs (10,20,30,40,50,60,90), firewalls, split-horizon DNS
-│   └── cloudflare/            # Zero Trust Tunnels, DNS, Access SSO, Email Routing
+│   └── unifi/                 # UDM-Pro VLANs (10,20,30,40,50,60,90), firewalls, split-horizon DNS
 ├── bootstrap/                 # Day-0 cloud & CI/CD bootstrap roots (before deployment repo takes over)
 │   ├── aws/                   # AWS OIDC role & remote state storage
 │   ├── aws_organization/      # Multi-account landing zone & account provisioning

@@ -27,3 +27,9 @@ repository_visibility = "private"
 # aws_role_arn        = "arn:aws:iam::000000000000:role/role-aws-github-actions-prod-admin"
 # aws_region          = "us-east-2"
 # aws_tf_state_bucket = "s3-aws-tfstate-prod-use2-000000000000"
+
+# Cloudflare Parameters for Multi-Cloud GitOps Runner:
+# cloudflare_account_id        = "your-cloudflare-account-id"
+# cloudflare_zone_id           = "your-cloudflare-zone-id"
+# cloudflare_destination_email = "user@example.com"
+# cloudflare_api_token         = "your-cloudflare-api-token"

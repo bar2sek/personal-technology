@@ -94,8 +94,6 @@ ssh-dev:
 tf-plan-all:
     @echo "===> Planning UniFi Network (On-Prem Terraform)..."
     cd terraform/unifi && terraform plan -parallelism=1
-    @echo "===> Planning Cloudflare Tunnels & Access (On-Prem Terraform)..."
-    cd terraform/cloudflare && terraform plan
     @echo "===> Planning GitHub Multi-Cloud GitOps (Bootstrap)..."
     cd bootstrap/github && terraform plan
     @echo "===> Planning AWS OIDC & State Storage (Bootstrap)..."
@@ -131,12 +129,6 @@ tf-plan-unifi:
 
 tf-apply-unifi:
     cd terraform/unifi && terraform apply -parallelism=1
-
-tf-plan-cloudflare:
-    cd terraform/cloudflare && terraform plan
-
-tf-apply-cloudflare:
-    cd terraform/cloudflare && terraform apply
 
 # Quick shortcuts for Day-0 Cloud & CI/CD Bootstrap roots
 tf-plan-github:

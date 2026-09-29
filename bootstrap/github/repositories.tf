@@ -69,11 +69,14 @@ locals {
   # acceptable, because possession of them confers no access.
   actions_variables = {
     for name, value in {
-      AZURE_CLIENT_ID       = var.azure_client_id
-      AZURE_TENANT_ID       = var.azure_tenant_id
-      AZURE_SUBSCRIPTION_ID = var.azure_subscription_id
-      AWS_ROLE_TO_ASSUME    = var.aws_role_arn
-      AWS_REGION            = var.aws_region
+      AZURE_CLIENT_ID              = var.azure_client_id
+      AZURE_TENANT_ID              = var.azure_tenant_id
+      AZURE_SUBSCRIPTION_ID        = var.azure_subscription_id
+      AWS_ROLE_TO_ASSUME           = var.aws_role_arn
+      AWS_REGION                   = var.aws_region
+      CLOUDFLARE_ACCOUNT_ID        = var.cloudflare_account_id
+      CLOUDFLARE_ZONE_ID           = var.cloudflare_zone_id
+      CLOUDFLARE_DESTINATION_EMAIL = var.cloudflare_destination_email
     } : name => value if value != ""
   }
 
@@ -81,7 +84,8 @@ locals {
   # embeds the AWS account ID and is interpolated into a `run:` command, which
   # Actions echoes verbatim — as a secret it is masked to `***` instead.
   actions_secrets = {
-    AWS_TF_STATE_BUCKET = var.aws_tf_state_bucket
+    AWS_TF_STATE_BUCKET  = var.aws_tf_state_bucket
+    CLOUDFLARE_API_TOKEN = var.cloudflare_api_token
   }
 
   # Terraform forbids sensitive values as `for_each` arguments, since instance

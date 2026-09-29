@@ -594,6 +594,18 @@ Any AI agent or human operator can review this document to pick up exactly where
       - Updated [`kubernetes/infrastructure/backups/README.md`](file:///kubernetes/infrastructure/backups/README.md) with complete disaster recovery and restoration steps for both declarative cluster state and Postgres database dumps.
       - Pruned deprecated `cronjob-etcd.yaml`.
 
+  - ### Milestone 19: Cloudflare GitOps Migration & Native S3 State Locking (2026-09-29)
+    - **Multi-Cloud Boundary Enforcement**:
+      - Transferred Cloudflare Zero Trust Tunnels, DNS records, and Access SSO configurations from `personal-technology/terraform/cloudflare` to the dedicated multi-cloud execution repository `infra-cloud-deployments/terraform/cloudflare`.
+      - Enforced clear boundary invariant: `personal-technology` strictly owns physical on-premises hardware (UniFi, Talos Linux, Kubernetes manifests, KubeVirt) and Day-0 bootstrap modules, while `infra-cloud-deployments` owns all cloud-managed infrastructure (AWS, Azure, and Cloudflare).
+    - **Modern State Backend & Native S3 Lockfile (`use_lockfile = true`)**:
+      - Migrated local `terraform.tfstate` into the remote S3 state backend (`cloudflare-workloads/terraform.tfstate`) using `terraform init -migrate-state`.
+      - Leveraged native S3 state locking (`use_lockfile = true`) supported in Terraform 1.10+, eliminating the requirement for an external DynamoDB lock table and reducing cloud footprint.
+    - **Automated GitOps CI/CD & Governance Integration**:
+      - Implemented `.github/workflows/cloudflare-deploy.yml` in `infra-cloud-deployments` with speculative PR plans and automated production apply on merge to `main`.
+      - Updated `personal-technology/bootstrap/github` to declaratively inject Cloudflare API tokens, Account IDs, Zone IDs, and destination email into repository variables and secrets.
+      - Pruned legacy local Cloudflare recipes from `personal-technology/Justfile`.
+
 ---
 
 ## 🎯 Immediate Next Actions & Infrastructure Backlog

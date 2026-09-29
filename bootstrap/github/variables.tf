@@ -84,3 +84,32 @@ variable "aws_tf_state_bucket" {
   default     = ""
   sensitive   = true
 }
+
+# ------------------------------------------------------------------------------
+# Cloudflare Parameters (Injected into GitHub Actions for GitOps)
+# ------------------------------------------------------------------------------
+
+variable "cloudflare_account_id" {
+  type        = string
+  description = "Cloudflare Account ID"
+  default     = ""
+}
+
+variable "cloudflare_zone_id" {
+  type        = string
+  description = "Cloudflare DNS Zone ID"
+  default     = ""
+}
+
+variable "cloudflare_destination_email" {
+  type        = string
+  description = "Cloudflare destination email for SSO & routing"
+  default     = ""
+}
+
+variable "cloudflare_api_token" {
+  type        = string
+  description = "Cloudflare API Token with Zero Trust, DNS, and Zone permissions"
+  default     = ""
+  sensitive   = true
+}
