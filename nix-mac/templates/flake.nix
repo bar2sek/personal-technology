@@ -161,6 +161,9 @@
           "obsidian"
           "appcleaner"
 
+          # 3D Printing & Digital Fabrication
+          "bambu-studio"
+
           # Developer, AI & Remote Access
           "antigravity-ide"
           "claude"
@@ -216,7 +219,8 @@
             "/System/Applications/Notes.app"
             "/Applications/Microsoft OneNote.app"
 
-            # 3. Developer & AI Workstation Tools (Farthest Right)
+            # 3. 3D Fabrication, AI & Developer Tools (Farthest Right)
+            "/Applications/BambuStudio.app"
             "/Applications/Claude.app"
             "/Applications/Antigravity IDE.app"
             "/Applications/Ghostty.app"
