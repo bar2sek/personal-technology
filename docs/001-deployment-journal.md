@@ -606,6 +606,24 @@ Any AI agent or human operator can review this document to pick up exactly where
       - Updated `personal-technology/bootstrap/github` to declaratively inject Cloudflare API tokens, Account IDs, Zone IDs, and destination email into repository variables and secrets.
       - Pruned legacy local Cloudflare recipes from `personal-technology/Justfile`.
 
+  - ### Milestone 20: Native Google Antigravity IDE Deployment & KasmVNC 60fps Web Streaming (2026-10-01)
+    - **Architecture Evolution (From Generic VS Code to True Antigravity IDE)**:
+      - Replaced generic open-source `codercom/code-server` with the official, native **Google Antigravity IDE (Linux x86_64 v2.5.5)** running inside `lscr.io/linuxserver/webtop:ubuntu-xfce`.
+      - Delivers the complete native Antigravity experience in any browser or iPad over `https://agy.bar2sek.com`: Gemini-powered agent canvas, task planning tabs, inline code lenses, terminal sandboxing, and multimodal media uploads.
+    - **Compute & Storage Alignment on `pc-node-04`**:
+      - Pinpoint diagnosis: Scheduling on `sm-node-03` triggered `KubeletHasDiskPressure` due to its small 16GB SATADOM boot disk (~900MB free ephemeral space).
+      - Pinned workload to `pc-node-04` via `nodeSelector: kubernetes.io/hostname: pc-node-04`, leveraging its 69 GB fast NVMe ephemeral storage, 24 vCPUs, and 65 GB RAM.
+      - Attached high-IOPS 100GB Ceph block storage (`rook-ceph-block-nvme`) mounted to `/config`, permanently persisting the unpacked Antigravity binary, user IDE extensions, and `/config/workspace/second-brain`.
+    - **Automated Bootstrap & Autostart Engine**:
+      - Codified `antigravity-init-scripts` ConfigMap executing on container boot: verifies runtime dependencies (`libsecret`, `libgbm`), downloads the official Google release tarball if absent, generates desktop launcher wrappers with `--no-sandbox --disable-gpu`, installs the `agy` CLI (`v1.2.14`), and configures XFCE autostart.
+    - **Web Streaming & Ingress Optimization**:
+      - Transitioned Service and Ingress routing from port `8080` to port `3000` (KasmVNC).
+      - Configured Ingress-Nginx annotations with `proxy-buffering: "off"` and 3600-second WebSocket timeouts for seamless 60fps streaming and native clipboard sync across Cloudflare Zero Trust and local LAN (`10.10.20.50`).
+    - **Resource Decommissioning & Cluster Hygiene**:
+      - After evaluation, the containerized remote desktop environment was fully decommissioned to preserve compute and storage resources for core homelab infrastructure and the upcoming garage Synology NAS DR integration.
+      - Executed complete teardown: deleted `dev-workspaces` namespace, instantly releasing 100GB of fast NVMe block storage back to the Ceph distributed storage pool (`rook-ceph-block-nvme`) and freeing up to 32GB RAM / 16 vCPUs on `pc-node-04`.
+      - Pruned manifests, UniFi split-horizon DNS record (`agy.bar2sek.com` in `terraform/unifi/dns.tf`), and Cloudflare Zero Trust tunnel ingress and access policies in `infra-cloud-deployments`.
+
 ---
 
 ## 🎯 Immediate Next Actions & Infrastructure Backlog
