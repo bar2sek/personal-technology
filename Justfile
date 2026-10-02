@@ -155,6 +155,11 @@ tf-plan-azure:
 tf-apply-azure:
     cd bootstrap/azure && terraform apply
 
+# Generate live UniFi network & VLAN topology diagrams (SVG + PNG)
+unifi-diagram:
+    python3 client-tools/generate_unifi_diagram.py
+
+
 
 # ------------------------------------------------------------------------------
 # 4. Ansible Automation

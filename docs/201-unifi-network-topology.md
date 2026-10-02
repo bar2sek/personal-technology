@@ -17,6 +17,13 @@ This document details the physical network topology, switch interconnects, WAN c
 
 ---
 
+## 🗺️ Live Network & VLAN Architecture
+
+![UniFi Network & VLAN Topology](architecture-unifi.png)
+*Vector source:* [`architecture-unifi.svg`](architecture-unifi.svg)
+
+---
+
 ## 🌐 Physical Network Infrastructure
 
 ### Core Hardware & Discovered MACs
