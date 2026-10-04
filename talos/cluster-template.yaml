@@ -35,12 +35,6 @@ patches:
             - name: ceph
         features:
           rbac: true
-          kubernetesTalosAPIAccess:
-            enabled: true
-            allowedRoles:
-              - os:reader
-            allowedKubernetesNamespaces:
-              - kube-system
         kubelet:
           extraMounts:
             - destination: /var/lib/rook
@@ -55,6 +49,18 @@ machines:
   - da165a00-3e5d-11ea-8000-3cecef44a132
   - 9983ae00-e364-11ea-8000-3cecef6fd61e
   - 00000000-0000-0000-0000-3cecef58ed64
+patches:
+  - name: controlplane-api-access
+    inline: |-
+      machine:
+        features:
+          kubernetesTalosAPIAccess:
+            enabled: true
+            allowedRoles:
+              - os:reader
+            allowedKubernetesNamespaces:
+              - kube-system
+
 ---
 kind: Workers
 machines:
