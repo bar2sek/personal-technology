@@ -40,7 +40,9 @@ resource "aws_iam_role" "github_actions" {
               "repo:${local.github_repo_immutable}:environment:production",
               "repo:${local.github_repo_immutable}:pull_request",
               "repo:${local.github_repo_immutable}:ref:refs/heads/main",
-              "repo:${var.github_repo_name}:*"
+              "repo:${var.github_repo_name}:environment:production",
+              "repo:${var.github_repo_name}:pull_request",
+              "repo:${var.github_repo_name}:ref:refs/heads/main"
             ]
           }
         }

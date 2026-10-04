@@ -2,8 +2,6 @@
 machine:
   type: worker
   install:
-    disk: /dev/nvme1n1 # 1TB Sabrent Rocket 4.0 NVMe (preserves 1TB Crucial P3 /dev/nvme0n1 for Ceph OSD)
-    wipe: false
     extraKernelArgs:
       - amd_iommu=on
       - iommu=pt
@@ -26,4 +24,4 @@ machine:
             dhcp: true
             mtu: 9000
   sysctls:
-    vm.nr_hugepages: "12288" # Hugepages for KubeVirt Windows 11 Gaming VM Performance
+    vm.nr_hugepages: "0" # Hugepages set to 0 for KubeVirt Bazzite Linux Gaming VM

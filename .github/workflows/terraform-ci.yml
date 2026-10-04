@@ -22,7 +22,6 @@ jobs:
       fail-fast: false
       matrix:
         dir:
-          - "terraform/cloudflare"
           - "terraform/unifi"
           - "bootstrap/aws"
           - "bootstrap/aws_organization"

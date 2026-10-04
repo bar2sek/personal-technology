@@ -55,9 +55,10 @@ spec:
             userData: |
               #cloud-config
               user: bar2sek
-              password: changeme123
-              chpasswd: { expire: False }
-              ssh_pwauth: True
+              lock_passwd: true
+              ssh_pwauth: False
+              ssh_authorized_keys:
+                - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOFKVjxv8n0adhZ3ls90JAweiA9S0RXxC63JQLbV6b1/ bar2sek@users.noreply.github.com
               sudo: ALL=(ALL) NOPASSWD:ALL
               packages:
                 - qemu-guest-agent

@@ -1,9 +1,6 @@
 # Talos Linux Machine Config Patch: Supermicro HA Control Planes (sm-node-01, sm-node-02, sm-node-03)
 machine:
   type: controlplane
-  install:
-    disk: /dev/sda # Target SATA SuperDOM boot drive
-    wipe: false
   network:
     interfaces:
       # Primary 10G SFP+ Interface for Kubernetes API, Kubelet & etcd (VLAN 20)

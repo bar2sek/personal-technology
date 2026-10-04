@@ -20,6 +20,15 @@ spec:
     requests:
       storage: 1Gi
 ---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cups-admin-credentials
+  namespace: printing
+type: Opaque
+stringData:
+  admin-password: "REPLACE_WITH_SECURE_CUPS_PASSWORD" # pragma: allowlist secret
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -66,11 +75,14 @@ spec:
             - name: CUPS_ADMIN_USER
               value: "admin"
             - name: CUPS_ADMIN_PASSWORD
-              value: "homelab"
+              valueFrom:
+                secretKeyRef:
+                  name: cups-admin-credentials
+                  key: admin-password
             - name: CUPS_WEBINTERFACE
               value: "yes"
             - name: CUPS_REMOTE_ADMIN
-              value: "yes"
+              value: "no" # Disabled for hostNetwork security; administer locally via port-forward if needed
             - name: CUPS_LPADMIN_PRINTER1
               value: "lpadmin -p Brother_DCP-7065DN -D 'Brother DCP-7065DN' -L 'Homelab Rack' -m drv:///brlaser.drv/br7065d.ppd -v socket://10.0.1.25:9100 -E"
             - name: PRE_INIT_HOOK

@@ -26,10 +26,10 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 
 | Resource Layer | Physical Hardware & Capacity Breakdown |
 | :--- | :--- |
-| **Physical Nodes** | **6 Nodes**: `omni-server` (Dell OptiPlex), `sm-node-01/02` (Supermicro Xeon D), `sm-node-03` (Supermicro 1U Xeon E5), `pc-node-04` (Ryzen 3800X 27TB Storage PC), `pc-node-05` (Ryzen 7600 RTX 4070 GPU PC). |
+| **Physical Nodes** | **6 Nodes**: `omni-server` (Dell OptiPlex), `sm-node-01/02` (Supermicro Xeon D), `sm-node-03` (Supermicro 1U Xeon E5), `pc-node-04` (Ryzen 3800X 24.5TB Bulk Storage PC), `pc-node-05` (Ryzen 7600 RTX 4070 GPU PC). |
 | **Total Compute** | **36 Physical Cores / 72 vCPU Threads** (`allowSchedulingOnControlPlanes: true` across all 5 cluster nodes). |
 | **Total Memory** | **320 GB DDR4 RAM**. |
-| **Total Storage** | **47.5 TB Raw Storage**: **5TB High-IOPS NVMe Pool** + **16TB Replicated SATA SSD Pool** + **27.0TB Bulk Mechanical HDD Array** (11 HDDs). |
+| **Total Storage** | **42.3 TiB Raw Rook-Ceph Storage (21 OSDs)**: **6.0TB High-IOPS NVMe Tier** (4 OSDs) + **16.0TB Replicated SATA SSD Tier** (8 OSDs) + **24.5TB Bulk Mechanical HDD Tier** (9 OSDs on `pc-04`). *(Note: 3 scratch SSDs and the OS boot SSD on `pc-04` are intentionally excluded to prevent CRUSH weight skewing).* |
 | **Network Fabric** | **3.5 Gbps Google Fiber WAN**, **20 Gbps LAG SFP+ Switch Backbone**, **Dual 10G SFP+ Server Uplinks**, **2.5G Multi-Gig Node Uplink**, MTU 9000 Jumbo Frames, Dual-Stack IPv4/IPv6, UniFi U7 Pro (Wi-Fi 7) & U6-Lite (Wi-Fi 6). |
 
 ---

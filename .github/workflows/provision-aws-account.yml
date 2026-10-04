@@ -1,16 +1,12 @@
 name: "Provision AWS Account via Terraform & ARC"
 
+# DISABLED FOR AUTOMATED CI:
+# bootstrap/aws_organization maintains state locally (not on remote backend)
+# and lacks an OIDC STS credential assumption step. Running automatically in CI
+# would attempt to reconcile against an empty state file or fail authentication.
+# Managed manually via `just` runner on workstation.
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "bootstrap/aws_organization/**"
-  pull_request:
-    branches:
-      - main
-    paths:
-      - "bootstrap/aws_organization/**"
+  workflow_dispatch:
 
 jobs:
   terraform:

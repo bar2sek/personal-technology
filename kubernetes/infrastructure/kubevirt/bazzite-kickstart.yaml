@@ -24,9 +24,9 @@ data:
     # Bazzite OCI container image source from mounted ISO
     ostreecontainer --url=/run/install/repo/bazzite-nvidia-stable --transport=oci --no-signature-verification
 
-    # User setup
-    rootpw --plaintext bazzite
-    user --name=bazzite --password=bazzite --plaintext --groups=wheel
+    # User setup: Lock root and user passwords; enforce SSH key authentication exclusively
+    rootpw --lock
+    user --name=bazzite --lock --groups=wheel
 
     # Post-installation automation
     %post --log=/root/post-install.log
@@ -45,7 +45,12 @@ data:
     chmod 440 /etc/sudoers.d/bazzite
 
     mkdir -p /etc/ssh/sshd_config.d
-    echo "PermitRootLogin yes" > /etc/ssh/sshd_config.d/01-permitroot.conf
+    cat << 'SSHD_EOF' > /etc/ssh/sshd_config.d/01-hardening.conf
+    PermitRootLogin no
+    PasswordAuthentication no
+    KbdInteractiveAuthentication no
+    AuthenticationMethods publickey
+    SSHD_EOF
 
     systemctl enable sshd
     systemctl enable qemu-guest-agent
