@@ -52,13 +52,15 @@ Cloudflare Tunnel creates an outbound-only encrypted gRPC/QUIC connection from y
 
 All public web services are routed via Cloudflare Tunnels using CNAME DNS records on **`bar2sek.com`**:
 
-| Subdomain | App / Target Service | Internal K8s Service | Cloudflare Access Protected? |
+| Subdomain | App / Target Service | Internal Target | Cloudflare Access Protected? |
 | :--- | :--- | :--- | :--- |
-| `teslamate.bar2sek.com` | TeslaMate Analytics | `teslamate.teslamate:4000` | Yes (Google / Email OTP SSO) |
-| `finance.bar2sek.com` | Actual Budget | `actual-budget-service.finance:80` | Yes (Client-Side E2E Encrypted) |
-| `recipes.bar2sek.com` | Mealie Recipe Manager | `mealie-service.mealie:80` | Yes (Household Login) |
-| `grafana.bar2sek.com` | Cluster Grafana | `grafana.monitoring:3000` | Yes (Admin SSO) |
-| `omni.bar2sek.com` | Sidero Omni Console | `omni-server.mgmt:8080` | Yes (Strict Admin SSO) |
+| `tesla.bar2sek.com` | TeslaMate Analytics | `http://teslamate.teslamate:4000` | **Yes** (Cloudflare Zero Trust Access - Admin) |
+| `grafana.bar2sek.com` | Cluster Grafana | `https://ingress-nginx-controller.ingress-nginx:443` | **Yes** (Cloudflare Zero Trust Access - Admin) |
+| `omni.bar2sek.com` | Sidero Omni Console | `https://10.10.10.5:443` | **Yes** (Cloudflare Zero Trust Access - Admin) |
+| `ceph.bar2sek.com` | Ceph Dashboard | `https://ingress-nginx-controller.ingress-nginx:443` | **Yes** (Cloudflare Zero Trust Access - Admin) |
+| `finance.bar2sek.com` | Actual Budget | `http://actual-budget-service.finance:80` | **Yes** (Cloudflare Zero Trust Access - Extended Session) |
+| `diet.bar2sek.com` | Mealie Recipe Manager | `http://mealie-service.mealie:80` | **Yes** (Cloudflare Zero Trust Access - Extended Session) |
+| `auth.bar2sek.com` | Authentik IdP | `https://ingress-nginx-controller.ingress-nginx:443` | **No** (Direct Tunnel / IdP Self-Protected Endpoint) |
 
 ---
 
