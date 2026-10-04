@@ -71,13 +71,13 @@ spec:
       # (Boot drive /dev/sda SuperDOM is strictly excluded)
       - name: sm-node-01
         devices:
-          - name: "nvme0n1" # Tier 1 NVMe (2TB)
+          - name: "/dev/disk/by-id/nvme-Sabrent_Rocket_Q_BC7107061E7C02090817"
             config:
               deviceType: nvme
-          - name: "sdb"     # Tier 2 SATA SSD (2TB)
+          - name: "/dev/disk/by-id/ata-CT2000MX500SSD1_2137E5D2DE18"
             config:
               deviceType: ssd
-          - name: "sdc"     # Tier 2 SATA SSD (2TB)
+          - name: "/dev/disk/by-id/ata-CT2000MX500SSD1_2351E88AE052"
             config:
               deviceType: ssd
 
@@ -85,13 +85,13 @@ spec:
       # (Boot drive /dev/sda SuperDOM is strictly excluded)
       - name: sm-node-02
         devices:
-          - name: "nvme0n1" # Tier 1 NVMe (2TB)
+          - name: "/dev/disk/by-id/nvme-Sabrent_Rocket_Q_F2C10719080B00006324"
             config:
               deviceType: nvme
-          - name: "sdb"     # Tier 2 SATA SSD (2TB)
+          - name: "/dev/disk/by-id/ata-CT2000MX500SSD1_2153E5F9EC69"
             config:
               deviceType: ssd
-          - name: "sdc"     # Tier 2 SATA SSD (2TB)
+          - name: "/dev/disk/by-id/ata-CT2000MX500SSD1_2351E88AE0BD"
             config:
               deviceType: ssd
 
@@ -99,16 +99,16 @@ spec:
       # (Boot drives /dev/sde & /dev/sdf SuperDOMs are strictly excluded)
       - name: sm-node-03
         devices:
-          - name: "sda"     # Tier 2 SATA SSD (2TB)
+          - name: "/dev/disk/by-id/ata-CT2000MX500SSD1_2137E5D2DE1D"
             config:
               deviceType: ssd
-          - name: "sdb"     # Tier 2 SATA SSD (2TB)
+          - name: "/dev/disk/by-id/ata-CT2000MX500SSD1_2137E5D2DE26"
             config:
               deviceType: ssd
-          - name: "sdc"     # Tier 2 SATA SSD (2TB)
+          - name: "/dev/disk/by-id/ata-CT2000MX500SSD1_2253E698684D"
             config:
               deviceType: ssd
-          - name: "sdd"     # Tier 2 SATA SSD (2TB)
+          - name: "/dev/disk/by-id/ata-CT2000MX500SSD1_2253E6986843"
             config:
               deviceType: ssd
 
@@ -117,34 +117,34 @@ spec:
       #  Scratch drives /dev/sdf, /dev/sdg, /dev/sdm are strictly excluded)
       - name: pc-node-04
         devices:
-          - name: "nvme0n1" # Tier 1 NVMe (1TB Crucial P3)
+          - name: "/dev/disk/by-id/nvme-CT1000P3PSSD8_24024637AFE2"
             config:
               deviceType: nvme
-          - name: "sda"     # Tier 3 4TB Seagate IronWolf NAS HDD
+          - name: "/dev/disk/by-id/ata-ST4000VN008-2DR166_ZGY91H5S"
             config:
               deviceType: hdd
-          - name: "sdb"     # Tier 3 4TB Seagate IronWolf NAS HDD
+          - name: "/dev/disk/by-id/ata-ST4000VN008-2DR166_ZDH9HRSJ"
             config:
               deviceType: hdd
-          - name: "sdd"     # Tier 3 4TB Seagate IronWolf NAS HDD
+          - name: "/dev/disk/by-id/ata-ST4000VN008-2DR166_ZGY9165H"
             config:
               deviceType: hdd
-          - name: "sde"     # Tier 3 4TB Seagate IronWolf NAS HDD
+          - name: "/dev/disk/by-id/ata-ST4000VN008-2DR166_ZGY91889"
             config:
               deviceType: hdd
-          - name: "sdh"     # Tier 3 2TB Seagate Constellation Enterprise HDD
+          - name: "/dev/disk/by-id/ata-ST2000NM0033-9ZM175_Z1X6R0DV"
             config:
               deviceType: hdd
-          - name: "sdi"     # Tier 3 1TB Seagate BarraCuda HDD
+          - name: "/dev/disk/by-id/ata-ST31000528AS_5VP53T85"
             config:
               deviceType: hdd
-          - name: "sdj"     # Tier 3 1TB Seagate BarraCuda HDD
+          - name: "/dev/disk/by-id/ata-ST31000524AS_5VP8SHWD"
             config:
               deviceType: hdd
-          - name: "sdk"     # Tier 3 1.5TB WD Green HDD
+          - name: "/dev/disk/by-id/ata-WDC_WD15EADS-00R6B0_WD-WCAVY1095334"
             config:
               deviceType: hdd
-          - name: "sdl"     # Tier 3 3TB Seagate BarraCuda HDD
+          - name: "/dev/disk/by-id/ata-ST3000DM007-1WY10G_ZFQ02CAN"
             config:
               deviceType: hdd
 
@@ -152,6 +152,6 @@ spec:
       # (Boot drive /dev/nvme1n1 Sabrent Rocket is strictly excluded)
       - name: pc-node-05
         devices:
-          - name: "nvme0n1" # Tier 1 NVMe (1TB Crucial P3)
+          - name: "/dev/disk/by-id/nvme-CT1000P3SSD8_2248E68D1159"
             config:
               deviceType: nvme

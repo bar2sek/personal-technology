@@ -33,6 +33,14 @@ patches:
           modules:
             - name: rbd
             - name: ceph
+        features:
+          rbac: true
+          kubernetesTalosAPIAccess:
+            enabled: true
+            allowedRoles:
+              - os:reader
+            allowedKubernetesNamespaces:
+              - kube-system
         kubelet:
           extraMounts:
             - destination: /var/lib/rook
@@ -56,32 +64,53 @@ machines:
 kind: Machine
 name: da165a00-3e5d-11ea-8000-3cecef44a132
 patches:
-  - name: hostname-sm-node-01
+  - name: sm-node-01-config
     inline: |-
       apiVersion: v1alpha1
       kind: HostnameConfig
       auto: "off"
       hostname: sm-node-01
+      ---
+      machine:
+        network:
+          interfaces:
+            - interface: eno7np2
+              vip:
+                ip: 10.10.20.10
 ---
 kind: Machine
 name: 9983ae00-e364-11ea-8000-3cecef6fd61e
 patches:
-  - name: hostname-sm-node-02
+  - name: sm-node-02-config
     inline: |-
       apiVersion: v1alpha1
       kind: HostnameConfig
       auto: "off"
       hostname: sm-node-02
+      ---
+      machine:
+        network:
+          interfaces:
+            - interface: eno7np2
+              vip:
+                ip: 10.10.20.10
 ---
 kind: Machine
 name: 00000000-0000-0000-0000-3cecef58ed64
 patches:
-  - name: hostname-sm-node-03
+  - name: sm-node-03-config
     inline: |-
       apiVersion: v1alpha1
       kind: HostnameConfig
       auto: "off"
       hostname: sm-node-03
+      ---
+      machine:
+        network:
+          interfaces:
+            - interface: ens6f0
+              vip:
+                ip: 10.10.20.10
 ---
 kind: Machine
 name: 927ef8ab-872a-f416-acb4-2cf05d577ea4

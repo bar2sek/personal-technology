@@ -1,4 +1,6 @@
 # Talos Linux Machine Config Patch: Supermicro HA Control Planes (sm-node-01, sm-node-02, sm-node-03)
+# NOTE: Active declarative config is synced via talos/cluster-template.yaml.
+# Physical 10G links: eno7np2 on sm-01/02, ens6f0 on sm-03.
 machine:
   type: controlplane
   network:
