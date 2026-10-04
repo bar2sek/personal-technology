@@ -86,3 +86,67 @@ variable "printer_mac_address" {
   description = "MAC address for Brother DCP-7065DN laser printer (USW-24-G2 Port 23)"
   default     = "30:05:5c:18:d8:79"
 }
+
+# --- Kubernetes Cluster Nodes (VLAN 20: K8S-CONTROL) ---
+
+variable "sm_node_01_k8s_mac" {
+  type        = string
+  description = "sm-node-01 10GbE SFP+ interface MAC (eno7np2)"
+  default     = "3c:ec:ef:44:9b:50"
+}
+
+variable "sm_node_01_k8s_ip" {
+  type        = string
+  description = "Static IP for sm-node-01 on K8S-CONTROL (VLAN 20)"
+  default     = "10.10.20.199"
+}
+
+variable "sm_node_02_k8s_mac" {
+  type        = string
+  description = "sm-node-02 10GbE SFP+ interface MAC (eno7np2)"
+  default     = "3c:ec:ef:6f:d4:bc"
+}
+
+variable "sm_node_02_k8s_ip" {
+  type        = string
+  description = "Static IP for sm-node-02 on K8S-CONTROL (VLAN 20)"
+  default     = "10.10.20.120"
+}
+
+variable "sm_node_03_k8s_mac" {
+  type        = string
+  description = "sm-node-03 10GbE SFP+ interface MAC (ens6f0)"
+  default     = "a0:36:9f:3b:0c:f8"
+}
+
+variable "sm_node_03_k8s_ip" {
+  type        = string
+  description = "Static IP for sm-node-03 on K8S-CONTROL (VLAN 20)"
+  default     = "10.10.20.131"
+}
+
+variable "pc_node_04_k8s_mac" {
+  type        = string
+  description = "pc-node-04 (storage-worker) 10G SFP+ interface MAC (enp43s0f0)"
+  default     = "a0:36:9f:9a:ce:24"
+}
+
+
+variable "pc_node_04_k8s_ip" {
+  type        = string
+  description = "Static IP for pc-node-04 on K8S-CONTROL (VLAN 20)"
+  default     = "10.10.20.20"
+}
+
+variable "pc_node_05_k8s_mac" {
+  type        = string
+  description = "pc-node-05 (gpu-worker) onboard interface MAC (enp12s0)"
+  default     = "04:7c:16:80:b2:62"
+}
+
+variable "pc_node_05_k8s_ip" {
+  type        = string
+  description = "Static IP for pc-node-05 on K8S-CONTROL (VLAN 20)"
+  default     = "10.10.20.111"
+}
+

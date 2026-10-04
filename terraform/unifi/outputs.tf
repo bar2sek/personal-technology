@@ -83,4 +83,21 @@ output "local_dns_printing" {
   description = "Local split-horizon DNS record for CUPS AirPrint Bridge"
 }
 
+output "local_dns_k8s" {
+  value       = "${unifi_dns_record.k8s.name} -> ${unifi_dns_record.k8s.value}"
+  description = "Local split-horizon DNS record for Kubernetes HA VIP"
+}
+
+output "k8s_node_reservations" {
+  value = {
+    sm-node-01 = "${unifi_client.sm_node_01.name} (${unifi_client.sm_node_01.mac}) -> ${unifi_client.sm_node_01.fixed_ip}"
+    sm-node-02 = "${unifi_client.sm_node_02.name} (${unifi_client.sm_node_02.mac}) -> ${unifi_client.sm_node_02.fixed_ip}"
+    sm-node-03 = "${unifi_client.sm_node_03.name} (${unifi_client.sm_node_03.mac}) -> ${unifi_client.sm_node_03.fixed_ip}"
+    pc-node-04 = "${unifi_client.pc_node_04.name} (${unifi_client.pc_node_04.mac}) -> ${unifi_client.pc_node_04.fixed_ip}"
+    pc-node-05 = "${unifi_client.pc_node_05.name} (${unifi_client.pc_node_05.mac}) -> ${unifi_client.pc_node_05.fixed_ip}"
+  }
+  description = "Static DHCP reservations for bare-metal Kubernetes nodes on VLAN 20"
+}
+
+
 

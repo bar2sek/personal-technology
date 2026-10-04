@@ -119,3 +119,79 @@ resource "unifi_client" "brother_printer" {
   note           = "Brother Laser Printer on USW-24-G2 Port 23"
 }
 
+# 9. Client Reservations: Kubernetes Bare-Metal Cluster Nodes (VLAN 20: K8S-CONTROL)
+resource "unifi_client" "sm_node_01" {
+  mac            = var.sm_node_01_k8s_mac
+  name           = "sm-node-01"
+  fixed_ip       = var.sm_node_01_k8s_ip
+  network_id     = unifi_network.k8s_control.id
+  allow_existing = true
+  note           = "Supermicro SYS-E300-9D Control Plane 1 (10G SFP+ eno7np2)"
+}
+
+resource "unifi_client" "sm_node_02" {
+  mac            = var.sm_node_02_k8s_mac
+  name           = "sm-node-02"
+  fixed_ip       = var.sm_node_02_k8s_ip
+  network_id     = unifi_network.k8s_control.id
+  allow_existing = true
+  note           = "Supermicro SYS-E300-9D Control Plane 2 (10G SFP+ eno7np2)"
+}
+
+resource "unifi_client" "sm_node_03" {
+  mac            = var.sm_node_03_k8s_mac
+  name           = "sm-node-03"
+  fixed_ip       = var.sm_node_03_k8s_ip
+  network_id     = unifi_network.k8s_control.id
+  allow_existing = true
+  note           = "Supermicro SYS-E300-9D Control Plane 3 (10G SFP+ ens6f0)"
+}
+
+resource "unifi_client" "pc_node_04" {
+  mac            = var.pc_node_04_k8s_mac
+  name           = "pc-node-04"
+  fixed_ip       = var.pc_node_04_k8s_ip
+  network_id     = unifi_network.k8s_control.id
+  allow_existing = true
+  note           = "AMD Ryzen 3800X Ceph Storage Worker (10G SFP+ enp43s0f0)"
+}
+
+
+resource "unifi_client" "pc_node_05" {
+  mac            = var.pc_node_05_k8s_mac
+  name           = "pc-node-05"
+  fixed_ip       = var.pc_node_05_k8s_ip
+  network_id     = unifi_network.k8s_control.id
+  allow_existing = true
+  note           = "AMD Ryzen 5900X GPU Worker (2.5G Intel enp12s0)"
+}
+
+# 10. Client Reservations: Supermicro Out-of-Band Management (VLAN 10: MGMT-IPMI)
+resource "unifi_client" "sm_node_01_ipmi" {
+  mac            = var.sm_node_01_ipmi_mac
+  name           = "sm-node-01-ipmi"
+  fixed_ip       = "10.10.10.11"
+  network_id     = unifi_network.mgmt_ipmi.id
+  allow_existing = true
+  note           = "Supermicro SYS-E300-9D Control Plane 1 Dedicated IPMI BMC"
+}
+
+resource "unifi_client" "sm_node_02_ipmi" {
+  mac            = var.sm_node_02_ipmi_mac
+  name           = "sm-node-02-ipmi"
+  fixed_ip       = "10.10.10.12"
+  network_id     = unifi_network.mgmt_ipmi.id
+  allow_existing = true
+  note           = "Supermicro SYS-E300-9D Control Plane 2 Dedicated IPMI BMC"
+}
+
+resource "unifi_client" "sm_node_03_ipmi" {
+  mac            = var.sm_node_03_ipmi_mac
+  name           = "sm-node-03-ipmi"
+  fixed_ip       = "10.10.10.13"
+  network_id     = unifi_network.mgmt_ipmi.id
+  allow_existing = true
+  note           = "Supermicro SYS-E300-9D Control Plane 3 Dedicated IPMI BMC"
+}
+
+
