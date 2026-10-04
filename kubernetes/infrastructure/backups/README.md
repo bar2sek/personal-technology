@@ -23,16 +23,23 @@ This directory defines the automated backup infrastructure for the hybrid homela
    kubectl apply -f backup-credentials.yaml
    ```
 
-2. **Deploy CronJobs**:
+2. **Deploy CronJobs & RBAC**:
    ```bash
    kubectl apply -f cronjob-cluster-state.yaml
    kubectl apply -f cronjob-postgres.yaml
    ```
+   > [!NOTE]
+   > `cronjob-postgres.yaml` configures a dedicated `postgres-backup-sa` ServiceAccount and fine-grained `Role` and `RoleBinding` objects in the `immich` and `teslamate` namespaces. This grants the backup runner read-only access to `immich-secrets` and `teslamate-secrets` directly via the Kubernetes API, preventing credential duplication while keeping AWS S3 credentials restricted to `backups`.
 
 3. **Manual Trigger & Test**:
    ```bash
+   # Test cluster-state backup:
    kubectl create job --from=cronjob/backup-cluster-state cluster-backup-test -n backups
    kubectl logs -n backups -l job-name=cluster-backup-test -f
+
+   # Test PostgreSQL databases backup:
+   kubectl create job --from=cronjob/backup-postgres-databases postgres-backup-test -n backups
+   kubectl logs -n backups -l job-name=postgres-backup-test -f
    ```
 
 ---
@@ -55,12 +62,21 @@ for ns in restore/namespaces/*; do
 done
 ```
 
-### B. Restoring PostgreSQL Database
+### B. Restoring PostgreSQL Databases
 ```bash
+# --- Immich Database Restore ---
 # 1. Download database dump
 aws s3 cp s3://s3-aws-backups-prod-use2-001/postgres/immich/<immich-dump>.sql.gz .
 gunzip <immich-dump>.sql.gz
 
 # 2. Restore into pod
 kubectl exec -i -n immich deploy/immich-postgres -- psql -U postgres -d immich < <immich-dump>.sql
+
+# --- TeslaMate Database Restore ---
+# 1. Download database dump
+aws s3 cp s3://s3-aws-backups-prod-use2-001/postgres/teslamate/<teslamate-dump>.sql.gz .
+gunzip <teslamate-dump>.sql.gz
+
+# 2. Restore into pod
+kubectl exec -i -n teslamate deploy/teslamate-db -- psql -U teslamate -d teslamate < <teslamate-dump>.sql
 ```

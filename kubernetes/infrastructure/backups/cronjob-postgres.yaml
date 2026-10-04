@@ -1,3 +1,68 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: postgres-backup-sa
+  namespace: backups
+---
+# ==============================================================================
+# RBAC: Scoped Secret Reader for Immich Database Credentials
+# ==============================================================================
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: immich-db-backup-reader
+  namespace: immich
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["immich-secrets"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: immich-db-backup-reader-binding
+  namespace: immich
+subjects:
+  - kind: ServiceAccount
+    name: postgres-backup-sa
+    namespace: backups
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: immich-db-backup-reader
+---
+# ==============================================================================
+# RBAC: Scoped Secret Reader for TeslaMate Database Credentials
+# ==============================================================================
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: teslamate-db-backup-reader
+  namespace: teslamate
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["teslamate-secrets"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: teslamate-db-backup-reader-binding
+  namespace: teslamate
+subjects:
+  - kind: ServiceAccount
+    name: postgres-backup-sa
+    namespace: backups
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: teslamate-db-backup-reader
+---
+# ==============================================================================
+# CronJob: Automated PostgreSQL S3 Backup Pipeline
+# ==============================================================================
 apiVersion: batch/v1
 kind: CronJob
 metadata:
@@ -12,6 +77,7 @@ spec:
     spec:
       template:
         spec:
+          serviceAccountName: postgres-backup-sa
           restartPolicy: OnFailure
           containers:
             - name: postgres-backup
@@ -29,42 +95,91 @@ spec:
                     exit 1
                   fi
 
-                  apk add --no-cache aws-cli gzip
+                  echo "Installing runtime dependencies (aws-cli, curl, jq, gzip)..."
+                  apk add --no-cache aws-cli curl jq gzip
 
-                  if [ -n "${IMMICH_DB_PASSWORD:-}" ] && nc -z -w 3 immich-postgres.immich.svc.cluster.local 5432 2>/dev/null; then
-                    echo "Dumping Immich PostgreSQL database..."
-                    PGPASSWORD="${IMMICH_DB_PASSWORD}" pg_dump -h immich-postgres.immich.svc.cluster.local -U postgres -d immich | gzip > "/tmp/immich_${TIMESTAMP}.sql.gz"
-                    echo "Uploading Immich database backup to S3..."
-                    aws s3 cp "/tmp/immich_${TIMESTAMP}.sql.gz" "s3://${S3_BUCKET}/postgres/immich/immich_${TIMESTAMP}.sql.gz" --storage-class STANDARD
-                    rm -f "/tmp/immich_${TIMESTAMP}.sql.gz"
-                  else
-                    echo "Skipping Immich DB backup (immich-postgres service not currently reachable or uninstalled)."
+                  APISERVER="https://kubernetes.default.svc"
+                  SERVICEACCOUNT="/var/run/secrets/kubernetes.io/serviceaccount"
+                  TOKEN=$(cat "${SERVICEACCOUNT}/token")
+                  CACERT="${SERVICEACCOUNT}/ca.crt"
+
+                  fetch_secret_key() {
+                    local ns="$1"
+                    local secret="$2"
+                    local key="$3"
+                    local resp
+
+                    resp=$(curl -fsS --cacert "${CACERT}" -H "Authorization: Bearer ${TOKEN}" \
+                      "${APISERVER}/api/v1/namespaces/${ns}/secrets/${secret}") || {
+                        echo "ERROR: Failed to retrieve secret '${secret}' from namespace '${ns}' via Kubernetes API." >&2
+                        return 1
+                    }
+
+                    local val
+                    val=$(echo "${resp}" | jq -er --arg k "${key}" '.data[$k] // empty' | base64 -d) || {
+                        echo "ERROR: Key '${key}' not found or empty in secret '${secret}' (namespace '${ns}')." >&2
+                        return 1
+                    }
+                    echo "${val}"
+                  }
+
+                  # -------------------------------------------------------------
+                  # Immich PostgreSQL Database Dump
+                  # -------------------------------------------------------------
+                  echo "===> Starting backup for Immich PostgreSQL database..."
+                  IMMICH_HOST="immich-postgres.immich.svc.cluster.local"
+                  IMMICH_PORT="5432"
+                  IMMICH_USER="postgres"
+                  IMMICH_DB="immich"
+
+                  if ! nc -z -w 5 "${IMMICH_HOST}" "${IMMICH_PORT}" 2>/dev/null; then
+                    echo "ERROR: Cannot reach Immich PostgreSQL service at ${IMMICH_HOST}:${IMMICH_PORT}." >&2
+                    exit 1
                   fi
 
-                  if [ -n "${TESLAMATE_DB_PASSWORD:-}" ] && nc -z -w 3 teslamate-db.teslamate.svc.cluster.local 5432 2>/dev/null; then
-                    echo "Dumping TeslaMate PostgreSQL database..."
-                    PGPASSWORD="${TESLAMATE_DB_PASSWORD}" pg_dump -h teslamate-db.teslamate.svc.cluster.local -U teslamate -d teslamate | gzip > "/tmp/teslamate_${TIMESTAMP}.sql.gz"
-                    echo "Uploading TeslaMate database backup to S3..."
-                    aws s3 cp "/tmp/teslamate_${TIMESTAMP}.sql.gz" "s3://${S3_BUCKET}/postgres/teslamate/teslamate_${TIMESTAMP}.sql.gz" --storage-class STANDARD
-                    rm -f "/tmp/teslamate_${TIMESTAMP}.sql.gz"
-                  else
-                    echo "Skipping TeslaMate DB backup (teslamate-db service not currently reachable or uninstalled)."
+                  IMMICH_DB_PASSWORD=$(fetch_secret_key "immich" "immich-secrets" "db-password")
+                  if [ -z "${IMMICH_DB_PASSWORD}" ]; then
+                    echo "ERROR: Retrieved empty database password for Immich." >&2
+                    exit 1
                   fi
 
-                  echo "PostgreSQL backup cycle finished."
+                  echo "Dumping Immich database (${IMMICH_DB})..."
+                  PGPASSWORD="${IMMICH_DB_PASSWORD}" pg_dump -h "${IMMICH_HOST}" -p "${IMMICH_PORT}" -U "${IMMICH_USER}" -d "${IMMICH_DB}" | gzip > "/tmp/immich_${TIMESTAMP}.sql.gz"
+
+                  echo "Uploading Immich backup to S3 (s3://${S3_BUCKET}/postgres/immich/)..."
+                  aws s3 cp "/tmp/immich_${TIMESTAMP}.sql.gz" "s3://${S3_BUCKET}/postgres/immich/immich_${TIMESTAMP}.sql.gz" --storage-class STANDARD
+                  rm -f "/tmp/immich_${TIMESTAMP}.sql.gz"
+                  echo "Immich PostgreSQL database backup successful."
+
+                  # -------------------------------------------------------------
+                  # TeslaMate PostgreSQL Database Dump
+                  # -------------------------------------------------------------
+                  echo "===> Starting backup for TeslaMate PostgreSQL database..."
+                  TESLAMATE_HOST="teslamate-db.teslamate.svc.cluster.local"
+                  TESLAMATE_PORT="5432"
+                  TESLAMATE_USER="teslamate"
+                  TESLAMATE_DB="teslamate"
+
+                  if ! nc -z -w 5 "${TESLAMATE_HOST}" "${TESLAMATE_PORT}" 2>/dev/null; then
+                    echo "ERROR: Cannot reach TeslaMate PostgreSQL service at ${TESLAMATE_HOST}:${TESLAMATE_PORT}." >&2
+                    exit 1
+                  fi
+
+                  TESLAMATE_DB_PASSWORD=$(fetch_secret_key "teslamate" "teslamate-secrets" "db-password")
+                  if [ -z "${TESLAMATE_DB_PASSWORD}" ]; then
+                    echo "ERROR: Retrieved empty database password for TeslaMate." >&2
+                    exit 1
+                  fi
+
+                  echo "Dumping TeslaMate database (${TESLAMATE_DB})..."
+                  PGPASSWORD="${TESLAMATE_DB_PASSWORD}" pg_dump -h "${TESLAMATE_HOST}" -p "${TESLAMATE_PORT}" -U "${TESLAMATE_USER}" -d "${TESLAMATE_DB}" | gzip > "/tmp/teslamate_${TIMESTAMP}.sql.gz"
+
+                  echo "Uploading TeslaMate backup to S3 (s3://${S3_BUCKET}/postgres/teslamate/)..."
+                  aws s3 cp "/tmp/teslamate_${TIMESTAMP}.sql.gz" "s3://${S3_BUCKET}/postgres/teslamate/teslamate_${TIMESTAMP}.sql.gz" --storage-class STANDARD
+                  rm -f "/tmp/teslamate_${TIMESTAMP}.sql.gz"
+                  echo "TeslaMate PostgreSQL database backup successful."
+
+                  echo "===> All PostgreSQL backups completed successfully at $(date)."
               envFrom:
                 - secretRef:
                     name: s3-backup-credentials
-              env:
-                - name: IMMICH_DB_PASSWORD
-                  valueFrom:
-                    secretKeyRef:
-                      name: immich-db-credentials
-                      key: db-password
-                      optional: true
-                - name: TESLAMATE_DB_PASSWORD
-                  valueFrom:
-                    secretKeyRef:
-                      name: teslamate-db-credentials
-                      key: db-password
-                      optional: true
