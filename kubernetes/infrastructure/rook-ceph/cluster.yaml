@@ -27,6 +27,11 @@ spec:
   network:
     provider: host
     ipFamily: IPv4
+    addressRanges:
+      public:
+        - 10.10.20.0/24
+      cluster:
+        - 10.10.40.0/24
   crashCollector:
     disable: false
   cleanupPolicy:

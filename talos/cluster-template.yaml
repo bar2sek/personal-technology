@@ -21,6 +21,11 @@ patches:
             - 10.10.20.120
             - 10.10.20.131
             - 10.10.20.199
+            - 10.10.40.20
+            - 10.10.40.111
+            - 10.10.40.120
+            - 10.10.40.131
+            - 10.10.40.199
             - sm-node-01
             - sm-node-02
             - sm-node-03
@@ -36,6 +41,9 @@ patches:
         features:
           rbac: true
         kubelet:
+          nodeIP:
+            validSubnets:
+              - 10.10.20.0/24
           extraMounts:
             - destination: /var/lib/rook
               type: bind
@@ -91,6 +99,14 @@ patches:
                   gateway: 10.10.20.1
               vip:
                 ip: 10.10.20.10
+            - interface: eno8np3
+              mtu: 9000
+              dhcp: true
+              vlans:
+                - vlanId: 40
+                  mtu: 9000
+                  addresses:
+                    - 10.10.40.199/24
 ---
 kind: Machine
 name: 9983ae00-e364-11ea-8000-3cecef6fd61e
@@ -116,6 +132,14 @@ patches:
                   gateway: 10.10.20.1
               vip:
                 ip: 10.10.20.10
+            - interface: eno8np3
+              mtu: 9000
+              dhcp: true
+              vlans:
+                - vlanId: 40
+                  mtu: 9000
+                  addresses:
+                    - 10.10.40.120/24
 ---
 kind: Machine
 name: 00000000-0000-0000-0000-3cecef58ed64
@@ -141,6 +165,14 @@ patches:
                   gateway: 10.10.20.1
               vip:
                 ip: 10.10.20.10
+            - interface: ens6f1
+              mtu: 9000
+              dhcp: true
+              vlans:
+                - vlanId: 40
+                  mtu: 9000
+                  addresses:
+                    - 10.10.40.131/24
 
 ---
 kind: Machine
@@ -154,6 +186,25 @@ patches:
       hostname: pc-node-04
       ---
       machine:
+        network:
+          nameservers:
+            - 10.10.20.1
+            - 10.0.1.1
+          interfaces:
+            - interface: enp43s0f0
+              addresses:
+                - 10.10.20.20/24
+              routes:
+                - network: 0.0.0.0/0
+                  gateway: 10.10.20.1
+            - interface: enp43s0f1
+              mtu: 9000
+              dhcp: true
+              vlans:
+                - vlanId: 40
+                  mtu: 9000
+                  addresses:
+                    - 10.10.40.20/24
         nodeLabels:
           node.kubernetes.io/role: storage-worker
           storage.homelab/tier3-hdd: "true"
@@ -183,6 +234,27 @@ patches:
                 - ids=10de:2786,10de:22bc
         sysctls:
           vm.nr_hugepages: "0"
+        network:
+          nameservers:
+            - 10.10.20.1
+            - 10.0.1.1
+          interfaces:
+            - interface: enp12s0
+              mtu: 9000
+              addresses:
+                - 10.10.20.111/24
+              routes:
+                - network: 0.0.0.0/0
+                  gateway: 10.10.20.1
+                  mtu: 1500
+                - network: 10.10.20.0/24
+                  mtu: 1500
+              vlans:
+                - vlanId: 40
+                  mtu: 9000
+                  addresses:
+                    - 10.10.40.111/24
         nodeLabels:
           node.kubernetes.io/role: gpu-worker
           nvidia.com/gpu.present: "true"
+
