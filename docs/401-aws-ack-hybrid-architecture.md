@@ -1,4 +1,16 @@
+---
+title: "AWS Controllers for Kubernetes (ACK) Hybrid Architecture"
+date: 2026-09-07
+status: design
+tags:
+  - aws/hybrid
+  - kubernetes/infrastructure
+---
+
 # AWS Controllers for Kubernetes (ACK) Hybrid Architecture
+
+> [!NOTE] Architectural Reference / Future Roadmap
+> This design documents the hybrid integration between on-premise Kubernetes CRDs and AWS cloud services via ACK. In accordance with our single-plane boundary rules, AWS production cloud resources (S3, IAM) currently remain codified via Terraform in `infra-cloud-deployments`.
 
 This guide details how we leverage **[AWS Controllers for Kubernetes (ACK)](https://aws-controllers-k8s.github.io/community/)** to manage AWS Cloud infrastructure (S3, Route53, IAM, ECR) directly from Kubernetes manifests inside our on-premise Talos Linux cluster.
 
@@ -19,7 +31,7 @@ AWS Controllers for Kubernetes (ACK) is an official AWS open-source system that 
 
 ### 2. Automated Public DNS Management (`bar2sek.com` via Route53 Controller)
 - **Problem**: Manually adding DNS records in AWS Route53 whenever a new homelab app is deployed is tedious.
-- **ACK Solution**: ACK's Route53 controller creates `RecordSet` CRDs directly when ingress rules are applied, keeping `teslamate.bar2sek.com`, `finance.bar2sek.com`, and `recipes.bar2sek.com` automatically in sync.
+- **ACK Solution**: ACK's Route53 controller creates `RecordSet` CRDs directly when ingress rules are applied, keeping `tesla.bar2sek.com`, `finance.bar2sek.com`, and `diet.bar2sek.com` automatically in sync.
 
 ### 3. Managed Offsite Cloud Databases (AWS RDS Controller)
 - **ACK Solution**: Provision managed AWS RDS PostgreSQL or MySQL instances on-demand in AWS directly from Kubernetes manifests for applications that require offsite cloud database persistence.
@@ -56,11 +68,11 @@ spec:
 apiVersion: route53.services.k8s.aws/v1alpha1
 kind: RecordSet
 metadata:
-  name: teslamate-dns-record
+  name: tesla-dns-record
   namespace: teslamate
 spec:
   hostedZoneID: "Z0123456789ABCDEF" # bar2sek.com Route53 Zone ID
-  name: teslamate.bar2sek.com
+  name: tesla.bar2sek.com
   type: CNAME
   ttl: 300
   resourceRecords:

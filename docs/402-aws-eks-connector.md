@@ -1,4 +1,16 @@
+---
+title: "AWS EKS Connector & Unified AWS Console Management"
+date: 2026-09-07
+status: design
+tags:
+  - aws/hybrid
+  - kubernetes/infrastructure
+---
+
 # AWS EKS Connector & Unified AWS Console Management
+
+> [!NOTE] Architectural Reference / Staged Implementation
+> The EKS Connector manifests (`kubernetes/infrastructure/aws-hybrid/eks-connector.yaml`) and IAM role (`role-aws-eks-connector-prod-admin` in `infra-cloud-deployments/terraform/aws/iam.tf`) are codified and staged. Activation occurs when cluster registration against the AWS Console is triggered.
 
 This guide details the capabilities, IAM authentication, and Kubernetes deployment manifest for **[AWS EKS Connector](https://docs.aws.amazon.com/eks/latest/userguide/eks-connector.html)** — connecting our physical Talos Linux cluster directly into the AWS Management Console.
 

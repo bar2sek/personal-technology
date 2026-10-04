@@ -10,13 +10,16 @@ tags:
   - log-analytics
   - kql
   - terraform
-status: evergreen
+status: design
 aliases:
   - "Azure Arc Kubernetes"
   - "Talos Azure Arc"
 ---
 
 # 🌐 Azure Arc-Enabled Kubernetes & Zero-Cost Cloud Monitoring
+
+> [!NOTE] Architectural Reference / Staged Implementation
+> This document details the declarative integration connecting our Talos cluster to Microsoft Azure Arc. All Terraform definitions and helm chart parameters are codified and staged for activation.
 
 This document details the declarative architecture, Terraform implementation, and operational runbook for onboarding our bare-metal **Talos Linux Kubernetes Cluster** to **Microsoft Azure Arc** with strict, mathematical zero-cost monitoring guardrails.
 

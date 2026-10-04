@@ -1,4 +1,18 @@
+---
+title: "Single Sign-On (SSO) & AWS SAML 2.0 Identity Federation"
+date: 2026-09-07
+status: design
+tags:
+  - aws/identity
+  - authentik
+  - sso
+  - kubernetes/infrastructure
+---
+
 # Single Sign-On (SSO) & AWS SAML 2.0 Identity Federation
+
+> [!NOTE] Architectural Reference / Staged Implementation
+> Authentik is active and running in the cluster (`kubernetes/infrastructure/authentik/`) serving local SSO (e.g. Grafana). The upstream SAML 2.0 federation with AWS IAM Identity Center documented below is an enterprise reference design staged for activation.
 
 This guide outlines the enterprise architecture, security flow, and Kubernetes deployment manifest for **[Authentik](https://goauthentik.io/)** — our master External Identity Provider (External IdP) federated with **AWS IAM Identity Center** via SAML 2.0.
 

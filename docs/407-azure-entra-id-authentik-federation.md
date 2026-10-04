@@ -9,13 +9,16 @@ tags:
   - oidc
   - identity
   - homelab
-status: evergreen
+status: design
 aliases:
   - "Entra ID Authentik Federation"
   - "Azure AD SSO"
 ---
 
 # 🔐 Microsoft Entra ID & Authentik Enterprise Identity Federation
+
+> [!NOTE] Architectural Reference / Staged Implementation
+> This document details the identity federation blueprint connecting Microsoft Entra ID with Authentik. Authentik itself is live as the cluster IdP (protecting Grafana and local services), while cloud upstream federation with Entra ID is staged for activation.
 
 This document defines the enterprise identity federation architecture connecting **Microsoft Entra ID (Free Tier)** as the cloud authoritative identity provider with our local **[Authentik](https://goauthentik.io/)** instance operating as the internal identity broker on our Talos Linux cluster.
 
@@ -57,7 +60,7 @@ To brand directory identities with `@bar2sek.com` instead of the default `@<tena
    * **Name**: `@` (or `bar2sek.com`)
    * **Value**: `MS=msXXXXXXXX`
    * **TTL**: `3600`
-4. Add this TXT record to your Cloudflare DNS zone for `bar2sek.com` (declared via `terraform/cloudflare`).
+4. Add this TXT record to your Cloudflare DNS zone for `bar2sek.com` (via Cloudflare Dashboard or `infra-cloud-deployments/terraform/cloudflare`).
 5. In Entra Admin Center, click **Verify** and mark `bar2sek.com` as the **Primary Domain**.
 
 ### 2. User Principal Name (UPN) Strategy

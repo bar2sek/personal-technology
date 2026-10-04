@@ -75,30 +75,38 @@ Using **Cloudflare Email Routing**, we manage unlimited custom `@bar2sek.com` em
 All Cloudflare Tunnels, DNS records, and Access SSO policies are declaratively managed using Terraform in the `infra-cloud-deployments` repository (`terraform/cloudflare/main.tf`):
 
 ```hcl
-# Cloudflare Email Routing Enabled for bar2sek.com
-resource "cloudflare_email_routing_settings" "email_routing" {
-  zone_id = var.cloudflare_zone_id
-  enabled = true
-}
+# Cloudflare Tunnel Ingress Configuration
+resource "cloudflare_zero_trust_tunnel_cloudflared_config" "homelab_tunnel_config" {
+  account_id = var.cloudflare_account_id
+  tunnel_id  = cloudflare_zero_trust_tunnel_cloudflared.homelab_tunnel.id
 
-# Forwarding Rule for AWS Production Homelab Account
-resource "cloudflare_email_routing_rule" "aws_prod_email" {
-  zone_id = var.cloudflare_zone_id
-  name    = "AWS Production Homelab Email Forward"
-  enabled = true
-
-  matcher {
-    type  = "literal"
-    field = "to"
-    value = "aws-prod@bar2sek.com"
-  }
-
-  action {
-    type  = "forward"
-    value = [var.destination_email]
+  config {
+    ingress_rule {
+      hostname = "tesla.${var.domain_name}"
+      service  = "http://teslamate.teslamate.svc.cluster.local:4000"
+    }
+    ingress_rule {
+      hostname = "finance.${var.domain_name}"
+      service  = "http://actual-budget-service.finance.svc.cluster.local:80"
+    }
+    ingress_rule {
+      hostname = "diet.${var.domain_name}"
+      service  = "http://mealie-service.mealie.svc.cluster.local:80"
+    }
+    ingress_rule {
+      hostname = "grafana.${var.domain_name}"
+      service  = "https://ingress-nginx-controller.ingress-nginx.svc.cluster.local:443"
+      origin_request { no_tls_verify = true }
+    }
+    ingress_rule {
+      service = "http_status:404"
+    }
   }
 }
 ```
+
+> [!NOTE] Email Routing
+> Cloudflare Email Routing is managed directly out-of-band via the Cloudflare Dashboard console when needed. Custom domain root aliases (e.g. for AWS root accounts) are not managed via Terraform to avoid cyclic dependencies during Day-0 bootstrap.
 
 ---
 
@@ -109,23 +117,25 @@ resource "cloudflare_email_routing_rule" "aws_prod_email" {
 
 ---
 
-## 📦 Cloudflare Tunnel Kubernetes Manifest (`cloudflared.yaml`)
+## 📦 Cloudflare Tunnel Kubernetes Deployment
 
-```yaml
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: cloudflare-system
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: cloudflared-tunnel-token
-  namespace: cloudflare-system
-type: Opaque
-stringData:
-  TUNNEL_TOKEN: "YOUR_CLOUDFLARE_TUNNEL_TOKEN" # Managed via Secret Store / SealedSecrets
----
+The Cloudflare Tunnel secret is derived directly from the `infra-cloud-deployments/terraform/cloudflare` root output:
+
+```bash
+# 1. Extract sensitive tunnel token from Terraform and apply directly to cluster:
+TUNNEL_TOKEN=$(terraform -chdir=../../infra-cloud-deployments/terraform/cloudflare output -raw tunnel_token)
+
+kubectl create namespace cloudflare-system --dry-run=client -o yaml | kubectl apply -f -
+kubectl create secret generic cloudflared-tunnel-token \
+  --namespace=cloudflare-system \
+  --from-literal=TUNNEL_TOKEN="${TUNNEL_TOKEN}" \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+# 2. Deploy High-Availability Cloudflared pods:
+kubectl apply -f kubernetes/infrastructure/cloudflare/cloudflared.yaml
+```
+
+### Manifest Reference (`kubernetes/infrastructure/cloudflare/cloudflared.yaml`)
 apiVersion: apps/v1
 kind: Deployment
 metadata:

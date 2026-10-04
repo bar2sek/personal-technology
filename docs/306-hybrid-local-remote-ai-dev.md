@@ -1,11 +1,17 @@
+---
+title: "Hybrid Cloud & Remote AI Development Architecture"
+date: 2026-09-20
+status: archive
+tags:
+  - architecture/ai
+  - kubernetes/infrastructure
+  - decommissioned
+---
+
 # Hybrid Cloud & Remote AI Development Architecture
 
-This guide specifies the architecture, client configuration, and Kubernetes manifests for our **Hybrid Cloud/Remote AI Development Stack**. It combines frontier cloud model inference on the macOS client with unbounded remote agentic execution inside our on-premise Talos Kubernetes cluster.
-
-> [!NOTE] Superseded local inference (September 2026)
-> This document previously described local Apple MLX / oMLX serving on ports `8080`/`8081`. That was decommissioned — the workstation now standardizes on cloud providers, freeing 25–34 GB of unified memory and ~59 GB of SSD. See [[nix-mac/Cloud AI Providers & Models|Cloud AI Providers & Models]] for the current model tiering.
-
----
+> [!WARNING] ⚠️ Workload Decommissioned (Milestone 20 — October 2026)
+> The in-cluster containerized Antigravity workspace (`dev-workspace` / `agy.bar2sek.com`) was evaluated and **decommissioned** in Milestone 20 to release 100GB Ceph NVMe block storage and compute back to core homelab services. Primary AI pairing is now standardized directly on the macOS workstation via [[nix-mac/Cloud AI Providers & Models|Cloud AI Providers & Models]] with cloud inference APIs. The manifests and architectural topology below are preserved strictly as an architectural reference.
 
 ## 🏗 Architectural Topology
 

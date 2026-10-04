@@ -41,7 +41,7 @@ This document details the physical network topology, switch interconnects, WAN c
 - **Access Switch (Garage)**: 1x **UniFi Switch Lite 8 PoE (USW-Lite-8-PoE)** (`78:45:58:xx:xx:xx` - `10.0.1.40`)
   - 8-port Gigabit switch with 802.3at PoE+ located in the garage to power garage AP, garage peripherals, and isolated backup storage.
   - Uplink: 1GbE RJ45 connection (Port 1) to core UDM-Pro (Port 2).
-  - Port 2: Synology NAS 2-Bay (2x 2TB HDDs - Tier 3 bulk backup target, macOS Time Machine server, and isolated DR vault).
+  - Port 2: Synology NAS 2-Bay (Planned / Staged: 2x 2TB HDDs - Tier 3 bulk backup target, macOS Time Machine server, and isolated DR vault).
   - Port 8: PoE+ connection to U6-Lite WAP.
 - **Wireless Infrastructure (Access Points)**:
   - **Home Wi-Fi 7 AP**: 1x **UniFi U7 Pro WAP** (`94:2a:6f:xx:xx:xx` - `10.0.1.214`) connected to USW-24-G2 Port 6 for primary household wireless coverage.
@@ -66,7 +66,7 @@ graph TD
 
     %% Garage Switch, AP & Storage
     LITE8_P8["USW-Lite-8-PoE Port 8 (802.3at PoE)"] -->|Cat6 RJ45| U6LITE["U6-Lite WAP (Garage Wi-Fi 6)"]
-    LITE8_P2["USW-Lite-8-PoE Port 2 (1G RJ45)"] -->|Cat6 RJ45| SYNOLOGY["Synology NAS 2-Bay (Garage DR & Time Machine)"]
+    LITE8_P2["USW-Lite-8-PoE Port 2 (1G RJ45)"] -->|Cat6 RJ45| SYNOLOGY["Synology NAS 2-Bay (Planned: Garage DR & Time Machine)"]
 
     %% Core Switch Aggregation 20G LAG Backbone
     AGG1_P7["USW-Agg #1 Port 7 (10G SFP+)"] ===|10G SFP+ DAC - 20G LAG| AGG2_P7["USW-Agg #2 Port 7 (10G SFP+)"]
@@ -125,7 +125,7 @@ graph LR
     subgraph MANAGEMENT["Out-of-Band & Provisioning Layer"]
         OMNI_SRV["omni-server (10.10.10.5 / 10.10.20.5)"]
         IPMI_NODES["Supermicro IPMIs (10.10.10.11-13)"]
-        SYN_NAS["Synology NAS 2-Bay (Garage DR Vault / Time Machine)"]
+        SYN_NAS["Synology NAS 2-Bay (Planned: Garage DR Vault / Time Machine)"]
     end
 
     subgraph K8S_CLUSTER["Talos Linux Kubernetes Cluster"]
@@ -212,4 +212,22 @@ Having **Google Fiber IPv6 Prefix Delegation (DHCPv6-PD)** enabled on your UDM-P
    - Talos Linux natively supports dual-stack `ip` configurations in machine specs. Node interfaces automatically pick up IPv6 SLAAC / DHCPv6 addresses.
 3. **AWS Route53 & ExternalDNS IPv6 (AAAA Records)**:
    - ExternalDNS and AWS ACK can publish both `A` (IPv4) and `AAAA` (IPv6) records to AWS Route53 for external cluster endpoints.
-```
+
+---
+
+## 🛡️ Zone-Based Inter-VLAN Firewall Policy Matrix
+
+The UDM-Pro enforces a zone-based firewall architecture across our 7 VLANs. While L2/L3 subnets and DHCP reservations are declared via Terraform in `terraform/unifi/main.tf`, firewall rules are applied via the UniFi OS Network Engine to leverage dynamic stateful inspection:
+
+| Source Zone (VLAN) | Destination Zone (VLAN) | Action | Permitted Ports / Traffic | Rationale / Security Boundary |
+| :--- | :--- | :--- | :--- | :--- |
+| **All Zones** | **Any** | **ALLOW** | State: `Established`, `Related` | Return traffic permitted for initiated connections. |
+| **LAN / Workstation** (30) | **K8S-CONTROL** (20) | **ALLOW** | TCP 6443 (API), 50000 (Talos API), 80/443 (HTTP/S) | Cluster administration, `kubectl`, `talosctl`, web UIs. |
+| **LAN / Workstation** (30) | **MGMT-IPMI** (10) | **ALLOW** | TCP 80/443 (Web KVM), 623 (IPMI UDP) | Out-of-band server hardware management. |
+| **K8S-CONTROL** (20) | **CEPH-STORAGE** (40) | **ALLOW** | TCP 6789 (Mon), 6800-7300 (OSDs), MTU 9000 | Rook-Ceph storage clustering and CSI data path. |
+| **Any non-K8s Zone** | **CEPH-STORAGE** (40) | **BLOCK** | **ALL** | Strict isolation: Ceph fabric unreachable from user LAN or IoT. |
+| **IoT** (60) | **RFC1918 Private Subnets** | **BLOCK** | **ALL** | Prevent smart devices from scanning or probing internal hosts. |
+| **IoT** (60) | **K8S-CONTROL** (20) | **ALLOW** | TCP 1883 (MQTT / Home Assistant) | Smart sensor telemetry publishing strictly to Home Assistant. |
+| **GUEST** (90) | **RFC1918 Private Subnets** | **BLOCK** | **ALL** | Complete guest isolation; Internet access only. |
+| **K8S-CONTROL** (20) | **WAN (Internet)** | **ALLOW** | TCP 443 (Cloudflare Tunnel, OIDC, S3 backups) | Outbound cluster egress for container registries and backups. |
+

@@ -17,16 +17,52 @@ This directory defines the automated backup infrastructure for the hybrid homela
 
 ---
 
-## 🚀 Setup & Credentials
+1. **Create Least-Privilege IAM User & Access Keys**:
+   The backup jobs authenticate via static AWS IAM credentials scoped strictly to the offsite backup bucket. You can provision this user via the AWS CLI:
 
-1. **Deploy S3 Credentials**:
-   Copy [`backup-credentials.example.yaml`](backup-credentials.example.yaml) to `backup-credentials.yaml` and populate with IAM user credentials scoped strictly to `s3-aws-backups-prod-use2-001`:
+   ```bash
+   # 1. Create IAM user
+   aws iam create-user --user-name svc-homelab-backup-uploader
+
+   # 2. Attach least-privilege policy (S3 PutObject strictly scoped to backup bucket)
+   cat << 'EOF' > /tmp/backup-policy.json
+   {
+     "Version": "2012-10-17",
+     "Statement": [
+       {
+         "Sid": "AllowBackupUploadsOnly",
+         "Effect": "Allow",
+         "Action": [
+           "s3:PutObject",
+           "s3:ListBucket",
+           "s3:GetObject"
+         ],
+         "Resource": [
+           "arn:aws:s3:::s3-aws-backups-prod-use2-001",
+           "arn:aws:s3:::s3-aws-backups-prod-use2-001/*"
+         ]
+       }
+     ]
+   }
+   EOF
+
+   aws iam put-user-policy \
+     --user-name svc-homelab-backup-uploader \
+     --policy-name HomelabBackupsPolicy \
+     --policy-document file:///tmp/backup-policy.json
+
+   # 3. Generate access key
+   aws iam create-access-key --user-name svc-homelab-backup-uploader
+   ```
+
+2. **Deploy S3 Credentials to Kubernetes**:
+   Copy [`backup-credentials.example.yaml`](backup-credentials.example.yaml) to `backup-credentials.yaml`, insert the generated Access Key ID & Secret Access Key:
    ```bash
    kubectl apply -f namespace.yaml
    kubectl apply -f backup-credentials.yaml
    ```
 
-2. **Deploy CronJobs & RBAC**:
+3. **Deploy CronJobs & RBAC**:
    ```bash
    kubectl apply -f cronjob-cluster-state.yaml
    kubectl apply -f cronjob-postgres.yaml

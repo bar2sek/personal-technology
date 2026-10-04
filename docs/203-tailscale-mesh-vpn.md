@@ -19,9 +19,9 @@ This guide outlines the architecture and deployment workflow for the **[Tailscal
  |                           Remote Access Topology                               |
  |                                                                                |
  |  1. PUBLIC WEB APPS (Cloudflare Tunnel)                                        |
- |     https://teslamate.bar2sek.com  --> Cloudflare Edge --> cloudflared Pod     |
+ |     https://tesla.bar2sek.com      --> Cloudflare Edge --> cloudflared Pod     |
  |     https://finance.bar2sek.com    --> Cloudflare Edge --> cloudflared Pod     |
- |     https://recipes.bar2sek.com    --> Cloudflare Edge --> cloudflared Pod     |
+ |     https://diet.bar2sek.com       --> Cloudflare Edge --> cloudflared Pod     |
  |                                                                                |
  |  2. PRIVATE CLUSTER ADMIN & APIS (Tailscale Mesh VPN)                          |
  |     https://k8s-api.tailnet.ts.net --> Tailscale WireGuard --> Cluster Pods     |

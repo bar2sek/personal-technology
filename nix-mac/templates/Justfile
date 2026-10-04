@@ -85,7 +85,3 @@ k8s-nodes:
 k8s-pods:
     kubectl get pods -A -o wide
 
-# Connect to the remote Antigravity Dev Workspace on sm-node-03
-ssh-dev:
-    ssh antigravity-dev
-

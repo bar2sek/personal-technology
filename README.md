@@ -46,6 +46,8 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 - [104 - Phase 2: Rook-Ceph 3-Tier Storage Cluster](docs/104-phase2-rook-ceph-storage.md)
 - [105 - Global Resource Naming Conventions](docs/105-naming-conventions.md)
 - [106 - Phase 3: Observability Stack (Prometheus, Grafana & Ceph Monitoring)](docs/106-observability-prometheus-grafana.md)
+- [107 - Ingress Traffic Architecture: MetalLB, Ingress-Nginx & Cert-Manager](docs/107-ingress-traffic-metallb-cert-manager.md)
+- [108 - Sidero Omni, Dex & Booter Platform Architecture](docs/108-omni-dex-platform-architecture.md)
 
 ### 🌐 Section 2: UniFi Networking & Infrastructure
 - [201 - UniFi Physical Cabling & Logical Topology Diagrams](docs/201-unifi-network-topology.md)
@@ -115,8 +117,6 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 │   └── playbooks/             # Automated post-install configuration (NVIDIA, Sunshine)
 ├── client-tools/              # Workstation client configuration & bootstrap scripts
 │   └── ai-dev/                # Continue.dev cloud model config & SSH snippets
-├── docker/                    # Custom container images
-│   └── dev-agent/             # Remote Antigravity dev container & toolchains
 ├── docs/                      # Comprehensive homelab architecture documentation
 ├── kubernetes/                # Declarative Kubernetes manifests
 │   ├── infrastructure/        # Core platform services

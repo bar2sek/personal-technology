@@ -80,21 +80,21 @@ Any AI agent or human operator can review this document to pick up exactly where
    - Resolved Cloud SSO vs. Local Credential boundary on UniFi OS.
    - Created dedicated `terraform-admin` user with Local Access Only and Super Admin / Network permissions on UDM-Pro (`https://10.0.1.1`).
 4. **Automated UniFi Discovery**:
-   - Created [`client-tools/unifi-discover.py`](file:///client-tools/unifi-discover.py) with zero external Python dependencies.
+   - Created `client-tools/unifi-discover.py` with zero external Python dependencies.
    - Executed live API discovery against `https://10.0.1.1`.
-   - Generated [`client-tools/unifi-inventory.json`](file:///client-tools/unifi-inventory.json) and [`client-tools/terraform.tfvars.discovered`](file:///client-tools/terraform.tfvars.discovered).
+   - Generated `client-tools/unifi-inventory.json` and `client-tools/terraform.tfvars.discovered`.
    - Extracted live physical switch port tables, 20G LAG backbone status, Google Fiber 3.5G WAN2 configuration, and live node MAC addresses.
 5. **Headless PC & IPMI Strategy**:
    - Confirmed 3 Supermicro servers possess live HTML5 KVM consoles over IPMI without physical monitors.
    - Confirmed consumer PCs are headless and will be wiped and flashed via zero-touch Sidero Omni PXE booting.
 6. **UniFi Terraform Code Alignment**:
-   - Made `omni_mac_address` optional via conditional `count` in [`terraform/unifi/main.tf`](file:///terraform/unifi/main.tf).
+   - Made `omni_mac_address` optional via conditional `count` in `terraform/unifi/main.tf`.
    - Added declarative static DHCP reservations for the 3 Supermicro IPMI BMC interfaces (`10.10.10.11`, `10.10.10.12`, `10.10.10.13`) using discovered MAC addresses.
-   - Created [`terraform/unifi/terraform.tfvars.example`](file:///terraform/unifi/terraform.tfvars.example).
-   - Updated [`terraform/unifi/outputs.tf`](file:///terraform/unifi/outputs.tf) with IPMI static IP outputs.
+   - Created `terraform/unifi/terraform.tfvars.example`.
+   - Updated `terraform/unifi/outputs.tf` with IPMI static IP outputs.
 7. **Terraform Provider Migration & Schema Modernization**:
-   - Upgraded UniFi provider in [`terraform/unifi/providers.tf`](file:///terraform/unifi/providers.tf) from deprecated `paultag/unifi` to `ubiquiti-community/unifi` (`~> 0.41.0`).
-   - Refactored [`terraform/unifi/main.tf`](file:///terraform/unifi/main.tf) to match modern provider schema:
+   - Upgraded UniFi provider in `terraform/unifi/providers.tf` from deprecated `paultag/unifi` to `ubiquiti-community/unifi` (`~> 0.41.0`).
+   - Refactored `terraform/unifi/main.tf` to match modern provider schema:
      - Migrated `vlan_id` to `vlan`.
      - Migrated standalone DHCP flags (`dhcp_enabled`, `dhcp_start`, `dhcp_stop`) to nested `dhcp_server = { enabled = true, start = "...", stop = "..." }` blocks.
      - Migrated `unifi_user` to `unifi_client` with `allow_existing = true` for idempotent device adoption.
@@ -131,7 +131,7 @@ Any AI agent or human operator can review this document to pick up exactly where
       - `unifi_port_profile`: Network 8.x dropped custom tagged port profiles in favor of native switch port VLAN management. Custom profiles are forced to `forward: "all"`.
       - `unifi_firewall_rule`: Legacy index-based firewall rule endpoint returns `FirewallRuleIndexOutOfRange` under the new Zone-Based Firewall engine.
       - `unifi_client`: Existing client records with `local_dns_record_enabled: true` conflict with Terraform PUT updates (`LocalDnsRecordRequiresFixedIp`).
-    - **Design Decision**: Streamlined [`terraform/unifi/main.tf`](file:///terraform/unifi/main.tf) to focus cleanly on the foundational L2/L3 network fabric (the 7 VLANs, subnets, and DHCP scopes). Switch port VLAN tagging and zone firewall rules are managed directly via UniFi OS UI.
+    - **Design Decision**: Streamlined `terraform/unifi/main.tf` to focus cleanly on the foundational L2/L3 network fabric (the 7 VLANs, subnets, and DHCP scopes). Switch port VLAN tagging and zone firewall rules are managed directly via UniFi OS UI.
 
 12. **Supermicro Out-of-Band IPMI Port Isolation & Static Leases Configured**:
     - Configured physical ports on `USW-24-G2` with `setting_preference: manual`:
@@ -160,7 +160,7 @@ Any AI agent or human operator can review this document to pick up exactly where
       - Programmed fixed IP mapping via UniFi API: `omni-server` (`f4:8e:38:xx:xx:xx`) -> **`10.10.10.5`** on `MGMT-IPMI`.
     - **Declarative Talos Config & Patch Formulated**:
       - Base controlplane spec generated at `talos/omni-server/controlplane.yaml` (gitignored to protect cluster CA private keys).
-      - Reusable declarative patch created at [`talos/omni-server/patches/omni-server.yaml`](file:///talos/omni-server/patches/omni-server.yaml):
+      - Reusable declarative patch created at `talos/omni-server/patches/omni-server.yaml`:
         - Install target: `/dev/sda` with `wipe: true`.
         - Network: static IP `10.10.10.5/24` on `enp2s0`, gateway `10.10.10.1`, DNS `1.1.1.1`.
         - Single-node Kubernetes scheduling enabled: `allowSchedulingOnControlPlanes: true`.
@@ -180,13 +180,13 @@ Any AI agent or human operator can review this document to pick up exactly where
 16. **Self-Hosted Sidero Omni & Dex OIDC Stack Deployed on Talos Seed Cluster**:
     - **Credential Persistence Architecture**:
       - Generated secure admin credentials for `admin@omni.internal` stored in `talos/omni-server/.credentials.env` (permissions `0600`, strictly gitignored to protect secrets, synced across workstations via Google Drive vault storage).
-      - Added [`talos/omni-server/.credentials.env.example`](file:///talos/omni-server/.credentials.env.example) to git to provide full visibility for future agents and workstation setups.
+      - Added `talos/omni-server/.credentials.env.example` to git to provide full visibility for future agents and workstation setups.
     - **Cryptographic Keys & TLS Fabric**:
       - Generated RSA 4096 GPG key (`omni.asc`) for etcd encryption at rest and machine join token signing.
       - Generated internal Root CA and multi-SAN TLS certificates covering `10.10.10.5`, `omni-server`, `omni.internal`, and `auth.omni.internal`.
     - **Pod Security & Kubernetes Deployment**:
       - Labeled namespace `omni` with `pod-security.kubernetes.io/enforce=privileged` to permit system host bindings (`hostPort`, `NET_ADMIN` capability for WireGuard, and hostPath volume).
-      - Created Kubernetes manifests at [`kubernetes/infrastructure/omni/dex.yaml`](file:///kubernetes/infrastructure/omni/dex.yaml) and [`kubernetes/infrastructure/omni/omni.yaml`](file:///kubernetes/infrastructure/omni/omni.yaml).
+      - Created Kubernetes manifests at `kubernetes/infrastructure/omni/dex.yaml` and `kubernetes/infrastructure/omni/omni.yaml`.
       - Persistent data allocated on Samsung 860 EVO SSD at `/var/lib/kubelet/omni-data/`.
     - **Service Health Verification**:
       - **Dex OIDC** (`ghcr.io/dexidp/dex:v2.41.1`): Running (1/1) on port `5556`. Health check passed (`HTTP/2 200`).
@@ -238,7 +238,7 @@ Any AI agent or human operator can review this document to pick up exactly where
 ---
 
 24. **Supermicro Primary Control Plane Discovered & Registered (`sm-node-03` / `main01`)**:
-    - **Hardware Topology**: Supermicro 813M Xeon E5-2680v4 (14C/28T, 64GB RAM), dual 10G SFP+ Intel X520 PCIe card (`a0:36:9f:xx:xx:xx` / `xx`) connected to `Ceph-USW-Aggregation` Ports 3 & 4.
+    - **Hardware Topology**: Supermicro 813M Xeon E5-2680v4 (14C/28T, 160GB RAM), dual 10G SFP+ Intel X520 PCIe card (`a0:36:9f:xx:xx:xx` / `xx`) connected to `Ceph-USW-Aggregation` Ports 3 & 4.
     - **BIOS Configuration**: Set `Above 4G Decoding: [Enabled]`, `RSC-RR1U-E16` 1U riser PCIe slots to `[EFI]`, `Onboard LAN OPROM Type: [EFI]`, Network Stack IPv4 PXE `[Enabled]`, and Boot Mode `[UEFI]`.
     - **Discovery Flow**: Booted via `<F11>` on `UEFI: IP4 Intel(R) Ethernet 10G 2P X520 Adapter`.
     - **Omni Status**: Downloaded `ipxe.efi` via TFTP -> streamed Talos v1.13.10 kernel into RAM -> established WireGuard connection -> registered in Omni under **Machines** (`UUID: 00000000-0000-0000-0000-3cecef58ed64`) in `MAINTENANCE` stage (`ready: true`).
@@ -312,9 +312,9 @@ Any AI agent or human operator can review this document to pick up exactly where
     - **Root-Cause Discovery**:
       - Investigated why Talos v1alpha1 rejected literal hostname patches with `* static hostname is already set in v1alpha1 config`.
       - **Discovery**: In Talos v1.12+, static hostname configuration was moved out of `machine.network.hostname` into a dedicated `HostnameConfig` document. Sidero Omni auto-injects `HostnameConfig` with `auto: stable`. When custom patches declared `machine.network.hostname`, Talos detected conflicting duplicate hostname sources and failed validation.
-      - **Resolution**: Modernized [`talos/cluster-template.yaml`](file:///talos/cluster-template.yaml) by patching the dedicated `HostnameConfig` resource with `auto: "off"` and literal hostnames (`sm-node-01` .. `pc-node-05`).
+      - **Resolution**: Modernized `talos/cluster-template.yaml` by patching the dedicated `HostnameConfig` resource with `auto: "off"` and literal hostnames (`sm-node-01` .. `pc-node-05`).
     - **Machine Install Disk Safeguards**:
-      - Created [`talos/machine-install-disks.yaml`](file:///talos/machine-install-disks.yaml) explicitly pinning all 5 machines to their dedicated OS drives (`sm-01`/`sm-02`: `/dev/sda` SuperDOM, `sm-03`: `/dev/sde` SuperDOM, `pc-04`: `/dev/sdc` Intel SSD, `pc-05`: `/dev/nvme1n1` Sabrent Rocket NVMe).
+      - Created `talos/machine-install-disks.yaml` explicitly pinning all 5 machines to their dedicated OS drives (`sm-01`/`sm-02`: `/dev/sda` SuperDOM, `sm-03`: `/dev/sde` SuperDOM, `pc-04`: `/dev/sdc` Intel SSD, `pc-05`: `/dev/nvme1n1` Sabrent Rocket NVMe).
       - Guaranteed 100% data safety: All 11 bulk storage HDDs on `pc-node-04` and the secondary raw Crucial P3 NVMe on `pc-node-05` remained untouched.
     - **Declarative Template Sync & Convergence**:
       - Synced template via `omnictl cluster template sync -f talos/cluster-template.yaml`.
@@ -343,7 +343,7 @@ Any AI agent or human operator can review this document to pick up exactly where
       - Verified `/var/lib/rook` is configured with `rshared` mount propagation across all 5 nodes.
       - Created `rook-ceph` namespace labeled with Pod Security Standard `privileged` (`pod-security.kubernetes.io/enforce=privileged`).
     - **Operator & Ceph Version**:
-      - Deployed Rook-Ceph Operator `v1.20.7` via Helm using declarative [`kubernetes/infrastructure/rook-ceph/values.yaml`](file:///kubernetes/infrastructure/rook-ceph/values.yaml).
+      - Deployed Rook-Ceph Operator `v1.20.7` via Helm using declarative `kubernetes/infrastructure/rook-ceph/values.yaml`.
       - Configured Ceph Squid `v19.2.1` (`quay.io/ceph/ceph:v19.2.1`) across all storage daemons.
     - **Drive Pre-Flight Hygiene & Label Wiping**:
       - Strict hardware boundary safeguards: Boot/OS drives completely excluded (`sm-01`/`sm-02`: `/dev/sda` SuperDOM, `sm-03`: `/dev/sde`/`sdf` SuperDOMs, `pc-04`: `/dev/sdc` 80GB Intel SSD, `pc-05`: `/dev/nvme1n1` Sabrent Rocket NVMe).
@@ -370,7 +370,7 @@ Any AI agent or human operator can review this document to pick up exactly where
       - Deployed test PVCs across all 3 tiers (`rook-ceph-block`, `rook-ceph-block-nvme`, `rook-ceph-filesystem`) in `ceph-storage-test` namespace. All bound in < 4 seconds.
       - Deployed multi-volume test pod mounting all three tiers simultaneously; verified write, fsync, and readback integrity across all mounts.
     - **Administration & Ceph Dashboard**:
-      - Deployed [`kubernetes/infrastructure/rook-ceph/toolbox.yaml`](file:///kubernetes/infrastructure/rook-ceph/toolbox.yaml) for direct cluster operations (`ceph status`, `ceph osd tree`).
+      - Deployed `kubernetes/infrastructure/rook-ceph/toolbox.yaml` for direct cluster operations (`ceph status`, `ceph osd tree`).
       - Ceph Management Dashboard active on port 8443 (`svc/rook-ceph-mgr-dashboard`).
 
 30. **Automated DNS, Ingress, Wildcard TLS & Cloudflare Tunnel Deployed (`bar2sek.com`)**:
@@ -395,21 +395,21 @@ Any AI agent or human operator can review this document to pick up exactly where
       - Deployed HA `cloudflared` daemon in `cloudflare-system` namespace.
       - Tunnel established via QUIC protocol to Cloudflare edge data centers.
     - **Ceph Dashboard Ingress & End-to-End Routing**:
-      - Created [`kubernetes/infrastructure/ingress/ceph-dashboard-ingress.yaml`](file:///kubernetes/infrastructure/ingress/ceph-dashboard-ingress.yaml) routing `ceph.bar2sek.com` to `rook-ceph-mgr-dashboard:8443`.
+      - Created `kubernetes/infrastructure/ingress/ceph-dashboard-ingress.yaml` routing `ceph.bar2sek.com` to `rook-ceph-mgr-dashboard:8443`.
       - Verified local direct LAN routing via `10.10.20.50` (`<title>Ceph</title>`).
       - Verified remote internet access via `https://ceph.bar2sek.com` through Cloudflare Tunnel with 100% valid SSL verification and zero open firewall ports.
 
 31. **UniFi Split-Horizon Local DNS Optimization & Omni Origin Integration (`terraform/unifi`)**:
     - **UniFi Terraform Provider Upgrade**:
-      - Upgraded `ubiquiti-community/unifi` provider from `~> 0.41.0` to `~> 0.55.0` in [`terraform/unifi/providers.tf`](file:///terraform/unifi/providers.tf) to unlock native support for the managed `unifi_dns_record` resource.
+      - Upgraded `ubiquiti-community/unifi` provider from `~> 0.41.0` to `~> 0.55.0` in `terraform/unifi/providers.tf` to unlock native support for the managed `unifi_dns_record` resource.
     - **Split-Horizon Local DNS Declarations**:
-      - Created [`terraform/unifi/dns.tf`](file:///terraform/unifi/dns.tf) declaring local authoritative A records on the UDM-Pro:
+      - Created `terraform/unifi/dns.tf` declaring local authoritative A records on the UDM-Pro:
         - `ceph.bar2sek.com` $\rightarrow$ `10.10.20.50` (MetalLB Ingress-Nginx VIP)
         - `omni.bar2sek.com` $\rightarrow$ `10.10.10.5` (Sidero Omni Server)
-      - Added configurable domain and VIP variables to [`terraform/unifi/variables.tf`](file:///terraform/unifi/variables.tf) and exported record statuses in [`terraform/unifi/outputs.tf`](file:///terraform/unifi/outputs.tf).
+      - Added configurable domain and VIP variables to `terraform/unifi/variables.tf` and exported record statuses in `terraform/unifi/outputs.tf`.
     - **Omni Origin Ingress Alignment & Native Wildcard TLS**:
       - Verified Omni port allocation: Port 8080 refused; port 443 active and serving Omni web console.
-      - Updated Cloudflare Tunnel configuration in [`terraform/cloudflare/main.tf`](file:///terraform/cloudflare/main.tf) to forward `omni.bar2sek.com` to `https://10.10.10.5:443` with `no_tls_verify = true`.
+      - Updated Cloudflare Tunnel configuration in `terraform/cloudflare/main.tf` to forward `omni.bar2sek.com` to `https://10.10.10.5:443` with `no_tls_verify = true`.
       - Backed up initial self-signed certificate on `omni-server` to `secret/omni-tls-backup`.
       - Upgraded `secret/omni-tls` on the `omni-server` cluster with the genuine Let's Encrypt wildcard certificate (`*.bar2sek.com`) from `secret/bar2sek-wildcard-tls`.
       - Verified direct local HTTPS reachability at `10.10.10.5:443`: SSL handshake passes with 100% trusted verification (`SSL certificate verify ok`) and trusted green lock in browsers.
@@ -434,14 +434,14 @@ Any AI agent or human operator can review this document to pick up exactly where
       - Addressed Pod Security Standard violation by labeling `monitoring` namespace with `pod-security.kubernetes.io/enforce=privileged`.
       - Verified DaemonSet running across all 5 nodes (`sm-node-01`, `sm-node-02`, `sm-node-03`, `pc-node-04`, `pc-node-05`) with `/host/proc` and `/host/sys` mounts capturing hardware CPU, memory, disk, and 10GbE network telemetry.
     - **Rook-Ceph Native Telemetry & ServiceMonitors**:
-      - Updated [`kubernetes/infrastructure/rook-ceph/values.yaml`](file:///kubernetes/infrastructure/rook-ceph/values.yaml) with `monitoring.enabled: true` to provision Prometheus Operator RBAC to the Rook operator service account.
-      - Applied Ceph MGR ServiceMonitor at [`kubernetes/infrastructure/monitoring/ceph-servicemonitor.yaml`](file:///kubernetes/infrastructure/monitoring/ceph-servicemonitor.yaml).
+      - Updated `kubernetes/infrastructure/rook-ceph/values.yaml` with `monitoring.enabled: true` to provision Prometheus Operator RBAC to the Rook operator service account.
+      - Applied Ceph MGR ServiceMonitor at `kubernetes/infrastructure/monitoring/ceph-servicemonitor.yaml`.
       - Verified both `rook-ceph-exporter` (OSD telemetry) and `rook-ceph-mgr` (Ceph MGR metrics on port 9283) ServiceMonitors registered and actively scraped by Prometheus.
     - **Split-Horizon Ingress & Zero-Trust Routing**:
       - Verified Ingress-Nginx routing on VIP `10.10.20.50` with browser-trusted wildcard TLS (`bar2sek-wildcard-tls`).
       - Verified local UDM-Pro split-horizon DNS: `dig +short grafana.bar2sek.com @10.0.1.1` -> `10.10.20.50`.
       - Verified remote routing through Cloudflare Zero Trust Access at `https://grafana.bar2sek.com`.
-      - Added operational shortcuts to [`Justfile`](file:///Justfile): `just monitoring-status` and `just grafana-password`.
+      - Added operational shortcuts to `Justfile`: `just monitoring-status` and `just grafana-password`.
 
 33. **Phase 4: Authentik Master IdP & Centralized SSO Deployed & Validated**:
     - **Architecture & Deployment**:
@@ -452,12 +452,12 @@ Any AI agent or human operator can review this document to pick up exactly where
       - All 4 pods running healthy (`1/1 Running` across `authentik-db`, `authentik-redis`, `authentik-server`, `authentik-worker`).
     - **Network, Wildcard TLS & Split-Horizon Routing**:
       - Created Ingress resource routing `auth.bar2sek.com` through Ingress-Nginx (`10.10.20.50`) with Let's Encrypt wildcard certificate (`bar2sek-wildcard-tls`), custom proxy buffer sizing (128k), and 100MB body size limit.
-      - Added declarative authoritative A record in [`terraform/unifi/dns.tf`](file:///terraform/unifi/dns.tf) resolving `auth.bar2sek.com` -> `10.10.20.50` locally across the 10GbE network fabric.
-      - Added Zero Trust Cloudflare Tunnel ingress rule and proxied CNAME DNS record in [`terraform/cloudflare/main.tf`](file:///terraform/cloudflare/main.tf).
+      - Added declarative authoritative A record in `terraform/unifi/dns.tf` resolving `auth.bar2sek.com` -> `10.10.20.50` locally across the 10GbE network fabric.
+      - Added Zero Trust Cloudflare Tunnel ingress rule and proxied CNAME DNS record in `terraform/cloudflare/main.tf`.
       - Verified local DNS resolution (`dig auth.bar2sek.com @10.0.1.1` -> `10.10.20.50` in 3ms) and HTTPS reachability (`curl -sI https://auth.bar2sek.com` -> `HTTP/2 302` and initial-setup flow -> `HTTP/2 200`).
     - **Operational Automation**:
-      - Added [`kubernetes/infrastructure/authentik/authentik-secrets.example.yaml`](file:///kubernetes/infrastructure/authentik/authentik-secrets.example.yaml) as sanitized template while keeping live secrets gitignored.
-      - Added `just authentik-status` and `just authentik-logs` operational recipes to root [`Justfile`](file:///Justfile).
+      - Added `kubernetes/infrastructure/authentik/authentik-secrets.example.yaml` as sanitized template while keeping live secrets gitignored.
+      - Added `just authentik-status` and `just authentik-logs` operational recipes to root `Justfile`.
 
 34. **Grafana OIDC Single Sign-On (SSO) Integration via Authentik**:
     - **Authentik OAuth2 Provider & Application Provisioned**:
@@ -467,7 +467,7 @@ Any AI agent or human operator can review this document to pick up exactly where
       - Verified OIDC discovery endpoint at `https://auth.bar2sek.com/application/o/grafana/.well-known/openid-configuration`.
     - **Kubernetes Secret & Helm Values Configuration**:
       - Provisioned `secret/grafana-oauth-secret` in `monitoring` namespace containing client secret (`GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET`).
-      - Updated [`kubernetes/infrastructure/monitoring/values.yaml`](file:///kubernetes/infrastructure/monitoring/values.yaml) with `auth.generic_oauth` block:
+      - Updated `kubernetes/infrastructure/monitoring/values.yaml` with `auth.generic_oauth` block:
         - `auth_url`: `https://auth.bar2sek.com/application/o/authorize/`
         - `token_url`: `https://auth.bar2sek.com/application/o/token/`
         - `api_url`: `https://auth.bar2sek.com/application/o/userinfo/`
@@ -485,8 +485,8 @@ Any AI agent or human operator can review this document to pick up exactly where
       - Pre-installed developer toolchains: Antigravity CLI (`agy`), Astral `uv`, `rclone` (Google Drive backup), `terraform`, `kubectl`, `talosctl`, `go`, and `nodejs`.
     - **Network, Wildcard TLS & Split-Horizon Routing**:
       - Created Ingress resource routing `agy.bar2sek.com` through Ingress-Nginx (`10.10.20.50`) with Let's Encrypt wildcard certificate (`bar2sek-wildcard-tls`), 1-hour proxy timeouts, 512MB upload limits, and native WebSocket upgrade support.
-      - Added declarative authoritative A record in [`terraform/unifi/dns.tf`](file:///terraform/unifi/dns.tf) resolving `agy.bar2sek.com` -> `10.10.20.50` locally across the 10GbE network fabric for sub-millisecond, line-rate throughput.
-      - Added Cloudflare Zero Trust Tunnel ingress rule, CNAME record, and 30-day persistent SSO access policy (`cloudflare_zero_trust_access_application` and `policy`) in [`terraform/cloudflare/main.tf`](file:///terraform/cloudflare/main.tf).
+      - Added declarative authoritative A record in `terraform/unifi/dns.tf` resolving `agy.bar2sek.com` -> `10.10.20.50` locally across the 10GbE network fabric for sub-millisecond, line-rate throughput.
+      - Added Cloudflare Zero Trust Tunnel ingress rule, CNAME record, and 30-day persistent SSO access policy (`cloudflare_zero_trust_access_application` and `policy`) in `terraform/cloudflare/main.tf`.
     - **Multi-Device Mobility**:
       - Enables seamless, untethered agent management and coding across iPad, iPhone, MacBook Pro, and remote web browsers with full state persistence.
 
@@ -496,9 +496,9 @@ Any AI agent or human operator can review this document to pick up exactly where
       - Resolved Kubernetes 1.36 schema validation errors (`format: int32` on checksums) and pod condition patch synchronization failures (`virt-controller` condition sync errors).
       - Upgraded local macOS CLI `~/.local/bin/virtctl` to v1.9.0.
     - **VFIO PCIe GPU & Audio Passthrough on Talos Linux (`pc-node-05`)**:
-      - Configured AM5 platform B650I IOMMU hardware isolation (`amd_iommu=on iommu=pt`) in [`talos/cluster-template.yaml`](file:///talos/cluster-template.yaml).
+      - Configured AM5 platform B650I IOMMU hardware isolation (`amd_iommu=on iommu=pt`) in `talos/cluster-template.yaml`.
       - Assigned VFIO drivers to NVIDIA GeForce RTX 4070 (`10de:2786`) and High Definition Audio Controller (`10de:22bc`) in isolated IOMMU Group 12.
-      - Defined PCI host devices in [`kubernetes/infrastructure/kubevirt/kubevirt-cr.yaml`](file:///kubernetes/infrastructure/kubevirt/kubevirt-cr.yaml) (`nvidia.com/RTX_4070` and `nvidia.com/RTX_4070_Audio`).
+      - Defined PCI host devices in `kubernetes/infrastructure/kubevirt/kubevirt-cr.yaml` (`nvidia.com/RTX_4070` and `nvidia.com/RTX_4070_Audio`).
       - Verified node device plugin advertisements on `pc-node-05` allocating both devices directly to QEMU/KVM launcher pod.
     - **AMD Ryzen CPU Topology Optimization**:
       - Configured CPU domain topology with `model: host-passthrough`, 12 vCPUs (`cores: 12, threads: 1, sockets: 1`), and 16Gi RAM.
@@ -506,10 +506,10 @@ Any AI agent or human operator can review this document to pick up exactly where
     - **Automated Windows 11 IoT Enterprise LTSC 2024 Pipeline**:
       - Provisioned dedicated 250Gi high-IOPS NVMe PersistentVolumeClaim (`windows-gaming-nvme-pvc`) on `rook-ceph-block-nvme`.
       - Mounted official Windows 11 IoT Enterprise LTSC 2024 x64 installation media alongside Fedora/Red Hat signed VirtIO driver container disk v1.9.0.
-      - Authored fully automated unattended Sysprep configuration [`kubernetes/infrastructure/kubevirt/windows11-sysprep.yaml`](file:///kubernetes/infrastructure/kubevirt/windows11-sysprep.yaml) (`Autounattend.xml`) providing automatic disk partitioning (EFI/MSR/NTFS), VirtIO storage and network driver injection, user creation, and WinRM provisioning on port 5985/5986.
+      - Authored fully automated unattended Sysprep configuration `kubernetes/infrastructure/kubevirt/windows11-sysprep.yaml` (`Autounattend.xml`) providing automatic disk partitioning (EFI/MSR/NTFS), VirtIO storage and network driver injection, user creation, and WinRM provisioning on port 5985/5986.
     - **Dedicated LAN VIP & Split-Horizon DNS**:
-      - Provisioned MetalLB LoadBalancer service [`kubernetes/infrastructure/kubevirt/windows11-vm.yaml`](file:///kubernetes/infrastructure/kubevirt/windows11-vm.yaml) binding dedicated static IP `10.10.20.55` on the internal homelab network for Sunshine 4K/120Hz streaming, WinRM automation, and RDP.
-      - Added authoritative DNS A record `gaming.bar2sek.com` -> `10.10.20.55` in [`terraform/unifi/dns.tf`](file:///terraform/unifi/dns.tf).
+      - Provisioned MetalLB LoadBalancer service `kubernetes/infrastructure/kubevirt/windows11-vm.yaml` binding dedicated static IP `10.10.20.55` on the internal homelab network for Sunshine 4K/120Hz streaming, WinRM automation, and RDP.
+      - Added authoritative DNS A record `gaming.bar2sek.com` -> `10.10.20.55` in `terraform/unifi/dns.tf`.
 
 37. **Pivot to Bazzite Linux Cloud Gaming VM (`gaming.bar2sek.com`)**:
     - **Architectural Motivation**:
@@ -519,13 +519,13 @@ Any AI agent or human operator can review this document to pick up exactly where
       - Ingested official Bazzite NVIDIA Stable ISO (`12Gi`) via CDI DataVolume (`bazzite-nvidia-iso`).
       - Deployed OS directly to the 250Gi high-IOPS Ceph NVMe block PVC (`windows-gaming-nvme-pvc`) using automated unattended Anaconda kickstart.
     - **Decoupled Production VM**:
-      - Removed installation media (`install-iso` and `kickstart`) from [`kubernetes/infrastructure/kubevirt/bazzite-vm.yaml`](file:///kubernetes/infrastructure/kubevirt/bazzite-vm.yaml).
+      - Removed installation media (`install-iso` and `kickstart`) from `kubernetes/infrastructure/kubevirt/bazzite-vm.yaml`.
       - Configured clean UEFI boot from `/dev/vda` (`rootdisk`, Ceph NVMe block pool).
     - **NVIDIA GPU Passthrough & Hardware Acceleration Verified**:
       - Verified RTX 4070 (12GB VRAM, Ada Lovelace) PCIe passthrough initializes cleanly with official NVIDIA driver 580.95.05 and CUDA 13.0 via `nvidia-smi`.
     - **Networking & Sunshine GameStream**:
       - Assigned dedicated MetalLB Layer 2 static VIP `10.10.20.52` (`bazzite-gaming-lan`).
-      - Automated post-install configuration via Ansible ([`ansible/playbooks/configure-bazzite-vm.yml`](file:///ansible/playbooks/configure-bazzite-vm.yml)) and root [`Justfile`](file:///Justfile) (`just bazzite-setup`, `just bazzite-ping`).
+      - Automated post-install configuration via Ansible (`ansible/playbooks/configure-bazzite-vm.yml`) and root `Justfile` (`just bazzite-setup`, `just bazzite-ping`).
       - Verified Sunshine HTTPS Web UI is active and listening on `https://10.10.20.52:47990` with full AV1/HEVC NVENC hardware encoding ready for Moonlight client pairing.
 
 38. **Brother DCP-7065DN Laser Multifunction & In-Cluster CUPS AirPrint Bridge (`printing.bar2sek.com`)**:
@@ -533,13 +533,13 @@ Any AI agent or human operator can review this document to pick up exactly where
       - Connected physical Brother DCP-7065DN laser multifunction printer to Port 23 on `USW-24-G2` access switch (100 Mbps link).
       - Discovered hardware MAC `30:05:5c:xx:xx:xx`.
     - **Declarative UniFi Network & DNS Infrastructure**:
-      - Pinned static DHCP reservation `10.0.1.25` on Default corporate LAN in [`terraform/unifi/main.tf`](file:///terraform/unifi/main.tf) via `unifi_client.brother_printer`.
-      - Configured authoritative split-horizon DNS records in [`terraform/unifi/dns.tf`](file:///terraform/unifi/dns.tf):
+      - Pinned static DHCP reservation `10.0.1.25` on Default corporate LAN in `terraform/unifi/main.tf` via `unifi_client.brother_printer`.
+      - Configured authoritative split-horizon DNS records in `terraform/unifi/dns.tf`:
         - `printer.bar2sek.com` -> `10.0.1.25` (physical printer web admin & raw JetDirect port 9100).
         - `printing.bar2sek.com` -> `10.10.20.20` (`pc-node-04` host IP running CUPS).
-      - Updated switch port topology documentation in [`docs/201-unifi-network-topology.md`](file:///docs/201-unifi-network-topology.md).
+      - Updated switch port topology documentation in [[201-unifi-network-topology|docs/201-unifi-network-topology.md]].
     - **Kubernetes CUPS & Avahi AirPrint Bridge Deployment**:
-      - Created dedicated `printing` namespace in [`kubernetes/apps/cups/cups.yaml`](file:///kubernetes/apps/cups/cups.yaml) with privileged pod-security enforcement.
+      - Created dedicated `printing` namespace in `kubernetes/apps/cups/cups.yaml` with privileged pod-security enforcement.
       - Provisioned persistent storage on `rook-ceph-block` (`cups-config-pvc`, 1Gi) to preserve queues across pod restarts.
       - Pinned container workload to worker node `pc-node-04` (`nodeSelector: kubernetes.io/hostname: pc-node-04`) to prevent disk pressure on 16GB SATA SuperDOM control planes.
       - Configured `hostNetwork: true` with Avahi daemon to broadcast link-local Bonjour/mDNS (`_ipp._tcp`, `_universal._sub._ipp._tcp`) across the physical network.
@@ -548,50 +548,50 @@ Any AI agent or human operator can review this document to pick up exactly where
     - **Declarative Workstation Configuration & Apple Ecosystem**:
       - Declaratively provisioned default print queue on MacBook Pro via `system.activationScripts.postActivation` in `nix-mac/templates/flake.nix` targeting `ipp://printing.bar2sek.com:631/printers/Brother_DCP-7065DN`.
       - Enabled UniFi gateway Multicast DNS (mDNS) reflector for zero-configuration driverless AirPrint discovery on iOS and iPadOS devices.
-      - Documented complete architecture, operational runbook, and diagnostic steps in [`docs/506-cups-airprint-bridge.md`](file:///docs/506-cups-airprint-bridge.md).
+      - Documented complete architecture, operational runbook, and diagnostic steps in [[506-cups-airprint-bridge|docs/506-cups-airprint-bridge.md]].
 
   - ### Milestone 15: Architecture Audit & Cluster Hardening Remediation (2026-09-20)
     - **Secrets Hygiene Hardening**:
-      - Replaced hardcoded plaintext database passwords in [`kubernetes/apps/immich/immich.yaml`](file:///kubernetes/apps/immich/immich.yaml) and [`kubernetes/apps/teslamate/teslamate.yaml`](file:///kubernetes/apps/teslamate/teslamate.yaml) with standard `REPLACE_WITH_*` secret placeholders in alignment with `AGENTS.md` Public-by-Default invariants.
+      - Replaced hardcoded plaintext database passwords in `kubernetes/apps/immich/immich.yaml` and `kubernetes/apps/teslamate/teslamate.yaml` with standard `REPLACE_WITH_*` secret placeholders in alignment with `AGENTS.md` Public-by-Default invariants.
     - **GPU Node Storage Alignment**:
-      - Reconciled target OS boot disk in [`talos/patches/gpu-worker.yaml`](file:///talos/patches/gpu-worker.yaml) to `/dev/nvme1n1` (1TB Sabrent Rocket), matching [`talos/machine-install-disks.yaml`](file:///talos/machine-install-disks.yaml) and isolating `/dev/nvme0n1` (1TB Crucial P3) as a dedicated raw OSD for Rook-Ceph.
+      - Reconciled target OS boot disk in `talos/patches/gpu-worker.yaml` to `/dev/nvme1n1` (1TB Sabrent Rocket), matching `talos/machine-install-disks.yaml` and isolating `/dev/nvme0n1` (1TB Crucial P3) as a dedicated raw OSD for Rook-Ceph.
     - **Ceph CSI Volume Expansion**:
-      - Added missing `csi.storage.k8s.io/controller-expand-secret-name` and `controller-expand-secret-namespace` to `rook-ceph-hdd-bulk` in [`kubernetes/infrastructure/rook-ceph/storageclasses.yaml`](file:///kubernetes/infrastructure/rook-ceph/storageclasses.yaml) to enable online PVC volume expansions across bulk mechanical storage.
+      - Added missing `csi.storage.k8s.io/controller-expand-secret-name` and `controller-expand-secret-namespace` to `rook-ceph-hdd-bulk` in `kubernetes/infrastructure/rook-ceph/storageclasses.yaml` to enable online PVC volume expansions across bulk mechanical storage.
     - **RWO Persistent Volume Mount Deadlock Mitigation**:
-      - Configured `strategy: type: Recreate` across all Deployments consuming ReadWriteOnce Ceph RBD persistent volumes ([`immich.yaml`](file:///kubernetes/apps/immich/immich.yaml), [`teslamate.yaml`](file:///kubernetes/apps/teslamate/teslamate.yaml), [`mealie.yaml`](file:///kubernetes/apps/mealie/mealie.yaml), [`actual-budget.yaml`](file:///kubernetes/apps/finance/actual-budget.yaml), and [`home-assistant.yaml`](file:///kubernetes/apps/home-assistant/home-assistant.yaml)), preventing `Multi-Attach error for volume` lockups during rolling updates or node drains.
+      - Configured `strategy: type: Recreate` across all Deployments consuming ReadWriteOnce Ceph RBD persistent volumes (`immich.yaml`, `teslamate.yaml`, `mealie.yaml`, `actual-budget.yaml`, and `home-assistant.yaml`), preventing `Multi-Attach error for volume` lockups during rolling updates or node drains.
     - **VLAN 20 DHCP & MetalLB Collision Prevention**:
-      - Adjusted VLAN 20 DHCP allocation range in [`terraform/unifi/main.tf`](file:///terraform/unifi/main.tf) to `10.10.20.100 - 10.10.20.254`, carving out and safeguarding `10.10.20.10 - 10.10.20.99` for static node assignments and MetalLB Layer 2 VIP pools (`10.10.20.50 - 10.10.20.60`).
+      - Adjusted VLAN 20 DHCP allocation range in `terraform/unifi/main.tf` to `10.10.20.100 - 10.10.20.254`, carving out and safeguarding `10.10.20.10 - 10.10.20.99` for static node assignments and MetalLB Layer 2 VIP pools (`10.10.20.50 - 10.10.20.60`).
 
   - ### Milestone 16: High Availability VIP & Offsite S3 Backup Engine (2026-09-20)
     - **Talos Native Control Plane VRRP Virtual IP**:
-      - Configured native Talos VRRP VIP `10.10.20.10` on VLAN 20 in [`talos/patches/controlplane.yaml`](file:///talos/patches/controlplane.yaml), enabling automated <1s failover across `sm-node-01`, `sm-node-02`, and `sm-node-03`.
-      - Added local split-horizon DNS record `k8s.bar2sek.com` -> `10.10.20.10` in [`terraform/unifi/dns.tf`](file:///terraform/unifi/dns.tf).
-      - Updated root [`Justfile`](file:///Justfile) administrative recipes (`talos-health`, `talos-members`, `talos-etcd`) to target the floating HA VIP `10.10.20.10` rather than the single physical node `10.10.20.131`.
+      - Configured native Talos VRRP VIP `10.10.20.10` on VLAN 20 in `talos/patches/controlplane.yaml`, enabling automated <1s failover across `sm-node-01`, `sm-node-02`, and `sm-node-03`.
+      - Added local split-horizon DNS record `k8s.bar2sek.com` -> `10.10.20.10` in `terraform/unifi/dns.tf`.
+      - Updated root `Justfile` administrative recipes (`talos-health`, `talos-members`, `talos-etcd`) to target the floating HA VIP `10.10.20.10` rather than the single physical node `10.10.20.131`.
     - **Tiered Cost-Effective Disaster Recovery to AWS S3**:
-      - Created automated backup manifests in [`kubernetes/infrastructure/backups/`](file:///kubernetes/infrastructure/backups/):
+      - Created automated backup manifests in `kubernetes/infrastructure/backups/`:
         - `backup-etcd-snapshot`: Daily CronJob (03:00 UTC) capturing Talos etcd cluster state directly via HA VIP and shipping gzip-compressed snapshots to `s3-aws-backups-prod-use2-001/etcd/` (<35MB, ~$0.01/mo).
         - `backup-postgres-databases`: Daily CronJob (03:30 UTC) running `pg_dump` on Immich and TeslaMate databases and streaming encrypted dumps to `s3-aws-backups-prod-use2-001/postgres/` (<50MB, ~$0.01/mo).
-      - Created [`kubernetes/infrastructure/backups/README.md`](file:///kubernetes/infrastructure/backups/README.md) detailing configuration and step-by-step point-in-time disaster recovery runbooks.
+      - Created [[README|kubernetes/infrastructure/backups/README.md]] detailing configuration and step-by-step point-in-time disaster recovery runbooks.
 
   - ### Milestone 17: Privacy Sanitization, Index Reconciliation & Container Hardening (2026-09-20)
     - **Infrastructure Privacy & MAC Address Sanitization**:
-      - Audited and sanitized 22 physical hardware MAC addresses across [`docs/001-deployment-journal.md`](file:///docs/001-deployment-journal.md), [`docs/101-hardware-inventory.md`](file:///docs/101-hardware-inventory.md), [`docs/201-unifi-network-topology.md`](file:///docs/201-unifi-network-topology.md), and [`docs/506-cups-airprint-bridge.md`](file:///docs/506-cups-airprint-bridge.md) into standardized redacted forms (`OUI:xx:xx:xx`), restoring full compliance with `AGENTS.md` §4 Public-by-Default privacy hygiene.
+      - Audited and sanitized 22 physical hardware MAC addresses across [[001-deployment-journal|docs/001-deployment-journal.md]], [[101-hardware-inventory|docs/101-hardware-inventory.md]], [[201-unifi-network-topology|docs/201-unifi-network-topology.md]], and [[506-cups-airprint-bridge|docs/506-cups-airprint-bridge.md]] into standardized redacted forms (`OUI:xx:xx:xx`), restoring full compliance with `AGENTS.md` §4 Public-by-Default privacy hygiene.
     - **Documentation Index Reconciliation**:
-      - Updated master documentation catalog in [`README.md`](file:///README.md): indexed [`docs/106-observability-prometheus-grafana.md`](file:///docs/106-observability-prometheus-grafana.md), confirmed [`docs/506-cups-airprint-bridge.md`](file:///docs/506-cups-airprint-bridge.md), and pruned dead reference `docs/304-windows-ansible-automation.md` (superseded by Bazzite gaming VM).
+      - Updated master documentation catalog in [[README|README.md]]: indexed [[106-observability-prometheus-grafana|docs/106-observability-prometheus-grafana.md]], confirmed [[506-cups-airprint-bridge|docs/506-cups-airprint-bridge.md]], and pruned dead reference `docs/304-windows-ansible-automation.md` (superseded by Bazzite gaming VM).
     - **Container Resource Protection & Version Pinning**:
-      - Hardened [`kubernetes/apps/immich/immich.yaml`](file:///kubernetes/apps/immich/immich.yaml) with explicit CPU/memory requests and limits across Postgres, Redis, Server, and Machine Learning microservices, preventing unbounded model caching from creating node memory pressure.
-      - Pinned container image versions across workloads to semantic release tags ([`immich:v1.118.0`](file:///kubernetes/apps/immich/immich.yaml), [`actual-server:24.9.0`](file:///kubernetes/apps/finance/actual-budget.yaml), [`teslamate:1.32.0`](file:///kubernetes/apps/teslamate/teslamate.yaml), [`mosquitto:2.0.18`](file:///kubernetes/apps/teslamate/teslamate.yaml), and [`home-assistant:2024.9.1`](file:///kubernetes/apps/home-assistant/home-assistant.yaml)), eliminating surprise breaking upgrades from mutable `:latest` or `:stable` tags.
+      - Hardened `kubernetes/apps/immich/immich.yaml` with explicit CPU/memory requests and limits across Postgres, Redis, Server, and Machine Learning microservices, preventing unbounded model caching from creating node memory pressure.
+      - Pinned container image versions across workloads to semantic release tags (`immich:v1.118.0`, `actual-server:24.9.0`, `teslamate:1.32.0`, `mosquitto:2.0.18`, and `home-assistant:2024.9.1`), eliminating surprise breaking upgrades from mutable `:latest` or `:stable` tags.
 
   - ### Milestone 18: Declarative Cluster State Backup Engine & Live Verification (2026-09-20)
     - **Native In-Cluster RBAC Architecture**:
       - Bypassed external Sidero Omni web PGP session constraints (which expire every 24h and cannot run headless in cron containers) by deploying Option A: native in-cluster ServiceAccount (`k8s-backup-sa`) with read-only ClusterRole.
-      - Authored [`kubernetes/infrastructure/backups/cronjob-cluster-state.yaml`](file:///kubernetes/infrastructure/backups/cronjob-cluster-state.yaml), running daily at 03:00 UTC to comprehensively dump all cluster CRDs, cluster-scoped resources (StorageClasses, PVs, Nodes, ClusterRoles), and all namespaced definitions (Deployments, StatefulSets, Secrets, ConfigMaps, PVCs, Ingresses, NetworkPolicies) across all 18 namespaces.
+      - Authored `kubernetes/infrastructure/backups/cronjob-cluster-state.yaml`, running daily at 03:00 UTC to comprehensively dump all cluster CRDs, cluster-scoped resources (StorageClasses, PVs, Nodes, ClusterRoles), and all namespaced definitions (Deployments, StatefulSets, Secrets, ConfigMaps, PVCs, Ingresses, NetworkPolicies) across all 18 namespaces.
     - **Live End-to-End S3 Backup Verification**:
       - Applied manifests and triggered manual test job `cluster-backup-test`.
       - Verified successful archive packaging and upload to S3 (`s3://s3-aws-backups-prod-use2-001/cluster-state/k8s-cluster-state-20260921_021005.tar.gz`).
       - Total archive size: 5.8 MiB (<$0.001/month storage footprint). Cleaned up test job artifacts upon completion.
     - **Runbook & Documentation Alignment**:
-      - Updated [`kubernetes/infrastructure/backups/README.md`](file:///kubernetes/infrastructure/backups/README.md) with complete disaster recovery and restoration steps for both declarative cluster state and Postgres database dumps.
+      - Updated [[README|kubernetes/infrastructure/backups/README.md]] with complete disaster recovery and restoration steps for both declarative cluster state and Postgres database dumps.
       - Pruned deprecated `cronjob-etcd.yaml`.
 
   - ### Milestone 19: Cloudflare GitOps Migration & Native S3 State Locking (2026-09-29)
@@ -626,14 +626,14 @@ Any AI agent or human operator can review this document to pick up exactly where
 
   - ### Milestone 21: Configuration Audit Remediation, PII Sanitization & Resilience Hardening (2026-10-04)
     - **Hardware Privacy & MAC Address Sanitization (`AGENTS.md` §4)**:
-      - Purged real hardware MAC addresses from `default = "..."` attributes in [`terraform/unifi/variables.tf`](file:///terraform/unifi/variables.tf); migrated hardware MACs strictly into gitignored local [`terraform/unifi/terraform.tfvars`](file:///terraform/unifi/terraform.tfvars) and documented template placeholders in [`terraform/unifi/terraform.tfvars.example`](file:///terraform/unifi/terraform.tfvars.example).
-      - Sanitized physical disk NAA WWN identifier (`naa.5002538exxxxxxxx`) and redacted motherboard MAC suffixes in Sidero Omni machine UUIDs across [`docs/001-deployment-journal.md`](file:///docs/001-deployment-journal.md).
-      - Updated [`terraform/unifi/outputs.tf`](file:///terraform/unifi/outputs.tf) to dynamically reference `unifi_client.sm_node_0X_ipmi.fixed_ip` attributes rather than hardcoded static strings.
+      - Purged real hardware MAC addresses from `default = "..."` attributes in `terraform/unifi/variables.tf`; migrated hardware MACs strictly into gitignored local `terraform/unifi/terraform.tfvars` and documented template placeholders in `terraform/unifi/terraform.tfvars.example`.
+      - Sanitized physical disk NAA WWN identifier (`naa.5002538exxxxxxxx`) and redacted motherboard MAC suffixes in Sidero Omni machine UUIDs across [[001-deployment-journal|docs/001-deployment-journal.md]].
+      - Updated `terraform/unifi/outputs.tf` to dynamically reference `unifi_client.sm_node_0X_ipmi.fixed_ip` attributes rather than hardcoded static strings.
     - **DHCP Subnet Allocation Alignment**:
-      - Shifted VLAN 20 (`K8S-CONTROL`) dynamic DHCP server start IP in [`terraform/unifi/main.tf`](file:///terraform/unifi/main.tf) from `10.10.20.100` to `10.10.20.200` (`10.10.20.200 - 10.10.20.254`).
+      - Shifted VLAN 20 (`K8S-CONTROL`) dynamic DHCP server start IP in `terraform/unifi/main.tf` from `10.10.20.100` to `10.10.20.200` (`10.10.20.200 - 10.10.20.254`).
       - Confines all bare-metal node IPs (`.20`, `.111`, `.120`, `.131`, `.199`) and MetalLB VIPs (`.50 - .60`) safely outside the dynamic lease pool, guaranteeing zero IP conflicts during reboot or lease renegotiation.
     - **Secret Decoupling & Overwrite Safeguards**:
-      - Extracted inline placeholder Secrets out of core application manifests into separate `*-secrets.example.yaml` templates across [`cups`](file:///kubernetes/apps/cups/cups-secrets.example.yaml), [`teslamate`](file:///kubernetes/apps/teslamate/teslamate-secrets.example.yaml), [`arc-runner-set`](file:///kubernetes/infrastructure/arc/github-token-secret.example.yaml), and [`eks-connector`](file:///kubernetes/infrastructure/aws-hybrid/eks-connector-secrets.example.yaml).
+      - Extracted inline placeholder Secrets out of core application manifests into separate `*-secrets.example.yaml` templates across `cups`, `teslamate`, `arc-runner-set`, and `eks-connector`.
       - Eliminates risk of `kubectl apply -f <manifest>.yaml` wiping active production cluster secrets with placeholder strings.
     - **Container Version Immutability**:
       - Eliminated all mutable `:latest` image tags across the cluster; pinned workloads to immutable digests and verified releases:
@@ -643,15 +643,43 @@ Any AI agent or human operator can review this document to pick up exactly where
         - `public.ecr.aws/amazon-ssm-agent/amazon-ssm-agent:3.3.5390.0`
         - `tailscale/tailscale:v1.74.2`
     - **Tailscale Operator Alignment & Subnet Isolation**:
-      - Aligned remote access architecture with [`docs/203-tailscale-mesh-vpn.md`](file:///docs/203-tailscale-mesh-vpn.md).
+      - Aligned remote access architecture with [[203-tailscale-mesh-vpn|docs/203-tailscale-mesh-vpn.md]].
       - Removed overly broad `10.10.0.0/16` subnet advertisement that previously leaked VLAN 10 out-of-band IPMI BMC interfaces to Tailnet.
-      - Codified declarative [`kubernetes/infrastructure/tailscale/connector.yaml`](file:///kubernetes/infrastructure/tailscale/connector.yaml) scoping subnet routes strictly to VLAN 20 (`10.10.20.0/24`) and VLAN 30 (`10.10.30.0/24`), backed by persistent state secret `tailscale-subnet-router-state`.
+      - Codified declarative `kubernetes/infrastructure/tailscale/connector.yaml` scoping subnet routes strictly to VLAN 20 (`10.10.20.0/24`) and VLAN 30 (`10.10.30.0/24`), backed by persistent state secret `tailscale-subnet-router-state`.
     - **Disaster Recovery & Cluster State Backup Hardening**:
-      - Overhauled [`kubernetes/infrastructure/backups/cronjob-cluster-state.yaml`](file:///kubernetes/infrastructure/backups/cronjob-cluster-state.yaml):
+      - Overhauled `kubernetes/infrastructure/backups/cronjob-cluster-state.yaml`:
         - Pinned `kubectl` to `v1.36.4` matching live cluster version, verified with sha256 checksum verification on download.
         - Replaced raw `kubectl get all` dump with targeted declarative extraction of core workload definitions (`deployments`, `statefulsets`, `daemonsets`, `cronjobs`, `services`, `configmaps`, `secrets`, `pvcs`, `ingresses`, `networkpolicies`), stripping ephemeral metadata (`resourceVersion`, `uid`, `status`, `clusterIP`) via `jq` to ensure conflict-free restoration.
         - Added optional client-side AES-256-CBC encryption (`openssl enc -salt -pbkdf2`) before S3 upload.
-      - Updated disaster recovery runbook in [`kubernetes/infrastructure/backups/README.md`](file:///kubernetes/infrastructure/backups/README.md).
+      - Updated disaster recovery runbook in [[README|kubernetes/infrastructure/backups/README.md]].
+
+  - ### Milestone 22: Documentation Audit Remediation, Platform Architecture & State Hygiene (2026-10-04)
+    - **Deprecation of Unused DynamoDB State Locking**:
+      - Removed `aws_dynamodb_table.tflocks` from `bootstrap/aws/storage.tf`, `locals.tf`, and `outputs.tf`. All cloud state backends now exclusively standardize on modern Terraform 1.10+ native S3 lockfiles (`use_lockfile = true`), eliminating cloud footprint and idle AWS resources.
+      - Aligned [[Dashboard.md]] and `bootstrap/backend-config.example.tf` to document native S3 lockfile locking.
+    - **Decommissioned Dev-Workspace Cleanup**:
+      - Pruned dead `ssh-dev` recipes from root `Justfile` and `nix-mac/templates/Justfile`.
+      - Marked `client-tools/ai-dev/ssh-config-snippet` as deprecated and pruned empty `docker/dev-agent` from `README.md`.
+      - Added formal archive/decommissioning notice to [[306-hybrid-local-remote-ai-dev|docs/306-hybrid-local-remote-ai-dev.md]].
+    - **Subdomain & Cloudflare Routing Reality Check**:
+      - Corrected hostnames across [[203-tailscale-mesh-vpn|docs/203-tailscale-mesh-vpn.md]] and [[401-aws-ack-hybrid-architecture|docs/401-aws-ack-hybrid-architecture.md]] to canonical live subdomains (`tesla.bar2sek.com` and `diet.bar2sek.com`).
+      - Corrected [[202-cloudflare-tunnel-zero-trust|docs/202-cloudflare-tunnel-zero-trust.md]] to document actual Terraform tunnel/access resources; clarified that `aws-prod@bar2sek.com` does not exist and Cloudflare Email Routing is managed out-of-band via Dashboard when needed.
+      - Updated [[407-azure-entra-id-authentik-federation|docs/407-azure-entra-id-authentik-federation.md]] domain verification steps to point to `infra-cloud-deployments`.
+    - **Hardware Specs Reconciliation**:
+      - Corrected `sm-node-03` RAM to 160GB in journal milestone records.
+      - Reconciled `pc-node-05` storage in [[101-hardware-inventory|docs/101-hardware-inventory.md]] and [[301-pxe-boot-node-provisioning|docs/301-pxe-boot-node-provisioning.md]] to reflect its dedicated 1TB Sabrent Rocket boot NVMe (`/dev/nvme1n1`) and raw 1TB Crucial P3 Ceph OSD (`/dev/nvme0n1`).
+      - Marked Synology NAS as `[Planned / Staged - Garage DR]` across inventory and topology diagrams.
+    - **Obsidian Wikilink Integrity**:
+      - Purged 67 raw `file:///` URLs across [[001-deployment-journal|docs/001-deployment-journal.md]], converting all document cross-references to standard Obsidian wikilinks (`[[Note Name]]`) and configuration files to Markdown backticks.
+    - **Core Platform Architecture Documentation**:
+      - Authored [[107-ingress-traffic-metallb-cert-manager|docs/107-ingress-traffic-metallb-cert-manager.md]] detailing MetalLB L2 VIP allocation (`10.10.20.50`), Ingress-Nginx controller, and Let's Encrypt DNS-01 automated wildcard renewal.
+      - Authored [[108-omni-dex-platform-architecture|docs/108-omni-dex-platform-architecture.md]] documenting Sidero Omni, Dex OIDC broker, SideroBooter PXE streaming, embedded etcd state, and single-node hostPath backup/DR runbooks.
+      - Added Zone-Based Inter-VLAN Firewall Policy Matrix to [[201-unifi-network-topology|docs/201-unifi-network-topology.md]].
+    - **Secrets & Drive Sync Cache Hygiene**:
+      - Authored `kubernetes/infrastructure/monitoring/grafana-secrets.example.yaml` template for Grafana admin credentials and Authentik OAuth secrets.
+      - Documented AWS CLI creation script and least-privilege IAM policy for offsite S3 backups in `kubernetes/infrastructure/backups/README.md`.
+      - Documented operational command to extract sensitive Cloudflare tunnel tokens and apply directly to cluster secrets.
+      - Purged 672 MB of cached `.terraform/` provider binaries from Google Drive synced folders.
 
 ---
 

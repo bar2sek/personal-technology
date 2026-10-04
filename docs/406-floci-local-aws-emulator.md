@@ -1,4 +1,18 @@
+---
+title: "Floci: In-Cluster Local AWS Cloud Emulator for Terraform & CI/CD Testing"
+date: 2026-09-07
+status: design
+tags:
+  - aws/emulator
+  - floci
+  - terraform
+  - kubernetes/infrastructure
+---
+
 # Floci: In-Cluster Local AWS Cloud Emulator for Terraform & CI/CD Testing
+
+> [!NOTE] Architectural Reference / Staged Implementation
+> Floci manifests (`kubernetes/infrastructure/floci/`) are pinned and staged for local offline AWS API emulation and ARC pipeline testing. Cloud infrastructure validation currently runs against live AWS via GitHub Actions speculative PR plans in `infra-cloud-deployments`.
 
 This guide details how to deploy **[Floci](https://github.com/floci-io/floci)** inside our Talos Kubernetes cluster as a high-performance, 100% open-source (MIT) **LocalStack alternative** for zero-cost, offline AWS Terraform testing, SDK emulation, and GitHub Actions ARC CI/CD validation.
 

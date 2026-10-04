@@ -81,11 +81,6 @@ arc-status:
 arc-logs:
     kubectl -n azure-arc logs -l app.kubernetes.io/name=clusterconnect-agent -f
 
-# Launch interactive terminal into the in-cluster Antigravity Dev Workspace
-ssh-dev:
-    @echo "Connecting to Antigravity Dev Workspace on sm-node-03..."
-    ssh antigravity-dev
-
 # ------------------------------------------------------------------------------
 # 3. Terraform Infrastructure as Code
 # ------------------------------------------------------------------------------

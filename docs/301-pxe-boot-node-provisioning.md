@@ -58,4 +58,4 @@ These consumer gaming PC motherboards do not have IPMI, so they use standard onb
 | `sm-node-02` | Control Plane + Worker | Network PXE (via Omni) | 16GB SATA SuperDOM | Talos API (`talosctl`) |
 | `sm-node-03` | Primary Control Plane | Network PXE (via Omni) | Dual 16GB SuperDOMs | Talos API (`talosctl`) |
 | `pc-node-04` | Storage & Compute Worker | Network PXE (via Omni) | 80GB Intel 320 SSD | Talos API (`talosctl`) |
-| `pc-node-05` | GPU Worker (RTX 4070) | Network PXE (via Omni) | 2GB NVMe Partition | Talos API (`talosctl`) |
+| `pc-node-05` | GPU Worker (RTX 4070) | Network PXE (via Omni) | 1TB Sabrent Rocket NVMe | Talos API (`talosctl`) |

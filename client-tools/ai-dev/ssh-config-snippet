@@ -1,6 +1,7 @@
 # ==============================================================================
-# Homelab Antigravity Remote Dev Pod SSH Configuration
-# Append this snippet to ~/.ssh/config on your macOS workstation
+# Homelab Antigravity Remote Dev Pod SSH Configuration (DEPRECATED / HISTORICAL)
+# Decommissioned in Milestone 20 to prioritize local macOS workstation AI pairing
+# and reclaim 100GB Ceph NVMe block storage. Retained for historical reference.
 # ==============================================================================
 
 # Connect via Tailscale IP or in-cluster subnet IP (10.10.x.x)

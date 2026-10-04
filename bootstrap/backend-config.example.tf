@@ -1,14 +1,14 @@
 # Example Terraform Remote Backend Configurations
 # Choose either AWS S3 + DynamoDB (Production Cloud) or Floci (In-Cluster Offline)
 
-# Option A: AWS Production S3 Backend with DynamoDB State Locking
+# Option A: AWS Production S3 Backend with Native S3 Lockfile (Terraform 1.10+)
 # terraform {
 #   backend "s3" {
-#     bucket         = "s3-aws-backups-prod-use2-001"
-#     key            = "terraform/state/<module-name>/terraform.tfstate"
-#     region         = "us-east-2"
-#     dynamodb_table = "dynamo-aws-tfstate-lock-prod-use2-001"
-#     encrypt        = true
+#     bucket       = "s3-aws-backups-prod-use2-001"
+#     key          = "terraform/state/<module-name>/terraform.tfstate"
+#     region       = "us-east-2"
+#     encrypt      = true
+#     use_lockfile = true
 #   }
 # }
 
