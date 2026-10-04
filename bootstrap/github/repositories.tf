@@ -77,6 +77,8 @@ locals {
       CLOUDFLARE_ACCOUNT_ID        = var.cloudflare_account_id
       CLOUDFLARE_ZONE_ID           = var.cloudflare_zone_id
       CLOUDFLARE_DESTINATION_EMAIL = var.cloudflare_destination_email
+      ENTRA_CLIENT_ID              = var.entra_client_id
+      ENTRA_TENANT_ID              = var.entra_tenant_id
     } : name => value if value != ""
   }
 
@@ -86,6 +88,7 @@ locals {
   actions_secrets = {
     AWS_TF_STATE_BUCKET  = var.aws_tf_state_bucket
     CLOUDFLARE_API_TOKEN = var.cloudflare_api_token
+    ENTRA_CLIENT_SECRET  = var.entra_client_secret
   }
 
   # Terraform forbids sensitive values as `for_each` arguments, since instance

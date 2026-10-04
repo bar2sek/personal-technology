@@ -33,3 +33,8 @@ repository_visibility = "private"
 # cloudflare_zone_id           = "your-cloudflare-zone-id"
 # cloudflare_destination_email = "user@example.com"
 # cloudflare_api_token         = "your-cloudflare-api-token"
+
+# Microsoft Entra ID (Azure AD) Parameters for Cloudflare Access IdP:
+# entra_client_id              = "00000000-0000-0000-0000-000000000000"
+# entra_tenant_id              = "00000000-0000-0000-0000-000000000000"
+# entra_client_secret          = "your-entra-client-secret-value"

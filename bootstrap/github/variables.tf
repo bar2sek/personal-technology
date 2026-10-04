@@ -113,3 +113,26 @@ variable "cloudflare_api_token" {
   default     = ""
   sensitive   = true
 }
+
+# ------------------------------------------------------------------------------
+# Microsoft Entra ID (Azure AD) Parameters for Cloudflare Access IdP
+# ------------------------------------------------------------------------------
+
+variable "entra_client_id" {
+  type        = string
+  description = "Microsoft Entra ID Application (Client) ID"
+  default     = ""
+}
+
+variable "entra_tenant_id" {
+  type        = string
+  description = "Microsoft Entra ID Directory (Tenant) ID"
+  default     = ""
+}
+
+variable "entra_client_secret" {
+  type        = string
+  description = "Microsoft Entra ID Application Client Secret"
+  default     = ""
+  sensitive   = true
+}
