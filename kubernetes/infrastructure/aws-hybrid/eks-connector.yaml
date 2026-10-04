@@ -4,16 +4,6 @@ metadata:
   name: eks-connector
 ---
 apiVersion: v1
-kind: Secret
-metadata:
-  name: eks-connector-activation
-  namespace: eks-connector
-type: Opaque
-stringData:
-  id: "REPLACE_WITH_EKS_ACTIVATION_ID"
-  code: "REPLACE_WITH_EKS_ACTIVATION_CODE"
----
-apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: eks-connector
@@ -52,7 +42,7 @@ spec:
       serviceAccountName: eks-connector
       containers:
         - name: connector
-          image: public.ecr.aws/amazon-ssm-agent/amazon-ssm-agent:latest
+          image: public.ecr.aws/amazon-ssm-agent/amazon-ssm-agent:3.3.5390.0
           env:
             - name: AWS_REGION
               value: "us-east-2"

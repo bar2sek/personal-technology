@@ -20,15 +20,6 @@ spec:
     requests:
       storage: 1Gi
 ---
-apiVersion: v1
-kind: Secret
-metadata:
-  name: cups-admin-credentials
-  namespace: printing
-type: Opaque
-stringData:
-  admin-password: "REPLACE_WITH_SECURE_CUPS_PASSWORD" # pragma: allowlist secret
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -54,7 +45,7 @@ spec:
         kubernetes.io/hostname: pc-node-04
       initContainers:
         - name: init-cups-config
-          image: drpsychick/airprint-bridge:latest
+          image: drpsychick/airprint-bridge@sha256:4b8d0d88f51015c2b5c693fc469696e444a3ab9e42d11bb46ec4fff9ea85bd0a
           command:
             - /bin/sh
             - -c
@@ -68,7 +59,7 @@ spec:
               name: cups-config
       containers:
         - name: cups
-          image: drpsychick/airprint-bridge:latest
+          image: drpsychick/airprint-bridge@sha256:4b8d0d88f51015c2b5c693fc469696e444a3ab9e42d11bb46ec4fff9ea85bd0a
           env:
             - name: TZ
               value: "America/Chicago"

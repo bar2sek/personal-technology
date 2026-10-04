@@ -35,7 +35,7 @@ spec:
     spec:
       containers:
         - name: floci
-          image: ghcr.io/floci-io/floci:latest
+          image: ghcr.io/floci-io/floci:2.1.0
           ports:
             - name: aws-api
               containerPort: 4566

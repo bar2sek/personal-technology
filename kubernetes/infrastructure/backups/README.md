@@ -53,15 +53,22 @@ This directory defines the automated backup infrastructure for the hybrid homela
 ```bash
 # 1. Download cluster state archive from S3
 aws s3 cp s3://s3-aws-backups-prod-use2-001/cluster-state/<archive-name>.tar.gz .
+
+# If client-side encryption was enabled, decrypt the .enc archive:
+# openssl enc -d -aes-256-cbc -pbkdf2 -in <archive-name>.tar.gz.enc -out <archive-name>.tar.gz -pass pass:<YOUR_PASSPHRASE>
+
 mkdir -p restore && tar -xzf <archive-name>.tar.gz -C restore
 
-# 2. Re-apply CRDs and cluster-scoped resources
-kubectl apply -f restore/cluster-scoped/crds.yaml
-kubectl apply -f restore/cluster-scoped/cluster-resources.yaml
+# 2. Re-apply CRDs and cluster-scoped resources (StorageClasses, PVs, RBAC)
+kubectl apply -f restore/cluster-scoped/crds.json
+kubectl apply -f restore/cluster-scoped/cluster-resources.json
 
-# 3. Re-apply namespaced resources (per namespace or all)
+# 3. Re-apply declarative namespaced workloads
 for ns in restore/namespaces/*; do
-  kubectl apply -f "$ns/all-resources.yaml"
+  if [ -f "$ns/declarative-resources.json" ]; then
+    echo "Restoring declarative workloads in namespace: $(basename "$ns")..."
+    kubectl apply -f "$ns/declarative-resources.json"
+  fi
 done
 ```
 

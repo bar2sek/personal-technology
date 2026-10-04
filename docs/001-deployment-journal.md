@@ -153,7 +153,7 @@ Any AI agent or human operator can review this document to pick up exactly where
     - **Physical Placement**: Connected Dell OptiPlex Micro to `USW-24-G2` Port 2 (configured with Native VLAN 10 `MGMT-IPMI`, tagged `block_all`).
     - **Maintenance Mode Boot**: Booted via USB into Talos Linux v1.13.8. Node received temporary DHCP IP **`10.10.10.253`** (MAC `f4:8e:38:xx:xx:xx`).
     - **Hardware Topology via Talos gRPC API**:
-      - Internal Target Disk: `Samsung SSD 860` 500 GB on **`/dev/sda`** (`naa.5002538e30a327a4`).
+      - Internal Target Disk: `Samsung SSD 860` 500 GB on **`/dev/sda`** (`naa.5002538exxxxxxxx`).
       - Installer USB: `Ultra USB 3.0` 15 GB on `/dev/sdb`.
       - Physical Network Interface: **`enp2s0`** (MAC `f4:8e:38:xx:xx:xx`).
     - **UniFi Static Reservation Created**:
@@ -223,12 +223,12 @@ Any AI agent or human operator can review this document to pick up exactly where
     - **Cabling & UniFi Port Provisioning**: Connected onboard 2.5GbE interface to `Ceph-USW-Aggregation` Port 2 via multi-gig SFP+ adapter, alongside existing dual 10G SFP+ links on Ports 5 & 6.
     - **Automated Switch Port Config**: Programmed UniFi API to label Port 2 as `pc-node-04-2.5G` with Native VLAN 20 (`K8S-CONTROL`) and tagged VLANs allowed.
     - **Discovery Flow**: Machine booted via UEFI Network Boot on onboard NIC (`MAC: 2c:f0:5d:xx:xx:xx`), fetched `ipxe.efi` from `10.10.10.5` via TFTP, and downloaded Talos v1.13.10 kernel into RAM.
-    - **Omni Status**: Node registered in Omni under **Machines** (`UUID: 927ef8ab-872a-f416-acb4-2cf05d577ea4`) with WireGuard peer established.
+    - **Omni Status**: Node registered in Omni under **Machines** (`UUID: 927ef8ab-872a-f416-acb4-xxxxxxxxxxxx`) with WireGuard peer established.
 
 22. **Supermicro Control Plane 1 Discovered & Registered (`sm-node-01` / `edge01`)**:
     - **BIOS Option ROM Troubleshooting**: Identified that server was booting into legacy Fedora on SATA SuperDOM because `Onboard LAN Option ROM Type` was set to `[Legacy]`, preventing UEFI boot menu from enumerating 10G SFP+ interfaces.
     - **Resolution**: Set `Onboard LAN Option ROM Type` to `[EFI]`, verified Network Stack IPv4 PXE enabled, and selected `UEFI: PXE IPv4 Intel(R) Ethernet Connection X722 for 10GbE SFP+` in `<F11>` boot menu.
-    - **Omni Status**: Node pulled `ipxe.efi`, booted Talos v1.13.10 into RAM, and registered in Omni under **Machines** (`UUID: da165a00-3e5d-11ea-8000-3cecef44a132`) in `MAINTENANCE` stage (`ready: true`).
+    - **Omni Status**: Node pulled `ipxe.efi`, booted Talos v1.13.10 into RAM, and registered in Omni under **Machines** (`UUID: da165a00-3e5d-11ea-8000-xxxxxxxxxxxx`) in `MAINTENANCE` stage (`ready: true`).
 
 23. **Supermicro Control Plane 2 Discovered & Registered (`sm-node-02` / `edge02`)**:
     - **BIOS Configuration**: Set `Onboard LAN Option ROM Type` to `[EFI]` and CPU PCIe slots to `[EFI]`.
@@ -295,11 +295,11 @@ Any AI agent or human operator can review this document to pick up exactly where
       - All 5 physical nodes returned cleanly to Sidero Omni's unallocated machine pool in `Maintenance` mode.
     - **Declarative Template Prepared (`talos/cluster-template.yaml`)**:
       - Pre-bakes literal hostnames into initial machine config patches:
-        - `da165a00-3e5d-11ea-8000-3cecef44a132` -> `sm-node-01` (Control Plane, SuperDOM `/dev/sda`)
-        - `9983ae00-e364-11ea-8000-3cecef6fd61e` -> `sm-node-02` (Control Plane, SuperDOM `/dev/sda`)
-        - `00000000-0000-0000-0000-3cecef58ed64` -> `sm-node-03` (Control Plane, SuperDOM `/dev/sde`)
-        - `927ef8ab-872a-f416-acb4-2cf05d577ea4` -> `pc-node-04` (Storage Worker, 80GB Intel SSD `/dev/sdc`)
-        - `7a7d25b8-0dfc-c810-a348-047c1680b262` -> `pc-node-05` (GPU Worker, NVMe `/dev/nvme1n1`)
+        - `da165a00-3e5d-11ea-8000-xxxxxxxxxxxx` -> `sm-node-01` (Control Plane, SuperDOM `/dev/sda`)
+        - `9983ae00-e364-11ea-8000-xxxxxxxxxxxx` -> `sm-node-02` (Control Plane, SuperDOM `/dev/sda`)
+        - `00000000-0000-0000-0000-xxxxxxxxxxxx` -> `sm-node-03` (Control Plane, SuperDOM `/dev/sde`)
+        - `927ef8ab-872a-f416-acb4-xxxxxxxxxxxx` -> `pc-node-04` (Storage Worker, 80GB Intel SSD `/dev/sdc`)
+        - `7a7d25b8-0dfc-c810-a348-xxxxxxxxxxxx` -> `pc-node-05` (GPU Worker, NVMe `/dev/nvme1n1`)
       - Preserves all VFIO kernel args (`amd_iommu=on`, `vfio-pci.ids`) and Kubernetes node labels.
     - **Current Readiness**:
       - 5/5 physical machines connected, healthy, and awaiting fresh cluster formation.
@@ -623,6 +623,35 @@ Any AI agent or human operator can review this document to pick up exactly where
       - After evaluation, the containerized remote desktop environment was fully decommissioned to preserve compute and storage resources for core homelab infrastructure and the upcoming garage Synology NAS DR integration.
       - Executed complete teardown: deleted `dev-workspaces` namespace, instantly releasing 100GB of fast NVMe block storage back to the Ceph distributed storage pool (`rook-ceph-block-nvme`) and freeing up to 32GB RAM / 16 vCPUs on `pc-node-04`.
       - Pruned manifests, UniFi split-horizon DNS record (`agy.bar2sek.com` in `terraform/unifi/dns.tf`), and Cloudflare Zero Trust tunnel ingress and access policies in `infra-cloud-deployments`.
+
+  - ### Milestone 21: Configuration Audit Remediation, PII Sanitization & Resilience Hardening (2026-10-04)
+    - **Hardware Privacy & MAC Address Sanitization (`AGENTS.md` §4)**:
+      - Purged real hardware MAC addresses from `default = "..."` attributes in [`terraform/unifi/variables.tf`](file:///terraform/unifi/variables.tf); migrated hardware MACs strictly into gitignored local [`terraform/unifi/terraform.tfvars`](file:///terraform/unifi/terraform.tfvars) and documented template placeholders in [`terraform/unifi/terraform.tfvars.example`](file:///terraform/unifi/terraform.tfvars.example).
+      - Sanitized physical disk NAA WWN identifier (`naa.5002538exxxxxxxx`) and redacted motherboard MAC suffixes in Sidero Omni machine UUIDs across [`docs/001-deployment-journal.md`](file:///docs/001-deployment-journal.md).
+      - Updated [`terraform/unifi/outputs.tf`](file:///terraform/unifi/outputs.tf) to dynamically reference `unifi_client.sm_node_0X_ipmi.fixed_ip` attributes rather than hardcoded static strings.
+    - **DHCP Subnet Allocation Alignment**:
+      - Shifted VLAN 20 (`K8S-CONTROL`) dynamic DHCP server start IP in [`terraform/unifi/main.tf`](file:///terraform/unifi/main.tf) from `10.10.20.100` to `10.10.20.200` (`10.10.20.200 - 10.10.20.254`).
+      - Confines all bare-metal node IPs (`.20`, `.111`, `.120`, `.131`, `.199`) and MetalLB VIPs (`.50 - .60`) safely outside the dynamic lease pool, guaranteeing zero IP conflicts during reboot or lease renegotiation.
+    - **Secret Decoupling & Overwrite Safeguards**:
+      - Extracted inline placeholder Secrets out of core application manifests into separate `*-secrets.example.yaml` templates across [`cups`](file:///kubernetes/apps/cups/cups-secrets.example.yaml), [`teslamate`](file:///kubernetes/apps/teslamate/teslamate-secrets.example.yaml), [`arc-runner-set`](file:///kubernetes/infrastructure/arc/github-token-secret.example.yaml), and [`eks-connector`](file:///kubernetes/infrastructure/aws-hybrid/eks-connector-secrets.example.yaml).
+      - Eliminates risk of `kubectl apply -f <manifest>.yaml` wiping active production cluster secrets with placeholder strings.
+    - **Container Version Immutability**:
+      - Eliminated all mutable `:latest` image tags across the cluster; pinned workloads to immutable digests and verified releases:
+        - `cloudflare/cloudflared:2026.9.3`
+        - `drpsychick/airprint-bridge@sha256:4b8d0d88f51015c2b5c693fc469696e444a3ab9e42d11bb46ec4fff9ea85bd0a`
+        - `ghcr.io/floci-io/floci:2.1.0`
+        - `public.ecr.aws/amazon-ssm-agent/amazon-ssm-agent:3.3.5390.0`
+        - `tailscale/tailscale:v1.74.2`
+    - **Tailscale Operator Alignment & Subnet Isolation**:
+      - Aligned remote access architecture with [`docs/203-tailscale-mesh-vpn.md`](file:///docs/203-tailscale-mesh-vpn.md).
+      - Removed overly broad `10.10.0.0/16` subnet advertisement that previously leaked VLAN 10 out-of-band IPMI BMC interfaces to Tailnet.
+      - Codified declarative [`kubernetes/infrastructure/tailscale/connector.yaml`](file:///kubernetes/infrastructure/tailscale/connector.yaml) scoping subnet routes strictly to VLAN 20 (`10.10.20.0/24`) and VLAN 30 (`10.10.30.0/24`), backed by persistent state secret `tailscale-subnet-router-state`.
+    - **Disaster Recovery & Cluster State Backup Hardening**:
+      - Overhauled [`kubernetes/infrastructure/backups/cronjob-cluster-state.yaml`](file:///kubernetes/infrastructure/backups/cronjob-cluster-state.yaml):
+        - Pinned `kubectl` to `v1.36.4` matching live cluster version, verified with sha256 checksum verification on download.
+        - Replaced raw `kubectl get all` dump with targeted declarative extraction of core workload definitions (`deployments`, `statefulsets`, `daemonsets`, `cronjobs`, `services`, `configmaps`, `secrets`, `pvcs`, `ingresses`, `networkpolicies`), stripping ephemeral metadata (`resourceVersion`, `uid`, `status`, `clusterIP`) via `jq` to ensure conflict-free restoration.
+        - Added optional client-side AES-256-CBC encryption (`openssl enc -salt -pbkdf2`) before S3 upload.
+      - Updated disaster recovery runbook in [`kubernetes/infrastructure/backups/README.md`](file:///kubernetes/infrastructure/backups/README.md).
 
 ---
 

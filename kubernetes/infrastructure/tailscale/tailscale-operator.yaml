@@ -3,17 +3,16 @@ kind: Namespace
 metadata:
   name: tailscale
 ---
-apiVersion: v1
-kind: Secret
-metadata:
-  name: operator-oauth
-  namespace: tailscale
-type: Opaque
-stringData:
-  client_id: "REPLACE_WITH_TAILSCALE_CLIENT_ID"
-  client_secret: "REPLACE_WITH_TAILSCALE_CLIENT_SECRET"
----
-# Tailscale Subnet Router Pod to route internal homelab subnets
+# ==============================================================================
+# Declarative Tailscale Subnet Router
+# ==============================================================================
+# Routes internal cluster control plane (VLAN 20) and application workloads
+# (VLAN 30) to the Tailnet.
+#
+# IMPORTANT: VLAN 10 (10.10.10.0/24 MGMT-IPMI) is explicitly EXCLUDED to prevent
+# exposing out-of-band motherboard BMC interfaces over Tailscale.
+# State is persisted in Kubernetes Secret 'tailscale-subnet-router-state'.
+# ==============================================================================
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -23,6 +22,8 @@ metadata:
     app: tailscale-subnet-router
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: tailscale-subnet-router
@@ -33,20 +34,21 @@ spec:
     spec:
       containers:
         - name: tailscale
-          image: tailscale/tailscale:latest
+          image: tailscale/tailscale:v1.74.2
           env:
             - name: TS_AUTHKEY
               valueFrom:
                 secretKeyRef:
-                  name: operator-oauth
-                  key: client_secret
-                  optional: true
+                  name: tailscale-auth
+                  key: authkey
             - name: TS_ROUTES
-              value: "10.10.0.0/16"
+              value: "10.10.20.0/24,10.10.30.0/24"
             - name: TS_USERSPACE
               value: "false"
             - name: TS_HOSTNAME
               value: "talos-k8s-subnet-router"
+            - name: TS_KUBE_SECRET
+              value: "tailscale-subnet-router-state"
           securityContext:
             capabilities:
               add:

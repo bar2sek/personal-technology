@@ -59,35 +59,50 @@ spec:
                     exit 1
                   fi
 
-                  echo "Installing backup dependencies (aws-cli, curl, tar, gzip)..."
-                  apk add --no-cache aws-cli curl tar gzip
+                  echo "Installing backup dependencies (aws-cli, curl, tar, gzip, jq, openssl)..."
+                  apk add --no-cache aws-cli curl tar gzip jq openssl
 
-                  echo "Installing kubectl CLI..."
-                  curl -fsSL https://dl.k8s.io/release/v1.31.0/bin/linux/amd64/kubectl -o /usr/local/bin/kubectl
+                  KUBECTL_VERSION="v1.36.4"
+                  KUBECTL_SHA256="8b8f088da2dab964f853b38464033b1be15ede2839eca751482357c45abdd05a"
+
+                  echo "Installing verified kubectl ${KUBECTL_VERSION} CLI..."
+                  curl -fsSL "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl
+                  echo "${KUBECTL_SHA256}  /usr/local/bin/kubectl" | sha256sum -c -
                   chmod +x /usr/local/bin/kubectl
 
                   mkdir -p "${BACKUP_DIR}/cluster-scoped" "${BACKUP_DIR}/namespaces"
 
                   echo "Dumping Custom Resource Definitions (CRDs)..."
-                  kubectl get crd -o yaml > "${BACKUP_DIR}/cluster-scoped/crds.yaml" || true
+                  kubectl get crd -o json | jq 'del(.items[].metadata.resourceVersion, .items[].metadata.uid, .items[].metadata.creationTimestamp, .items[].metadata.generation, .items[].metadata.managedFields, .items[].status)' > "${BACKUP_DIR}/cluster-scoped/crds.json" || true
 
-                  echo "Dumping Cluster-Scoped Resources (StorageClasses, PVs, Nodes, ClusterRoles)..."
-                  kubectl get storageclass,persistentvolume,nodes,clusterroles,clusterrolebindings,ingressclasses -o yaml > "${BACKUP_DIR}/cluster-scoped/cluster-resources.yaml" || true
+                  echo "Dumping Cluster-Scoped Resources (StorageClasses, PVs, ClusterRoles)..."
+                  kubectl get storageclass,persistentvolume,clusterroles,clusterrolebindings,ingressclasses -o json | jq 'del(.items[].metadata.resourceVersion, .items[].metadata.uid, .items[].metadata.creationTimestamp, .items[].metadata.generation, .items[].metadata.managedFields, .items[].status)' > "${BACKUP_DIR}/cluster-scoped/cluster-resources.json" || true
 
-                  echo "Dumping Namespaced Resources across all namespaces..."
+                  echo "Dumping Declarative Namespaced Resources across all namespaces..."
+                  TARGET_RESOURCES="deployments,statefulsets,daemonsets,cronjobs,services,configmaps,secrets,persistentvolumeclaims,ingresses,networkpolicies"
                   for ns in $(kubectl get namespaces -o jsonpath='{.items[*].metadata.name}'); do
                     mkdir -p "${BACKUP_DIR}/namespaces/${ns}"
                     echo " -> Backing up namespace: ${ns}..."
-                    kubectl get all,configmap,secret,persistentvolumeclaim,ingress,networkpolicy -n "${ns}" -o yaml > "${BACKUP_DIR}/namespaces/${ns}/all-resources.yaml" 2>/dev/null || true
+                    kubectl get ${TARGET_RESOURCES} -n "${ns}" -o json 2>/dev/null | jq 'del(.items[].metadata.resourceVersion, .items[].metadata.uid, .items[].metadata.creationTimestamp, .items[].metadata.generation, .items[].metadata.managedFields, .items[].status, .items[].spec.clusterIP, .items[].spec.clusterIPs)' > "${BACKUP_DIR}/namespaces/${ns}/declarative-resources.json" || true
                   done
 
                   echo "Compressing declarative cluster state archive..."
                   tar -czf "${ARCHIVE_FILE}" -C "${BACKUP_DIR}" .
 
-                  echo "Uploading cluster state archive to AWS S3..."
-                  aws s3 cp "${ARCHIVE_FILE}" "s3://${S3_BUCKET}/cluster-state/k8s-cluster-state-${TIMESTAMP}.tar.gz" --storage-class STANDARD
+                  FINAL_PAYLOAD="${ARCHIVE_FILE}"
+                  S3_DEST_FILE="k8s-cluster-state-${TIMESTAMP}.tar.gz"
 
-                  rm -rf "${BACKUP_DIR}" "${ARCHIVE_FILE}"
+                  if [ -n "${BACKUP_ENCRYPTION_PASSPHRASE:-}" ] && [ "${BACKUP_ENCRYPTION_PASSPHRASE}" != "REPLACE_WITH_ENCRYPTION_PASSPHRASE" ]; then
+                    echo "Encrypting backup archive with client-side AES-256-CBC..."
+                    openssl enc -aes-256-cbc -salt -pbkdf2 -in "${ARCHIVE_FILE}" -out "${ARCHIVE_FILE}.enc" -pass env:BACKUP_ENCRYPTION_PASSPHRASE
+                    FINAL_PAYLOAD="${ARCHIVE_FILE}.enc"
+                    S3_DEST_FILE="k8s-cluster-state-${TIMESTAMP}.tar.gz.enc"
+                  fi
+
+                  echo "Uploading cluster state archive to AWS S3..."
+                  aws s3 cp "${FINAL_PAYLOAD}" "s3://${S3_BUCKET}/cluster-state/${S3_DEST_FILE}" --storage-class STANDARD
+
+                  rm -rf "${BACKUP_DIR}" "${ARCHIVE_FILE}" "${ARCHIVE_FILE}.enc" 2>/dev/null || true
                   echo "Kubernetes declarative cluster backup successfully completed and uploaded to S3."
               envFrom:
                 - secretRef:

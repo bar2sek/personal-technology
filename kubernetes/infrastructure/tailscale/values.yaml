@@ -1,0 +1,18 @@
+# ==============================================================================
+# Tailscale Kubernetes Operator Helm Values
+# Reference: https://tailscale.com/kb/1236/kubernetes-operator
+# ==============================================================================
+operatorConfig:
+  image:
+    repository: tailscale/k8s-operator
+    tag: "v1.74.2"
+    pullPolicy: IfNotPresent
+  hostname: "talos-tailscale-operator"
+  logging: "info"
+
+oauth:
+  # Secret name containing client_id and client_secret
+  secretName: "operator-oauth"
+
+apiServerProxyConfig:
+  mode: "true"

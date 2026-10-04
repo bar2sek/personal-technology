@@ -1,0 +1,20 @@
+# ==============================================================================
+# Declarative Subnet Router via Tailscale Kubernetes Operator CRD
+# ==============================================================================
+# Routes internal cluster control plane (VLAN 20) and application workloads
+# (VLAN 30) to the Tailnet.
+#
+# IMPORTANT: VLAN 10 (10.10.10.0/24 MGMT-IPMI) is explicitly EXCLUDED to prevent
+# exposing out-of-band motherboard BMC interfaces over Tailscale.
+# ==============================================================================
+apiVersion: tailscale.com/v1alpha1
+kind: Connector
+metadata:
+  name: homelab-subnet-router
+  namespace: tailscale
+spec:
+  hostname: talos-homelab-router
+  subnetRouter:
+    routes:
+      - 10.10.20.0/24 # K8S-CONTROL (Talos API, VIPs, Nodes)
+      - 10.10.30.0/24 # K8S-APPS (Workloads & Pods)

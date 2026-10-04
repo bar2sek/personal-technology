@@ -3,15 +3,6 @@ kind: Namespace
 metadata:
   name: actions-runner-system
 ---
-apiVersion: v1
-kind: Secret
-metadata:
-  name: github-token-secret
-  namespace: actions-runner-system
-type: Opaque
-stringData:
-  github_token: "REPLACE_WITH_GITHUB_PAT" # Injected via secret manager or SealedSecrets
----
 apiVersion: actions.github.com/v1alpha1
 kind: AutoscalingRunnerSet
 metadata:

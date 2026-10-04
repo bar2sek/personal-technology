@@ -25,7 +25,7 @@ resource "unifi_network" "k8s_control" {
 
   dhcp_server = {
     enabled = true
-    start   = "10.10.20.100" # 10.10.20.10-99 reserved for static node IPs and MetalLB VIPs (10.10.20.50-60)
+    start   = "10.10.20.200" # 10.10.20.10-199 reserved for static node IPs (.20, .111, .120, .131, .199) and MetalLB VIPs (.50-.60)
     stop    = "10.10.20.254"
   }
 }

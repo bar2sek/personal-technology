@@ -60,19 +60,19 @@ variable "omni_mac_address" {
 variable "sm_node_01_ipmi_mac" {
   type        = string
   description = "sm-node-01 (edge01) Supermicro IPMI BMC MAC"
-  default     = "3c:ec:ef:44:a4:2c"
+  default     = ""
 }
 
 variable "sm_node_02_ipmi_mac" {
   type        = string
   description = "sm-node-02 (edge02) Supermicro IPMI BMC MAC"
-  default     = "3c:ec:ef:6f:da:41"
+  default     = ""
 }
 
 variable "sm_node_03_ipmi_mac" {
   type        = string
   description = "sm-node-03 (main01) Supermicro IPMI BMC MAC"
-  default     = "3c:ec:ef:5b:9a:da"
+  default     = ""
 }
 
 variable "printer_ip" {
@@ -84,7 +84,7 @@ variable "printer_ip" {
 variable "printer_mac_address" {
   type        = string
   description = "MAC address for Brother DCP-7065DN laser printer (USW-24-G2 Port 23)"
-  default     = "30:05:5c:18:d8:79"
+  default     = ""
 }
 
 # --- Kubernetes Cluster Nodes (VLAN 20: K8S-CONTROL) ---
@@ -92,7 +92,7 @@ variable "printer_mac_address" {
 variable "sm_node_01_k8s_mac" {
   type        = string
   description = "sm-node-01 10GbE SFP+ interface MAC (eno7np2)"
-  default     = "3c:ec:ef:44:9b:50"
+  default     = ""
 }
 
 variable "sm_node_01_k8s_ip" {
@@ -104,7 +104,7 @@ variable "sm_node_01_k8s_ip" {
 variable "sm_node_02_k8s_mac" {
   type        = string
   description = "sm-node-02 10GbE SFP+ interface MAC (eno7np2)"
-  default     = "3c:ec:ef:6f:d4:bc"
+  default     = ""
 }
 
 variable "sm_node_02_k8s_ip" {
@@ -116,7 +116,7 @@ variable "sm_node_02_k8s_ip" {
 variable "sm_node_03_k8s_mac" {
   type        = string
   description = "sm-node-03 10GbE SFP+ interface MAC (ens6f0)"
-  default     = "a0:36:9f:3b:0c:f8"
+  default     = ""
 }
 
 variable "sm_node_03_k8s_ip" {
@@ -128,7 +128,7 @@ variable "sm_node_03_k8s_ip" {
 variable "pc_node_04_k8s_mac" {
   type        = string
   description = "pc-node-04 (storage-worker) 10G SFP+ interface MAC (enp43s0f0)"
-  default     = "a0:36:9f:9a:ce:24"
+  default     = ""
 }
 
 
@@ -141,7 +141,7 @@ variable "pc_node_04_k8s_ip" {
 variable "pc_node_05_k8s_mac" {
   type        = string
   description = "pc-node-05 (gpu-worker) onboard interface MAC (enp12s0)"
-  default     = "04:7c:16:80:b2:62"
+  default     = ""
 }
 
 variable "pc_node_05_k8s_ip" {

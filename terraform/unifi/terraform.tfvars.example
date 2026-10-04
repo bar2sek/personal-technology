@@ -10,3 +10,18 @@ unifi_password = "your-secure-local-password"
 
 # Optional: MAC address for Sidero Omni server static DHCP reservation (10.10.10.5)
 # omni_mac_address = "xx:xx:xx:xx:xx:xx"
+
+# Printer Hardware MAC Address
+printer_mac_address = "xx:xx:xx:xx:xx:xx"
+
+# Out-of-Band IPMI BMC MAC Addresses (VLAN 10)
+sm_node_01_ipmi_mac = "xx:xx:xx:xx:xx:xx"
+sm_node_02_ipmi_mac = "xx:xx:xx:xx:xx:xx"
+sm_node_03_ipmi_mac = "xx:xx:xx:xx:xx:xx"
+
+# Bare-Metal Kubernetes Node 10GbE / Primary NIC MAC Addresses (VLAN 20)
+sm_node_01_k8s_mac  = "xx:xx:xx:xx:xx:xx"
+sm_node_02_k8s_mac  = "xx:xx:xx:xx:xx:xx"
+sm_node_03_k8s_mac  = "xx:xx:xx:xx:xx:xx"
+pc_node_04_k8s_mac  = "xx:xx:xx:xx:xx:xx"
+pc_node_05_k8s_mac  = "xx:xx:xx:xx:xx:xx"
