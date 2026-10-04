@@ -41,7 +41,7 @@ This document details the physical network topology, switch interconnects, WAN c
 - **Access Switch (Garage)**: 1x **UniFi Switch Lite 8 PoE (USW-Lite-8-PoE)** (`78:45:58:xx:xx:xx` - `10.0.1.40`)
   - 8-port Gigabit switch with 802.3at PoE+ located in the garage to power garage AP, garage peripherals, and isolated backup storage.
   - Uplink: 1GbE RJ45 connection (Port 1) to core UDM-Pro (Port 2).
-  - Port 2: Synology NAS 2-Bay (Planned / Staged: 2x 2TB HDDs - Tier 3 bulk backup target, macOS Time Machine server, and isolated DR vault).
+  - Port 2: Synology DS713+ (Active: 2x 2TB HDDs - `10.0.1.223`, Tier 3 bulk backup target, macOS Time Machine server, and isolated DR vault).
   - Port 8: PoE+ connection to U6-Lite WAP.
 - **Wireless Infrastructure (Access Points)**:
   - **Home Wi-Fi 7 AP**: 1x **UniFi U7 Pro WAP** (`94:2a:6f:xx:xx:xx` - `10.0.1.214`) connected to USW-24-G2 Port 6 for primary household wireless coverage.
@@ -66,7 +66,7 @@ graph TD
 
     %% Garage Switch, AP & Storage
     LITE8_P8["USW-Lite-8-PoE Port 8 (802.3at PoE)"] -->|Cat6 RJ45| U6LITE["U6-Lite WAP (Garage Wi-Fi 6)"]
-    LITE8_P2["USW-Lite-8-PoE Port 2 (1G RJ45)"] -->|Cat6 RJ45| SYNOLOGY["Synology NAS 2-Bay (Planned: Garage DR & Time Machine)"]
+    LITE8_P2["USW-Lite-8-PoE Port 2 (1G RJ45)"] -->|Cat6 RJ45| SYNOLOGY["Synology DS713+ (Garage DR & Time Machine • 10.0.1.223)"]
 
     %% Core Switch Aggregation 20G LAG Backbone
     AGG1_P7["USW-Agg #1 Port 7 (10G SFP+)"] ===|10G SFP+ DAC - 20G LAG| AGG2_P7["USW-Agg #2 Port 7 (10G SFP+)"]
@@ -125,7 +125,7 @@ graph LR
     subgraph MANAGEMENT["Out-of-Band & Provisioning Layer"]
         OMNI_SRV["omni-server (10.10.10.5 / 10.10.20.5)"]
         IPMI_NODES["Supermicro IPMIs (10.10.10.11-13)"]
-        SYN_NAS["Synology NAS 2-Bay (Planned: Garage DR Vault / Time Machine)"]
+        SYN_NAS["Synology DS713+ (Active: Garage DR Vault / Time Machine • 10.0.1.223)"]
     end
 
     subgraph K8S_CLUSTER["Talos Linux Kubernetes Cluster"]

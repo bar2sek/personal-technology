@@ -120,6 +120,15 @@ spec:
 
                   echo "Uploading Authentik backup to S3 (s3://${S3_BUCKET}/postgres/authentik/)..."
                   aws s3 cp "/tmp/authentik_${TIMESTAMP}.sql.gz" "s3://${S3_BUCKET}/postgres/authentik/authentik_${TIMESTAMP}.sql.gz" --storage-class STANDARD
+
+                  if [ -d "/mnt/synology-dr" ]; then
+                    echo "Mirroring Authentik backup to local Synology Tier-3 storage..."
+                    mkdir -p "/mnt/synology-dr/postgres/authentik"
+                    cp "/tmp/authentik_${TIMESTAMP}.sql.gz" "/mnt/synology-dr/postgres/authentik/authentik_${TIMESTAMP}.sql.gz"
+                    find /mnt/synology-dr/postgres/authentik -name "authentik_*.sql.gz" -type f -mtime +30 -delete 2>/dev/null || true
+                    echo "Tier-3 Authentik local mirror successfully updated."
+                  fi
+
                   rm -f "/tmp/authentik_${TIMESTAMP}.sql.gz"
                   echo "Authentik PostgreSQL database backup successful."
 
@@ -144,6 +153,15 @@ spec:
 
                     echo "Uploading TeslaMate backup to S3 (s3://${S3_BUCKET}/postgres/teslamate/)..."
                     aws s3 cp "/tmp/teslamate_${TIMESTAMP}.sql.gz" "s3://${S3_BUCKET}/postgres/teslamate/teslamate_${TIMESTAMP}.sql.gz" --storage-class STANDARD
+
+                    if [ -d "/mnt/synology-dr" ]; then
+                      echo "Mirroring TeslaMate backup to local Synology Tier-3 storage..."
+                      mkdir -p "/mnt/synology-dr/postgres/teslamate"
+                      cp "/tmp/teslamate_${TIMESTAMP}.sql.gz" "/mnt/synology-dr/postgres/teslamate/teslamate_${TIMESTAMP}.sql.gz"
+                      find /mnt/synology-dr/postgres/teslamate -name "teslamate_*.sql.gz" -type f -mtime +30 -delete 2>/dev/null || true
+                      echo "Tier-3 TeslaMate local mirror successfully updated."
+                    fi
+
                     rm -f "/tmp/teslamate_${TIMESTAMP}.sql.gz"
                     echo "TeslaMate PostgreSQL database backup successful."
                   else
@@ -151,6 +169,13 @@ spec:
                   fi
 
                   echo "===> All PostgreSQL backups completed successfully at $(date)."
+              volumeMounts:
+                - name: synology-dr
+                  mountPath: /mnt/synology-dr
               envFrom:
                 - secretRef:
                     name: s3-backup-credentials
+          volumes:
+            - name: synology-dr
+              persistentVolumeClaim:
+                claimName: pvc-synology-nfs-backups

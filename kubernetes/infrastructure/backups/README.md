@@ -10,7 +10,7 @@ This directory defines the automated backup infrastructure for the hybrid homela
 | :--- | :--- | :--- | :--- | :--- |
 | **Tier 1: Control Plane & Cluster State** | Declarative K8s State (CRDs, PVs, namespaces, secrets, workloads) | `backup-cluster-state` CronJob (Daily 03:00 UTC) | AWS S3 (`s3-aws-backups-prod-use2-001/cluster-state/`) | **Active**: ~$0.01 / month |
 | **Tier 2: Relational Databases** | Authentik (active) & TeslaMate (when deployed) PostgreSQL dumps | `backup-postgres-databases` CronJob (Daily 03:30 UTC) | AWS S3 (`s3-aws-backups-prod-use2-001/postgres/`) | **Active**: ~$0.01 / month |
-| **Tier 3: Bulk Media & Large PVCs** | Home Assistant & application volumes | Synology NAS via NFS/rsync (Garage 1GbE Pipeline) | Garage Synology NAS | **Planned (Hardware Backlog)**. Current local state: Ceph replicated storage (`reclaimPolicy: Retain`). |
+| **Tier 3: Local DR Mirror & Workstation** | Declarative state, DB dumps, media & Time Machine (`nix-mac`) | Synology NFS PV/PVC (`pvc-synology-nfs-backups`) + SMB | Garage Synology DS713+ (`10.0.1.223` / `k8s-backups`) | **Active**: On-premises isolated DR |
 
 > [!IMPORTANT]
 > **Data Protection Invariant (`reclaimPolicy: Retain`)**: All production Ceph storage classes (`rook-ceph-block`, `rook-ceph-block-nvme`, `rook-ceph-hdd-bulk`, `rook-ceph-filesystem`) are explicitly configured with `reclaimPolicy: Retain`. If an application namespace or PersistentVolumeClaim is deleted, the underlying Ceph volume is preserved in `Released` state rather than purged.
@@ -55,11 +55,13 @@ This directory defines the automated backup infrastructure for the hybrid homela
    aws iam create-access-key --user-name svc-homelab-backup-uploader
    ```
 
-2. **Deploy S3 Credentials to Kubernetes**:
+2. **Deploy S3 Credentials & Synology NFS Storage to Kubernetes**:
    Copy [`backup-credentials.example.yaml`](backup-credentials.example.yaml) to `backup-credentials.yaml`, insert the generated Access Key ID & Secret Access Key:
    ```bash
    kubectl apply -f namespace.yaml
    kubectl apply -f backup-credentials.yaml
+   kubectl apply -f pv-synology-nfs.yaml
+   kubectl apply -f pvc-synology-nfs.yaml
    ```
 
 3. **Deploy CronJobs & RBAC**:
@@ -70,7 +72,7 @@ This directory defines the automated backup infrastructure for the hybrid homela
    > [!NOTE]
    > `cronjob-postgres.yaml` configures a dedicated `postgres-backup-sa` ServiceAccount and fine-grained `Role` and `RoleBinding` objects in the `identity` namespace. This grants the backup runner read-only access to `authentik-secrets` directly via the Kubernetes API, preventing credential duplication while keeping AWS S3 credentials restricted to `backups`. (TeslaMate backup RBAC is configured alongside its app manifest when deployed).
 
-3. **Manual Trigger & Test**:
+4. **Manual Trigger & Test**:
    ```bash
    # Test cluster-state backup:
    kubectl create job --from=cronjob/backup-cluster-state cluster-backup-test -n backups
@@ -125,4 +127,32 @@ gunzip <teslamate-dump>.sql.gz
 
 # 2. Restore into pod
 kubectl exec -i -n teslamate deploy/teslamate-db -- psql -U teslamate -d teslamate < <teslamate-dump>.sql
+```
+
+### C. Restoring Fast from Synology Local Tier-3 Mirror (Zero-Egress DR)
+When internet connectivity is down or fast local restoration is preferred over downloading from AWS S3, retrieve the archives directly from the Garage Synology NAS:
+
+```bash
+# Option 1: Direct from a temporary pod or node mounting Synology NFS
+kubectl run synology-restore --rm -i --tty --image=alpine:3.20 --overrides='
+{
+  "spec": {
+    "volumes": [{"name": "nfs", "persistentVolumeClaim": {"claimName": "pvc-synology-nfs-backups"}}],
+    "containers": [{
+      "name": "restore",
+      "image": "alpine:3.20",
+      "command": ["/bin/sh"],
+      "stdin": true,
+      "tty": true,
+      "volumeMounts": [{"name": "nfs", "mountPath": "/mnt/synology-dr"}]
+    }]
+  }
+}'
+
+# Inside the pod: archives are located at /mnt/synology-dr/cluster-state/ and /mnt/synology-dr/postgres/
+
+# Option 2: Direct from macOS / nix-mac via SMB/NFS mount
+mkdir -p /Volumes/SynologyBackups
+mount_nfs 10.0.1.223:/volume1/k8s-backups /Volumes/SynologyBackups
+ls -la /Volumes/SynologyBackups/cluster-state/
 ```

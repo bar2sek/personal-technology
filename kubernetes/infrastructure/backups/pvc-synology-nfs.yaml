@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-synology-nfs-backups
+  namespace: backups
+spec:
+  accessModes:
+    - ReadWriteMany
+  volumeMode: Filesystem
+  resources:
+    requests:
+      storage: 400Gi
+  storageClassName: ""
+  volumeName: pv-synology-nfs-backups

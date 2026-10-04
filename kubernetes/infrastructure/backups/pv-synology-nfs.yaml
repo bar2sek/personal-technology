@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-synology-nfs-backups
+  labels:
+    tier: tier-3-dr
+    destination: synology-nas
+spec:
+  capacity:
+    storage: 400Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  nfs:
+    server: 10.0.1.223
+    path: /volume1/k8s-backups
+    readOnly: false
+  mountOptions:
+    - hard
+    - nfsvers=4.1
+    - noatime

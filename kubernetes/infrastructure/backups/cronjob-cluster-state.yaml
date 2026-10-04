@@ -102,8 +102,23 @@ spec:
                   echo "Uploading cluster state archive to AWS S3..."
                   aws s3 cp "${FINAL_PAYLOAD}" "s3://${S3_BUCKET}/cluster-state/${S3_DEST_FILE}" --storage-class STANDARD
 
+                  if [ -d "/mnt/synology-dr" ]; then
+                    echo "Mirroring cluster state archive to local Synology Tier-3 storage..."
+                    mkdir -p "/mnt/synology-dr/cluster-state"
+                    cp "${FINAL_PAYLOAD}" "/mnt/synology-dr/cluster-state/${S3_DEST_FILE}"
+                    find /mnt/synology-dr/cluster-state -name "k8s-cluster-state-*" -type f -mtime +30 -delete 2>/dev/null || true
+                    echo "Tier-3 local mirror successfully updated."
+                  fi
+
                   rm -rf "${BACKUP_DIR}" "${ARCHIVE_FILE}" "${ARCHIVE_FILE}.enc" 2>/dev/null || true
-                  echo "Kubernetes declarative cluster backup successfully completed and uploaded to S3."
+                  echo "Kubernetes declarative cluster backup successfully completed and uploaded to S3 + Synology."
+              volumeMounts:
+                - name: synology-dr
+                  mountPath: /mnt/synology-dr
               envFrom:
                 - secretRef:
                     name: s3-backup-credentials
+          volumes:
+            - name: synology-dr
+              persistentVolumeClaim:
+                claimName: pvc-synology-nfs-backups
