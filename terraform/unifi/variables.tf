@@ -149,4 +149,3 @@ variable "pc_node_05_k8s_ip" {
   description = "Static IP for pc-node-05 on K8S-CONTROL (VLAN 20)"
   default     = "10.10.20.111"
 }
-

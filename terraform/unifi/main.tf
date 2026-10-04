@@ -194,4 +194,3 @@ resource "unifi_client" "sm_node_03_ipmi" {
   note           = "Supermicro SYS-E300-9D Control Plane 3 Dedicated IPMI BMC"
 }
 
-
