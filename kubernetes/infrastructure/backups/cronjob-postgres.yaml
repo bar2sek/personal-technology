@@ -61,6 +61,34 @@ roleRef:
   name: teslamate-db-backup-reader
 ---
 # ==============================================================================
+# RBAC: Scoped Secret Reader for Authentik Database Credentials
+# ==============================================================================
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: authentik-db-backup-reader
+  namespace: identity
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["authentik-secrets"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: authentik-db-backup-reader-binding
+  namespace: identity
+subjects:
+  - kind: ServiceAccount
+    name: postgres-backup-sa
+    namespace: backups
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: authentik-db-backup-reader
+---
+# ==============================================================================
 # CronJob: Automated PostgreSQL S3 Backup Pipeline
 # ==============================================================================
 apiVersion: batch/v1
@@ -178,6 +206,34 @@ spec:
                   aws s3 cp "/tmp/teslamate_${TIMESTAMP}.sql.gz" "s3://${S3_BUCKET}/postgres/teslamate/teslamate_${TIMESTAMP}.sql.gz" --storage-class STANDARD
                   rm -f "/tmp/teslamate_${TIMESTAMP}.sql.gz"
                   echo "TeslaMate PostgreSQL database backup successful."
+
+                  # -------------------------------------------------------------
+                  # Authentik PostgreSQL Database Dump
+                  # -------------------------------------------------------------
+                  echo "===> Starting backup for Authentik PostgreSQL database..."
+                  AUTHENTIK_HOST="authentik-db.identity.svc.cluster.local"
+                  AUTHENTIK_PORT="5432"
+                  AUTHENTIK_USER="authentik"
+                  AUTHENTIK_DB="authentik"
+
+                  if ! nc -z -w 5 "${AUTHENTIK_HOST}" "${AUTHENTIK_PORT}" 2>/dev/null; then
+                    echo "ERROR: Cannot reach Authentik PostgreSQL service at ${AUTHENTIK_HOST}:${AUTHENTIK_PORT}." >&2
+                    exit 1
+                  fi
+
+                  AUTHENTIK_DB_PASSWORD=$(fetch_secret_key "identity" "authentik-secrets" "db-password")
+                  if [ -z "${AUTHENTIK_DB_PASSWORD}" ]; then
+                    echo "ERROR: Retrieved empty database password for Authentik." >&2
+                    exit 1
+                  fi
+
+                  echo "Dumping Authentik database (${AUTHENTIK_DB})..."
+                  PGPASSWORD="${AUTHENTIK_DB_PASSWORD}" pg_dump -h "${AUTHENTIK_HOST}" -p "${AUTHENTIK_PORT}" -U "${AUTHENTIK_USER}" -d "${AUTHENTIK_DB}" | gzip > "/tmp/authentik_${TIMESTAMP}.sql.gz"
+
+                  echo "Uploading Authentik backup to S3 (s3://${S3_BUCKET}/postgres/authentik/)..."
+                  aws s3 cp "/tmp/authentik_${TIMESTAMP}.sql.gz" "s3://${S3_BUCKET}/postgres/authentik/authentik_${TIMESTAMP}.sql.gz" --storage-class STANDARD
+                  rm -f "/tmp/authentik_${TIMESTAMP}.sql.gz"
+                  echo "Authentik PostgreSQL database backup successful."
 
                   echo "===> All PostgreSQL backups completed successfully at $(date)."
               envFrom:
