@@ -5,62 +5,6 @@ metadata:
   namespace: backups
 ---
 # ==============================================================================
-# RBAC: Scoped Secret Reader for Immich Database Credentials
-# ==============================================================================
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: immich-db-backup-reader
-  namespace: immich
-rules:
-  - apiGroups: [""]
-    resources: ["secrets"]
-    resourceNames: ["immich-secrets"]
-    verbs: ["get"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: immich-db-backup-reader-binding
-  namespace: immich
-subjects:
-  - kind: ServiceAccount
-    name: postgres-backup-sa
-    namespace: backups
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: immich-db-backup-reader
----
-# ==============================================================================
-# RBAC: Scoped Secret Reader for TeslaMate Database Credentials
-# ==============================================================================
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: teslamate-db-backup-reader
-  namespace: teslamate
-rules:
-  - apiGroups: [""]
-    resources: ["secrets"]
-    resourceNames: ["teslamate-secrets"]
-    verbs: ["get"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: teslamate-db-backup-reader-binding
-  namespace: teslamate
-subjects:
-  - kind: ServiceAccount
-    name: postgres-backup-sa
-    namespace: backups
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: teslamate-db-backup-reader
----
-# ==============================================================================
 # RBAC: Scoped Secret Reader for Authentik Database Credentials
 # ==============================================================================
 apiVersion: rbac.authorization.k8s.io/v1
@@ -152,63 +96,7 @@ spec:
                   }
 
                   # -------------------------------------------------------------
-                  # Immich PostgreSQL Database Dump
-                  # -------------------------------------------------------------
-                  echo "===> Starting backup for Immich PostgreSQL database..."
-                  IMMICH_HOST="immich-postgres.immich.svc.cluster.local"
-                  IMMICH_PORT="5432"
-                  IMMICH_USER="postgres"
-                  IMMICH_DB="immich"
-
-                  if ! nc -z -w 5 "${IMMICH_HOST}" "${IMMICH_PORT}" 2>/dev/null; then
-                    echo "ERROR: Cannot reach Immich PostgreSQL service at ${IMMICH_HOST}:${IMMICH_PORT}." >&2
-                    exit 1
-                  fi
-
-                  IMMICH_DB_PASSWORD=$(fetch_secret_key "immich" "immich-secrets" "db-password")
-                  if [ -z "${IMMICH_DB_PASSWORD}" ]; then
-                    echo "ERROR: Retrieved empty database password for Immich." >&2
-                    exit 1
-                  fi
-
-                  echo "Dumping Immich database (${IMMICH_DB})..."
-                  PGPASSWORD="${IMMICH_DB_PASSWORD}" pg_dump -h "${IMMICH_HOST}" -p "${IMMICH_PORT}" -U "${IMMICH_USER}" -d "${IMMICH_DB}" | gzip > "/tmp/immich_${TIMESTAMP}.sql.gz"
-
-                  echo "Uploading Immich backup to S3 (s3://${S3_BUCKET}/postgres/immich/)..."
-                  aws s3 cp "/tmp/immich_${TIMESTAMP}.sql.gz" "s3://${S3_BUCKET}/postgres/immich/immich_${TIMESTAMP}.sql.gz" --storage-class STANDARD
-                  rm -f "/tmp/immich_${TIMESTAMP}.sql.gz"
-                  echo "Immich PostgreSQL database backup successful."
-
-                  # -------------------------------------------------------------
-                  # TeslaMate PostgreSQL Database Dump
-                  # -------------------------------------------------------------
-                  echo "===> Starting backup for TeslaMate PostgreSQL database..."
-                  TESLAMATE_HOST="teslamate-db.teslamate.svc.cluster.local"
-                  TESLAMATE_PORT="5432"
-                  TESLAMATE_USER="teslamate"
-                  TESLAMATE_DB="teslamate"
-
-                  if ! nc -z -w 5 "${TESLAMATE_HOST}" "${TESLAMATE_PORT}" 2>/dev/null; then
-                    echo "ERROR: Cannot reach TeslaMate PostgreSQL service at ${TESLAMATE_HOST}:${TESLAMATE_PORT}." >&2
-                    exit 1
-                  fi
-
-                  TESLAMATE_DB_PASSWORD=$(fetch_secret_key "teslamate" "teslamate-secrets" "db-password")
-                  if [ -z "${TESLAMATE_DB_PASSWORD}" ]; then
-                    echo "ERROR: Retrieved empty database password for TeslaMate." >&2
-                    exit 1
-                  fi
-
-                  echo "Dumping TeslaMate database (${TESLAMATE_DB})..."
-                  PGPASSWORD="${TESLAMATE_DB_PASSWORD}" pg_dump -h "${TESLAMATE_HOST}" -p "${TESLAMATE_PORT}" -U "${TESLAMATE_USER}" -d "${TESLAMATE_DB}" | gzip > "/tmp/teslamate_${TIMESTAMP}.sql.gz"
-
-                  echo "Uploading TeslaMate backup to S3 (s3://${S3_BUCKET}/postgres/teslamate/)..."
-                  aws s3 cp "/tmp/teslamate_${TIMESTAMP}.sql.gz" "s3://${S3_BUCKET}/postgres/teslamate/teslamate_${TIMESTAMP}.sql.gz" --storage-class STANDARD
-                  rm -f "/tmp/teslamate_${TIMESTAMP}.sql.gz"
-                  echo "TeslaMate PostgreSQL database backup successful."
-
-                  # -------------------------------------------------------------
-                  # Authentik PostgreSQL Database Dump
+                  # Authentik PostgreSQL Database Dump (Active Production)
                   # -------------------------------------------------------------
                   echo "===> Starting backup for Authentik PostgreSQL database..."
                   AUTHENTIK_HOST="authentik-db.identity.svc.cluster.local"
@@ -234,6 +122,33 @@ spec:
                   aws s3 cp "/tmp/authentik_${TIMESTAMP}.sql.gz" "s3://${S3_BUCKET}/postgres/authentik/authentik_${TIMESTAMP}.sql.gz" --storage-class STANDARD
                   rm -f "/tmp/authentik_${TIMESTAMP}.sql.gz"
                   echo "Authentik PostgreSQL database backup successful."
+
+                  # -------------------------------------------------------------
+                  # TeslaMate PostgreSQL Database Dump (Conditional when deployed)
+                  # -------------------------------------------------------------
+                  TESLAMATE_HOST="teslamate-db.teslamate.svc.cluster.local"
+                  TESLAMATE_PORT="5432"
+                  TESLAMATE_USER="teslamate"
+                  TESLAMATE_DB="teslamate"
+
+                  if nc -z -w 3 "${TESLAMATE_HOST}" "${TESLAMATE_PORT}" 2>/dev/null; then
+                    echo "===> Starting backup for TeslaMate PostgreSQL database..."
+                    TESLAMATE_DB_PASSWORD=$(fetch_secret_key "teslamate" "teslamate-secrets" "db-password")
+                    if [ -z "${TESLAMATE_DB_PASSWORD}" ]; then
+                      echo "ERROR: Retrieved empty database password for TeslaMate." >&2
+                      exit 1
+                    fi
+
+                    echo "Dumping TeslaMate database (${TESLAMATE_DB})..."
+                    PGPASSWORD="${TESLAMATE_DB_PASSWORD}" pg_dump -h "${TESLAMATE_HOST}" -p "${TESLAMATE_PORT}" -U "${TESLAMATE_USER}" -d "${TESLAMATE_DB}" | gzip > "/tmp/teslamate_${TIMESTAMP}.sql.gz"
+
+                    echo "Uploading TeslaMate backup to S3 (s3://${S3_BUCKET}/postgres/teslamate/)..."
+                    aws s3 cp "/tmp/teslamate_${TIMESTAMP}.sql.gz" "s3://${S3_BUCKET}/postgres/teslamate/teslamate_${TIMESTAMP}.sql.gz" --storage-class STANDARD
+                    rm -f "/tmp/teslamate_${TIMESTAMP}.sql.gz"
+                    echo "TeslaMate PostgreSQL database backup successful."
+                  else
+                    echo "TeslaMate database service not reachable (app uninstalled or not deployed yet); skipping."
+                  fi
 
                   echo "===> All PostgreSQL backups completed successfully at $(date)."
               envFrom:

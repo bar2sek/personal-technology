@@ -76,7 +76,7 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 - [501 - TeslaMate Vehicle Telemetry & Analytics Platform](docs/501-teslamate-telemetry-deployment.md)
 - [502 - Actual Budget Self-Hosted Personal Finance Platform](docs/502-personal-finance-apps.md)
 - [503 - Mealie Recipe Manager & Meal Planner](docs/503-mealie-recipe-planner.md)
-- [504 - Immich Self-Hosted Photo & Video Backup Platform](docs/504-immich-photo-backup.md)
+- [504 - Immich Self-Hosted Photo & Video Backup Platform (Decommissioned)](docs/504-immich-photo-backup.md)
 - [505 - Home Assistant Smart Home & IoT Automation Platform](docs/505-home-assistant-smart-home.md)
 - [506 - In-Cluster CUPS Network Print Server & AirPrint Bridge](docs/506-cups-airprint-bridge.md)
 
@@ -128,13 +128,12 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 │   │   ├── arc/               # Actions Runner Controller AutoscalingRunnerSet
 │   │   ├── floci/             # In-cluster local AWS cloud emulator
 │   │   ├── authentik/         # Authentik master IdP & PostgreSQL/Redis
-│   │   ├── aws-hybrid/        # AWS ACK (S3, Route53) & EKS Connector
-│   │   └── dev-workspace/     # Antigravity persistent remote dev pod & NVMe PVC
+│   │   └── aws-hybrid/        # AWS ACK (S3, Route53) & EKS Connector
 │   └── apps/                  # Containerized self-hosted application suite
 │       ├── teslamate/         # Tesla telemetry, MQTT, PostgreSQL, Grafana
 │       ├── finance/           # Actual Budget personal finance
 │       ├── mealie/            # Mealie recipe manager
-│       ├── immich/            # Immich photo backup (pgvector + ML)
+│       ├── cups/              # CUPS print server & AirPrint bridge
 │       └── home-assistant/    # Home Assistant smart home automation
 └── talos/                     # Talos Linux machine configurations & patches
     ├── talosconfig.example    # talosctl client configuration template

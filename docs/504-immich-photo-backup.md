@@ -1,6 +1,10 @@
 # Immich Self-Hosted Photo & Video Backup Platform
 
+> [!NOTE]
+> **Decommissioned / Architectural Reference Only**: Immich has been decommissioned from the homelab cluster plans in favor of Google Photos (bundled with Google One & Gemini Advanced). This eliminates local cluster GPU/RAM overhead and multi-hundred gigabyte storage and backup operational overhead.
+
 This guide details the features, iOS integration, NVIDIA GPU hardware acceleration, and Kubernetes deployment manifest for **[Immich](https://immich.app/)** — the premier open-source Google Photos / Apple iCloud Photos replacement.
+
 
 ---
 
