@@ -60,7 +60,18 @@ All public web services are routed via Cloudflare Tunnels using CNAME DNS record
 | `ceph.bar2sek.com` | Ceph Dashboard | `https://ingress-nginx-controller.ingress-nginx:443` | **Yes** (Cloudflare Zero Trust Access - Admin) |
 | `finance.bar2sek.com` | Actual Budget | `http://actual-budget-service.finance:80` | **Yes** (Cloudflare Zero Trust Access - Extended Session) |
 | `diet.bar2sek.com` | Mealie Recipe Manager | `http://mealie-service.mealie:80` | **Yes** (Cloudflare Zero Trust Access - Extended Session) |
-| `auth.bar2sek.com` | Authentik IdP | `https://ingress-nginx-controller.ingress-nginx:443` | **No** (Direct Tunnel / IdP Self-Protected Endpoint) |
+| `auth.bar2sek.com` | Authentik IdP | `https://ingress-nginx-controller.ingress-nginx:443` | **Yes** (Cloudflare Zero Trust Access - Admin), except the OIDC back-channel paths below |
+
+> [!IMPORTANT]
+> **Authentik back-channel bypass.** Grafana's *server* calls Authentik's `/application/o/token/` and `/application/o/userinfo/` directly. A server can't carry an Access session cookie, so these two paths are separate path-scoped Access applications with a `bypass` decision (`infra-cloud-deployments`, `terraform/cloudflare/locals.tf`, `authentik_backchannel_paths`). Cloudflare evaluates the most specific path first, so every other path on `auth` (login flows, admin UI, API, OIDC discovery) requires Access.
+>
+> Verified 2026-10-05 with external `curl` probes:
+> - `/`, `/if/admin/` and `/api/v3/` return a 302 to the Access login.
+> - An unauthenticated `POST /application/o/token/` returns Authentik's `400 invalid_client`.
+> - `GET /application/o/userinfo/` without a token returns `401`.
+> - A look-alike path (`/application/o/tokenX`) still requires Access.
+>
+> If another OIDC client is added, its server-side calls must use these same two paths, or it needs its own bypass entry.
 
 ---
 
