@@ -102,8 +102,18 @@ locals {
   ])
 }
 
+# Repository scope differs from the environment in exactly one value: pull
+# request plans assume the read-only PLAN role, while the `production`
+# environment (which takes precedence for the apply job) keeps the APPLY role.
+locals {
+  repository_variables = merge(
+    local.actions_variables,
+    var.aws_plan_role_arn == "" ? {} : { AWS_ROLE_TO_ASSUME = var.aws_plan_role_arn },
+  )
+}
+
 resource "github_actions_variable" "shared" {
-  for_each = local.actions_variables
+  for_each = local.repository_variables
 
   repository    = github_repository.infra_cloud_deployments.name
   variable_name = each.key
@@ -175,7 +185,10 @@ resource "github_branch_protection" "main" {
   repository_id = github_repository.infra_cloud_deployments.name
   pattern       = "main"
 
-  enforce_admins = false
+  # Admins get no bypass: every change to main, including the owner's, arrives
+  # through a pull request, so the speculative plan always runs before apply.
+  # With 0 required approvals a solo maintainer can still self-merge.
+  enforce_admins = true
 
   # Declared explicitly rather than left to the provider default: this is a
   # security control, and an implicit value is easy to misread. Force-pushes

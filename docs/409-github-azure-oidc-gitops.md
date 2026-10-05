@@ -101,9 +101,9 @@ Entra ID evaluates incoming JWTs against the configured `subject` string:
 The deployment repository and its governance are declared in `bootstrap/github/`:
 * **`github_repository.infra_cloud_deployments`**: Creates the standalone deployment repo with automated security alerts.
 * **`github_repository_environment.production`**: Enforces branch policies (deployments restricted to `main`).
-* **`github_actions_variable.shared` / `github_actions_environment_variable.production`**: Declaratively set `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AWS_ROLE_TO_ASSUME`, and `AWS_REGION` at **both** repository and environment scope, driven from a single `locals` map.
+* **`github_actions_variable.shared` / `github_actions_environment_variable.production`**: Declaratively set `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AWS_ROLE_TO_ASSUME`, and `AWS_REGION` at **both** repository and environment scope, driven from a single `locals` map. The one deliberate difference: repository-scope `AWS_ROLE_TO_ASSUME` is the read-only **plan** role (`aws_plan_role_arn`), while the `production` environment keeps the **apply** role (`aws_role_arn`). See §3.
 * **`github_actions_secret.shared` / `github_actions_environment_secret.production`**: Set `AWS_TF_STATE_BUCKET` as a masked secret at both scopes.
-* **`github_branch_protection.main`**: Requires pull requests before code merges to `main`.
+* **`github_branch_protection.main`**: Requires pull requests before code merges to `main`, **enforced for admins too** (`enforce_admins = true`). The owner can still self-merge (0 required approvals), but cannot push directly, so every production apply is preceded by a speculative plan on a PR.
 
 > [!IMPORTANT] Why both scopes
 > GitHub resolves lookups with precedence `environment > repository > organization`. The PR `plan` job in `aws-deploy.yml` / `azure-deploy.yml` declares **no** `environment:` key—deliberately, since adding one would subject every pull request to the `production` approval gate and defeat the speculative plan. Environment-scoped values are therefore invisible to it, and a repository-scoped baseline is required. The environment-scoped copies remain as `production` overrides and as the extension point for future `staging`/`dev` environments.
@@ -119,6 +119,42 @@ Azure identity and backend resources are declared in `bootstrap/azure/`:
 * **`azurerm_role_assignment.github_actions_contributor`**: Grants `Contributor` permissions to the subscription.
 * **`azurerm_storage_account.tfstate`**: Remote state storage account (`stazutfstateprodcus001`) with Entra ID authentication enforced (`shared_access_key_enabled = false`).
 * **`azurerm_role_assignment.github_actions_tfstate`**: Grants `Storage Blob Data Contributor` to the runner service principal.
+
+---
+
+### 3. AWS IAM: Split Plan / Apply Roles (`bootstrap/aws/oidc.tf`)
+
+A pull request must never hold write access to the cloud account. Each pipeline stage therefore assumes its own role, and each role trusts **exactly one** immutable subject claim:
+
+| Role | Trusted `sub` | Permissions |
+| :--- | :--- | :--- |
+| `role-aws-github-plan-prod-001` | `repo:bar2sek@6226865/infra-cloud-deployments@1378897273:pull_request` | `ReadOnlyAccess`, minus data-plane reads (S3 objects outside the state bucket, Secrets Manager, SSM parameters, KMS decrypt, DynamoDB items), plus write access to `*.tflock` only |
+| `role-aws-github-actions-prod-001` (apply) | `repo:bar2sek@6226865/infra-cloud-deployments@1378897273:environment:production` | `policy-aws-github-apply-prod-001`: state read/write, `s3-aws-*` bucket **configuration** (never object data, never `DeleteBucket`), `role-aws-*` / `policy-aws-*` management |
+
+No workflow change is needed. Variable precedence (`environment > repository`) hands each job the right role automatically.
+
+```mermaid
+graph LR
+    PR["pull_request: plan job<br/>(no environment)"] -->|"repo-scope AWS_ROLE_TO_ASSUME"| PLAN["Plan role<br/>read-only"]
+    MAIN["push to main: apply job<br/>environment: production"] -->|"env-scope AWS_ROLE_TO_ASSUME"| APPLY["Apply role<br/>scoped"]
+    APPLY -->|"may only create roles carrying"| BND["Workload permissions boundary<br/>policy-aws-workload-boundary-prod-001"]
+```
+
+**Why a permissions boundary.** Any principal that can create IAM roles and attach policies can normally make itself administrator: it creates a role with `AdministratorAccess` and assumes it. The apply role's privilege-granting actions (`CreateRole`, `AttachRolePolicy`, `PutRolePolicy`, `PutRolePermissionsBoundary`) are conditioned on `iam:PermissionsBoundary` equalling the workload boundary. Every role CI creates is therefore capped at the boundary, whatever policy is attached to it. Explicit denies stop CI from editing its own roles, its own policy, the boundary itself, or removing any boundary.
+
+> [!IMPORTANT] Adding a new workload role
+> In `infra-cloud-deployments`, every `aws_iam_role` must set `permissions_boundary = local.workload_boundary_arn`. If the workload needs a service the boundary doesn't allow, extend `aws_iam_policy.workload_boundary` **here in bootstrap** and apply it locally. Growing privilege stays a reviewed, human action outside CI.
+
+> [!NOTE] Immutable subjects only
+> The trust policies accept only the `owner@id/repo@id` subject format. On 2026-10-04 this was verified from CloudTrail before the mutable `repo:owner/name` and `ref:refs/heads/main` subjects were removed:
+> ```bash
+> aws cloudtrail lookup-events --region us-east-2 \
+>   --lookup-attributes AttributeKey=EventName,AttributeValue=AssumeRoleWithWebIdentity \
+>   --query 'Events[].CloudTrailEvent' --output json \
+>   | jq -r '.[] | fromjson | .responseElements.subjectFromWebIdentityToken' | sort | uniq -c
+> ```
+
+**Verification.** Policies were checked with IAM Access Analyzer (`aws accessanalyzer validate-policy`: zero findings), and the escalation paths were tested with `aws iam simulate-custom-policy`. Creating a role without the boundary, or with a different one, is denied. So are rewriting its own trust policy, attaching a policy to itself, stripping a boundary, reading backup objects, and changing the state bucket's configuration. The actions Terraform needs are allowed.
 
 ---
 
@@ -177,3 +213,14 @@ git push -u origin main
 ### 2. `AuthorizationPermissionMismatch` on Azure Blob Storage
 * **Cause**: The runner is attempting to read/write state without `Storage Blob Data Contributor` RBAC.
 * **Fix**: Ensure `azurerm_role_assignment.github_actions_tfstate` is applied and propagation has completed (~2 minutes in Azure AD).
+
+### 3. `AccessDenied` in the AWS apply job after a Terraform change
+
+The apply role is scoped to the resource types Terraform manages today. A new resource type (for example a DynamoDB table or an SNS topic) will plan successfully, because the plan role is read-only across the account, but fail to apply. That is the intended failure mode: add the specific actions to `aws_iam_policy.github_apply` in `bootstrap/aws/oidc.tf`, apply bootstrap locally, then re-run the workflow. If the error names `iam:CreateRole` or `iam:AttachRolePolicy`, the new role is missing `permissions_boundary = local.workload_boundary_arn`.
+
+### 4. `GH006: Protected branch update failed` from a CI job
+
+A workflow step tried to `git push` to `main`. This is blocked by design: CI jobs have read-only repository tokens, and branch protection applies to everyone. Architecture diagrams are published as **workflow artifacts** instead of being committed. Download them from the run and include them in a PR. Direct pushes by the owner are also rejected now that `enforce_admins = true`; use a branch and `gh pr create`.
+
+> [!NOTE] Why not required status checks?
+> The plan jobs are path-filtered per provider (`terraform/aws/**`, and so on). A required check that never starts, because the PR didn't touch that path, blocks the merge forever. Requiring checks here needs an always-running aggregator job first. That's tracked on the SECURITY.md roadmap.

@@ -68,7 +68,13 @@ variable "azure_subscription_id" {
 
 variable "aws_role_arn" {
   type        = string
-  description = "AWS IAM Role ARN for GitHub Actions OIDC assume-role"
+  description = "APPLY role ARN (bootstrap/aws output github_actions_role_arn). Set on the production environment."
+  default     = ""
+}
+
+variable "aws_plan_role_arn" {
+  type        = string
+  description = "Read-only PLAN role ARN (bootstrap/aws output github_plan_role_arn). Set at repository scope for pull request plans."
   default     = ""
 }
 
