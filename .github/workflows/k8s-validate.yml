@@ -12,10 +12,16 @@ on:
     paths:
       - "kubernetes/**"
 
+permissions:
+  contents: read
+
+# Runs on an ephemeral GitHub-hosted runner, never the self-hosted ARC runner:
+# this repository is public, and `pull_request` executes untrusted fork code.
+# Nothing here needs homelab network access.
 jobs:
   validate:
     name: "Lint & Validate K8s Manifests"
-    runs-on: talos-homelab-runner
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -26,7 +32,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install Yamllint
-        run: pip install yamllint
+        run: pip install yamllint==1.38.0
 
       - name: Lint YAML Files
         run: |

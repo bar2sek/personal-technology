@@ -14,10 +14,16 @@ on:
       - "terraform/**"
       - "bootstrap/**"
 
+permissions:
+  contents: read
+
+# Runs on an ephemeral GitHub-hosted runner, never the self-hosted ARC runner:
+# this repository is public, and `pull_request` executes untrusted fork code.
+# Nothing here needs homelab network access.
 jobs:
   validate:
     name: "Validate Terraform Configurations"
-    runs-on: talos-homelab-runner
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
