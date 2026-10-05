@@ -1,0 +1,21 @@
+# ==============================================================================
+# Backup Encryption Recipient (age PUBLIC key)
+#
+# Every backup artifact is encrypted to this recipient before it leaves the pod.
+# This is a public key: it can encrypt but never decrypt, so it is safe to
+# commit. The matching private identity is kept offline (passphrase-wrapped),
+# so the cluster can write backups but can never read them back.
+#
+# Both backup CronJobs reference this ConfigMap as REQUIRED (fail closed): if it
+# is missing, pods never start; if the value is not a valid age recipient, the
+# job exits before producing any artifact.
+#
+# Rotation: see README.md "Rotating the encryption key".
+# ==============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backup-encryption
+  namespace: backups
+data:
+  AGE_RECIPIENT: "age1ggkknhaz68ups8ysvnxpdcly29jpntkhekmvyhyq8qxthajupugq7lvgch"

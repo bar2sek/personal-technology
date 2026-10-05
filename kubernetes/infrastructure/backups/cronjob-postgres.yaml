@@ -42,6 +42,9 @@ metadata:
   namespace: backups
 spec:
   schedule: "30 3 * * *" # Daily at 03:30 UTC (10:30 PM CDT)
+  # Declared explicitly: `kubectl apply` would otherwise preserve a suspend set
+  # imperatively (e.g. during an incident), since it is absent from last-applied.
+  suspend: false
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
@@ -61,14 +64,23 @@ spec:
                   set -euo pipefail
                   TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
-                  if [ "${AWS_ACCESS_KEY_ID}" = "REPLACE_WITH_AWS_BACKUP_ACCESS_KEY_ID" ] || [ -z "${AWS_ACCESS_KEY_ID}" ]; then
-                    echo "ERROR: AWS credentials not configured in secret 's3-backup-credentials'."
-                    echo "Please edit kubernetes/infrastructure/backups/backup-credentials.yaml with active credentials and re-apply."
+                  # Fail closed: without an age recipient there is no backup at all,
+                  # never an unencrypted one.
+                  case "${AGE_RECIPIENT:-}" in
+                    age1*) ;;
+                    *) echo "ERROR: AGE_RECIPIENT missing or invalid (ConfigMap 'backup-encryption'). Refusing to back up." >&2; exit 1 ;;
+                  esac
+
+                  if [ "${AWS_ACCESS_KEY_ID:-}" = "REPLACE_WITH_AWS_BACKUP_ACCESS_KEY_ID" ] || [ -z "${AWS_ACCESS_KEY_ID:-}" ]; then
+                    echo "ERROR: AWS credentials not configured in secret 's3-backup-credentials'. See README.md." >&2
                     exit 1
                   fi
 
-                  echo "Installing runtime dependencies (aws-cli, curl, jq, gzip)..."
-                  apk add --no-cache aws-cli curl jq gzip
+                  echo "Installing runtime dependencies (aws-cli, curl, jq, gzip, age)..."
+                  apk add --no-cache aws-cli curl jq gzip age
+
+                  # age parses the recipient strictly; a typo fails here, before any data is read.
+                  echo probe | age -r "${AGE_RECIPIENT}" > /dev/null
 
                   APISERVER="https://kubernetes.default.svc"
                   SERVICEACCOUNT="/var/run/secrets/kubernetes.io/serviceaccount"
@@ -115,21 +127,13 @@ spec:
                     exit 1
                   fi
 
-                  echo "Dumping Authentik database (${AUTHENTIK_DB})..."
-                  PGPASSWORD="${AUTHENTIK_DB_PASSWORD}" pg_dump -h "${AUTHENTIK_HOST}" -p "${AUTHENTIK_PORT}" -U "${AUTHENTIK_USER}" -d "${AUTHENTIK_DB}" | gzip > "/tmp/authentik_${TIMESTAMP}.sql.gz"
+                  echo "Dumping and encrypting Authentik database (${AUTHENTIK_DB})..."
+                  PGPASSWORD="${AUTHENTIK_DB_PASSWORD}" pg_dump -h "${AUTHENTIK_HOST}" -p "${AUTHENTIK_PORT}" -U "${AUTHENTIK_USER}" -d "${AUTHENTIK_DB}" | gzip | age -r "${AGE_RECIPIENT}" -o "/tmp/authentik_${TIMESTAMP}.sql.gz.age"
 
-                  echo "Uploading Authentik backup to S3 (s3://${S3_BUCKET}/postgres/authentik/)..."
-                  aws s3 cp "/tmp/authentik_${TIMESTAMP}.sql.gz" "s3://${S3_BUCKET}/postgres/authentik/authentik_${TIMESTAMP}.sql.gz" --storage-class STANDARD
+                  echo "Uploading encrypted Authentik backup to S3 (s3://${S3_BUCKET}/postgres/authentik/)..."
+                  aws s3 cp "/tmp/authentik_${TIMESTAMP}.sql.gz.age" "s3://${S3_BUCKET}/postgres/authentik/authentik_${TIMESTAMP}.sql.gz.age" --storage-class STANDARD --checksum-algorithm CRC32
 
-                  if [ -d "/mnt/synology-dr" ]; then
-                    echo "Mirroring Authentik backup to local Synology Tier-3 storage..."
-                    mkdir -p "/mnt/synology-dr/postgres/authentik"
-                    cp "/tmp/authentik_${TIMESTAMP}.sql.gz" "/mnt/synology-dr/postgres/authentik/authentik_${TIMESTAMP}.sql.gz"
-                    find /mnt/synology-dr/postgres/authentik -name "authentik_*.sql.gz" -type f -mtime +30 -delete 2>/dev/null || true
-                    echo "Tier-3 Authentik local mirror successfully updated."
-                  fi
-
-                  rm -f "/tmp/authentik_${TIMESTAMP}.sql.gz"
+                  rm -f "/tmp/authentik_${TIMESTAMP}.sql.gz.age"
                   echo "Authentik PostgreSQL database backup successful."
 
                   # -------------------------------------------------------------
@@ -148,34 +152,22 @@ spec:
                       exit 1
                     fi
 
-                    echo "Dumping TeslaMate database (${TESLAMATE_DB})..."
-                    PGPASSWORD="${TESLAMATE_DB_PASSWORD}" pg_dump -h "${TESLAMATE_HOST}" -p "${TESLAMATE_PORT}" -U "${TESLAMATE_USER}" -d "${TESLAMATE_DB}" | gzip > "/tmp/teslamate_${TIMESTAMP}.sql.gz"
+                    echo "Dumping and encrypting TeslaMate database (${TESLAMATE_DB})..."
+                    PGPASSWORD="${TESLAMATE_DB_PASSWORD}" pg_dump -h "${TESLAMATE_HOST}" -p "${TESLAMATE_PORT}" -U "${TESLAMATE_USER}" -d "${TESLAMATE_DB}" | gzip | age -r "${AGE_RECIPIENT}" -o "/tmp/teslamate_${TIMESTAMP}.sql.gz.age"
 
-                    echo "Uploading TeslaMate backup to S3 (s3://${S3_BUCKET}/postgres/teslamate/)..."
-                    aws s3 cp "/tmp/teslamate_${TIMESTAMP}.sql.gz" "s3://${S3_BUCKET}/postgres/teslamate/teslamate_${TIMESTAMP}.sql.gz" --storage-class STANDARD
+                    echo "Uploading encrypted TeslaMate backup to S3 (s3://${S3_BUCKET}/postgres/teslamate/)..."
+                    aws s3 cp "/tmp/teslamate_${TIMESTAMP}.sql.gz.age" "s3://${S3_BUCKET}/postgres/teslamate/teslamate_${TIMESTAMP}.sql.gz.age" --storage-class STANDARD --checksum-algorithm CRC32
 
-                    if [ -d "/mnt/synology-dr" ]; then
-                      echo "Mirroring TeslaMate backup to local Synology Tier-3 storage..."
-                      mkdir -p "/mnt/synology-dr/postgres/teslamate"
-                      cp "/tmp/teslamate_${TIMESTAMP}.sql.gz" "/mnt/synology-dr/postgres/teslamate/teslamate_${TIMESTAMP}.sql.gz"
-                      find /mnt/synology-dr/postgres/teslamate -name "teslamate_*.sql.gz" -type f -mtime +30 -delete 2>/dev/null || true
-                      echo "Tier-3 TeslaMate local mirror successfully updated."
-                    fi
-
-                    rm -f "/tmp/teslamate_${TIMESTAMP}.sql.gz"
+                    rm -f "/tmp/teslamate_${TIMESTAMP}.sql.gz.age"
                     echo "TeslaMate PostgreSQL database backup successful."
                   else
                     echo "TeslaMate database service not reachable (app uninstalled or not deployed yet); skipping."
                   fi
 
                   echo "===> All PostgreSQL backups completed successfully at $(date)."
-              volumeMounts:
-                - name: synology-dr
-                  mountPath: /mnt/synology-dr
               envFrom:
                 - secretRef:
                     name: s3-backup-credentials
-          volumes:
-            - name: synology-dr
-              persistentVolumeClaim:
-                claimName: pvc-synology-nfs-backups
+                # Required (not optional): a missing ConfigMap blocks the pod from starting.
+                - configMapRef:
+                    name: backup-encryption

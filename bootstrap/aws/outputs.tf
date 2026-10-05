@@ -28,6 +28,16 @@ output "github_plan_role_arn" {
   value       = aws_iam_role.github_plan.arn
 }
 
+output "backup_uploader_user_name" {
+  description = "Write-only backup uploader IAM user (mint its access key with the CLI, never in Terraform)"
+  value       = aws_iam_user.backup_uploader.name
+}
+
+output "backup_uploader_user_arn" {
+  description = "Backup uploader ARN -> referenced by the backup bucket policy"
+  value       = aws_iam_user.backup_uploader.arn
+}
+
 output "workload_boundary_policy_arn" {
   description = "Permissions boundary every CI-created workload role must carry"
   value       = aws_iam_policy.workload_boundary.arn

@@ -4,13 +4,42 @@ metadata:
   name: k8s-backup-sa
   namespace: backups
 ---
+# ==============================================================================
+# RBAC: Read-only access to exactly the kinds this job dumps.
+#
+# Secrets are deliberately excluded. Their real values live in the gitignored
+# counterparts of each *.example template, so restoring them is a re-apply from
+# those files, not from this archive. Excluding them means a compromised backup
+# pod cannot read any credential in the cluster.
+#
+# Reading ClusterRoles/ClusterRoleBindings is not an escalation path: escalation
+# requires create/update/bind, and this role only has get/list.
+# ==============================================================================
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: k8s-backup-cluster-role
 rules:
-  - apiGroups: ["*"]
-    resources: ["*"]
+  - apiGroups: [""]
+    resources: ["namespaces", "persistentvolumes", "persistentvolumeclaims", "services", "configmaps"]
+    verbs: ["get", "list"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets", "daemonsets"]
+    verbs: ["get", "list"]
+  - apiGroups: ["batch"]
+    resources: ["cronjobs"]
+    verbs: ["get", "list"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses", "ingressclasses", "networkpolicies"]
+    verbs: ["get", "list"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["storageclasses"]
+    verbs: ["get", "list"]
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["clusterroles", "clusterrolebindings"]
+    verbs: ["get", "list"]
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources: ["customresourcedefinitions"]
     verbs: ["get", "list"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -33,6 +62,9 @@ metadata:
   namespace: backups
 spec:
   schedule: "0 3 * * *" # Daily at 03:00 UTC (10:00 PM CDT)
+  # Declared explicitly: `kubectl apply` would otherwise preserve a suspend set
+  # imperatively (e.g. during an incident), since it is absent from last-applied.
+  suspend: false
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
@@ -44,7 +76,7 @@ spec:
           restartPolicy: OnFailure
           containers:
             - name: cluster-backup
-              image: alpine:3.20
+              image: alpine:3.24
               command:
                 - /bin/sh
                 - -c
@@ -52,15 +84,26 @@ spec:
                   set -euo pipefail
                   TIMESTAMP=$(date +%Y%m%d_%H%M%S)
                   BACKUP_DIR="/tmp/k8s-backup-${TIMESTAMP}"
-                  ARCHIVE_FILE="/tmp/k8s-cluster-state-${TIMESTAMP}.tar.gz"
+                  OBJECT_NAME="k8s-cluster-state-${TIMESTAMP}.tar.gz.age"
+                  ENCRYPTED_FILE="/tmp/${OBJECT_NAME}"
 
-                  if [ "${AWS_ACCESS_KEY_ID}" = "REPLACE_WITH_AWS_BACKUP_ACCESS_KEY_ID" ] || [ -z "${AWS_ACCESS_KEY_ID}" ]; then
-                    echo "ERROR: AWS credentials not configured in secret 's3-backup-credentials'."
+                  # Fail closed: without an age recipient there is no backup at all,
+                  # never an unencrypted one.
+                  case "${AGE_RECIPIENT:-}" in
+                    age1*) ;;
+                    *) echo "ERROR: AGE_RECIPIENT missing or invalid (ConfigMap 'backup-encryption'). Refusing to back up." >&2; exit 1 ;;
+                  esac
+
+                  if [ "${AWS_ACCESS_KEY_ID:-}" = "REPLACE_WITH_AWS_BACKUP_ACCESS_KEY_ID" ] || [ -z "${AWS_ACCESS_KEY_ID:-}" ]; then
+                    echo "ERROR: AWS credentials not configured in secret 's3-backup-credentials'." >&2
                     exit 1
                   fi
 
-                  echo "Installing backup dependencies (aws-cli, curl, tar, gzip, jq, openssl)..."
-                  apk add --no-cache aws-cli curl tar gzip jq openssl
+                  echo "Installing backup dependencies (aws-cli, curl, tar, gzip, jq, age)..."
+                  apk add --no-cache aws-cli curl tar gzip jq age
+
+                  # age parses the recipient strictly; a typo fails here, before any data is read.
+                  echo probe | age -r "${AGE_RECIPIENT}" > /dev/null
 
                   KUBECTL_VERSION="v1.36.4"
                   KUBECTL_SHA256="8b8f088da2dab964f853b38464033b1be15ede2839eca751482357c45abdd05a"
@@ -71,54 +114,35 @@ spec:
                   chmod +x /usr/local/bin/kubectl
 
                   mkdir -p "${BACKUP_DIR}/cluster-scoped" "${BACKUP_DIR}/namespaces"
+                  STRIP='del(.items[].metadata.resourceVersion, .items[].metadata.uid, .items[].metadata.creationTimestamp, .items[].metadata.generation, .items[].metadata.managedFields, .items[].status)'
 
                   echo "Dumping Custom Resource Definitions (CRDs)..."
-                  kubectl get crd -o json | jq 'del(.items[].metadata.resourceVersion, .items[].metadata.uid, .items[].metadata.creationTimestamp, .items[].metadata.generation, .items[].metadata.managedFields, .items[].status)' > "${BACKUP_DIR}/cluster-scoped/crds.json" || true
+                  kubectl get crd -o json | jq "${STRIP}" > "${BACKUP_DIR}/cluster-scoped/crds.json"
 
                   echo "Dumping Cluster-Scoped Resources (StorageClasses, PVs, ClusterRoles)..."
-                  kubectl get storageclass,persistentvolume,clusterroles,clusterrolebindings,ingressclasses -o json | jq 'del(.items[].metadata.resourceVersion, .items[].metadata.uid, .items[].metadata.creationTimestamp, .items[].metadata.generation, .items[].metadata.managedFields, .items[].status)' > "${BACKUP_DIR}/cluster-scoped/cluster-resources.json" || true
+                  kubectl get storageclass,persistentvolume,clusterroles,clusterrolebindings,ingressclasses -o json | jq "${STRIP}" > "${BACKUP_DIR}/cluster-scoped/cluster-resources.json"
 
+                  # Secrets are intentionally not dumped (see the ClusterRole above).
                   echo "Dumping Declarative Namespaced Resources across all namespaces..."
-                  TARGET_RESOURCES="deployments,statefulsets,daemonsets,cronjobs,services,configmaps,secrets,persistentvolumeclaims,ingresses,networkpolicies"
+                  TARGET_RESOURCES="deployments,statefulsets,daemonsets,cronjobs,services,configmaps,persistentvolumeclaims,ingresses,networkpolicies"
                   for ns in $(kubectl get namespaces -o jsonpath='{.items[*].metadata.name}'); do
                     mkdir -p "${BACKUP_DIR}/namespaces/${ns}"
                     echo " -> Backing up namespace: ${ns}..."
-                    kubectl get ${TARGET_RESOURCES} -n "${ns}" -o json 2>/dev/null | jq 'del(.items[].metadata.resourceVersion, .items[].metadata.uid, .items[].metadata.creationTimestamp, .items[].metadata.generation, .items[].metadata.managedFields, .items[].status, .items[].spec.clusterIP, .items[].spec.clusterIPs)' > "${BACKUP_DIR}/namespaces/${ns}/declarative-resources.json" || true
+                    kubectl get ${TARGET_RESOURCES} -n "${ns}" -o json | jq "${STRIP} | del(.items[].spec.clusterIP, .items[].spec.clusterIPs)" > "${BACKUP_DIR}/namespaces/${ns}/declarative-resources.json"
                   done
 
-                  echo "Compressing declarative cluster state archive..."
-                  tar -czf "${ARCHIVE_FILE}" -C "${BACKUP_DIR}" .
+                  echo "Compressing and encrypting cluster state archive (age)..."
+                  tar -czf - -C "${BACKUP_DIR}" . | age -r "${AGE_RECIPIENT}" -o "${ENCRYPTED_FILE}"
+                  rm -rf "${BACKUP_DIR}"
 
-                  FINAL_PAYLOAD="${ARCHIVE_FILE}"
-                  S3_DEST_FILE="k8s-cluster-state-${TIMESTAMP}.tar.gz"
+                  echo "Uploading encrypted archive to s3://${S3_BUCKET}/cluster-state/${OBJECT_NAME}..."
+                  aws s3 cp "${ENCRYPTED_FILE}" "s3://${S3_BUCKET}/cluster-state/${OBJECT_NAME}" --storage-class STANDARD --checksum-algorithm CRC32
 
-                  if [ -n "${BACKUP_ENCRYPTION_PASSPHRASE:-}" ] && [ "${BACKUP_ENCRYPTION_PASSPHRASE}" != "REPLACE_WITH_ENCRYPTION_PASSPHRASE" ]; then
-                    echo "Encrypting backup archive with client-side AES-256-CBC..."
-                    openssl enc -aes-256-cbc -salt -pbkdf2 -in "${ARCHIVE_FILE}" -out "${ARCHIVE_FILE}.enc" -pass env:BACKUP_ENCRYPTION_PASSPHRASE
-                    FINAL_PAYLOAD="${ARCHIVE_FILE}.enc"
-                    S3_DEST_FILE="k8s-cluster-state-${TIMESTAMP}.tar.gz.enc"
-                  fi
-
-                  echo "Uploading cluster state archive to AWS S3..."
-                  aws s3 cp "${FINAL_PAYLOAD}" "s3://${S3_BUCKET}/cluster-state/${S3_DEST_FILE}" --storage-class STANDARD
-
-                  if [ -d "/mnt/synology-dr" ]; then
-                    echo "Mirroring cluster state archive to local Synology Tier-3 storage..."
-                    mkdir -p "/mnt/synology-dr/cluster-state"
-                    cp "${FINAL_PAYLOAD}" "/mnt/synology-dr/cluster-state/${S3_DEST_FILE}"
-                    find /mnt/synology-dr/cluster-state -name "k8s-cluster-state-*" -type f -mtime +30 -delete 2>/dev/null || true
-                    echo "Tier-3 local mirror successfully updated."
-                  fi
-
-                  rm -rf "${BACKUP_DIR}" "${ARCHIVE_FILE}" "${ARCHIVE_FILE}.enc" 2>/dev/null || true
-                  echo "Kubernetes declarative cluster backup successfully completed and uploaded to S3 + Synology."
-              volumeMounts:
-                - name: synology-dr
-                  mountPath: /mnt/synology-dr
+                  rm -f "${ENCRYPTED_FILE}"
+                  echo "Encrypted cluster state backup completed: ${OBJECT_NAME}"
               envFrom:
                 - secretRef:
                     name: s3-backup-credentials
-          volumes:
-            - name: synology-dr
-              persistentVolumeClaim:
-                claimName: pvc-synology-nfs-backups
+                # Required (not optional): a missing ConfigMap blocks the pod from starting.
+                - configMapRef:
+                    name: backup-encryption

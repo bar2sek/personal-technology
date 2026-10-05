@@ -49,11 +49,14 @@ graph TD
 
 ### Key Architectural Tenets
 1. **Physical Failure Domain Segregation**: The NAS is physically deployed in the detached garage workshop on `USW-Lite-8-PoE` (Port 2). If the main house or server rack experiences a localized power surge, thermal event, or hardware failure, the garage vault remains isolated and intact.
-2. **True 3-2-1 Data Protection**:
+2. **3-2-1 Data Protection (target)**:
    - **3 Copies**: Production Rook-Ceph storage, offsite AWS S3 bucket (`s3-aws-backups-prod-use2-001`), and local garage Synology NAS.
    - **2 Media Types**: High-speed Ceph block storage & Synology SHR mechanical hard drive array.
    - **1 Offsite Copy**: AWS S3 in `us-east-2`.
-3. **Zero-Egress Rapid Recovery**: Cluster state and database dumps are mirrored locally over NFS, enabling instant local recovery without incurring AWS S3 download egress costs or relying on active WAN connectivity.
+3. **Zero-Egress Rapid Recovery**: Cluster state and database dumps mirrored locally over NFS, enabling local recovery without S3 egress costs or WAN connectivity.
+
+> [!WARNING]
+> **Status (2026-10-05): the Kubernetes NFS mirror (Phase 5) is not live.** The NAS and Time Machine are onboarded, but the NFS PersistentVolume/Claim were never deployed, so the backup jobs never wrote to the NAS. The mirror was removed from the CronJobs during backup hardening. Today there are two copies (Ceph + immutable S3). Phase 5 below is the plan for restoring the third.
 
 ---
 
@@ -185,59 +188,35 @@ tmutil startbackup --auto
 
 ---
 
-## ☸️ Phase 5: Kubernetes Tier-3 Local DR Mirroring
+## ☸️ Phase 5: Kubernetes Tier-3 Local DR Mirroring (Planned)
 
-The Kubernetes backup infrastructure has been extended with native NFS integration in `personal-technology/kubernetes/infrastructure/backups/`:
+> [!NOTE]
+> Not yet deployed. See the status warning under *Key Architectural Tenets*.
 
-### 1. Apply NFS PersistentVolume and Claim
-```bash
-kubectl apply -f kubernetes/infrastructure/backups/pv-synology-nfs.yaml
-kubectl apply -f kubernetes/infrastructure/backups/pvc-synology-nfs.yaml
-```
+The NFS PersistentVolume and Claim are codified in `kubernetes/infrastructure/backups/` (`pv-synology-nfs.yaml`, `pvc-synology-nfs.yaml`) but not applied. To bring the mirror online:
 
-Verify the PV and PVC are bound:
-```bash
-kubectl get pvc -n backups pvc-synology-nfs-backups
-```
+1. **Confirm the NFS export** on DSM allows the Kubernetes node subnet (`10.10.20.0/24`), with read/write access.
+2. **Apply and bind the volume:**
+   ```bash
+   kubectl apply -f kubernetes/infrastructure/backups/pv-synology-nfs.yaml
+   kubectl apply -f kubernetes/infrastructure/backups/pvc-synology-nfs.yaml
+   kubectl get pvc -n backups pvc-synology-nfs-backups
+   ```
+3. **Re-add the mirror to the CronJobs.** Mount the PVC and copy the **already-encrypted** `*.age` artifact after the S3 upload. Never mirror plaintext: the NAS must hold only the same ciphertext as S3.
+4. **Test** with a manual job, and confirm a `*.age` file appears on the share.
+5. **Update** the Backups README tier table and SECURITY.md §3.5.
 
-### 2. Update CronJobs
-Apply the updated CronJobs which mirror all archives to the Synology NFS mount alongside AWS S3:
-```bash
-kubectl apply -f kubernetes/infrastructure/backups/cronjob-cluster-state.yaml
-kubectl apply -f kubernetes/infrastructure/backups/cronjob-postgres.yaml
-```
-
-### 3. Verification & Live Test
-Trigger a test run of the cluster-state backup job:
-```bash
-kubectl create job --from=cronjob/backup-cluster-state synology-test -n backups
-kubectl logs -n backups -l job-name=synology-test -f
-```
-
-The output should confirm:
-```text
-Uploading cluster state archive to AWS S3...
-Mirroring cluster state archive to local Synology Tier-3 storage...
-Tier-3 local mirror successfully updated.
-Kubernetes declarative cluster backup successfully completed and uploaded to S3 + Synology.
-```
+NFS volumes are mounted by the kubelet, so this does not require privileged pods.
 
 ---
 
-## 🚨 Emergency Disaster Recovery Runbook
+## 🚨 Emergency Disaster Recovery Runbook (once Phase 5 is live)
 
-If offsite internet access is unavailable or rapid recovery is needed, restore directly from the Synology NAS:
+Restore from the NAS when offsite access is unavailable. The artifacts are `age`-encrypted, so the offline identity is still required. Full procedure: Backups README, *Restore Runbook*.
 
 ```bash
-# 1. Mount Synology NFS share directly on workstation
 mkdir -p /Volumes/SynologyBackups
 mount_nfs 10.0.1.223:/volume1/k8s-backups /Volumes/SynologyBackups
-
-# 2. Inspect latest cluster state archive
 ls -lt /Volumes/SynologyBackups/cluster-state/
-
-# 3. Unpack and apply declarative state
-tar -xzf /Volumes/SynologyBackups/cluster-state/<latest-archive>.tar.gz -C /tmp/restore
-kubectl apply -f /tmp/restore/cluster-scoped/crds.json
-kubectl apply -f /tmp/restore/cluster-scoped/cluster-resources.json
+mkdir -p ~/restore && age -d -i /path/to/homelab-backups.identity.age /Volumes/SynologyBackups/cluster-state/<archive>.tar.gz.age | tar -xzf - -C ~/restore
 ```

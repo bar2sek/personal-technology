@@ -231,6 +231,24 @@ resource "aws_iam_policy" "github_apply" {
         ]
         Resource = local.tfstate_bucket_arn
       },
+      {
+        # The backup bucket's guardrails (bucket policy, Object Lock) are owned by
+        # bootstrap (backups.tf). A pipeline must not be able to loosen the
+        # controls that protect backups from a compromised pipeline. An explicit
+        # identity-policy Deny cannot be overridden by any bucket policy grant.
+        Sid    = "ProtectBackupBucketGuardrails"
+        Effect = "Deny"
+        Action = [
+          "s3:PutBucketPolicy",
+          "s3:DeleteBucketPolicy",
+          "s3:PutBucketObjectLockConfiguration",
+          "s3:PutBucketVersioning",
+          "s3:BypassGovernanceRetention",
+          "s3:PutObjectRetention",
+          "s3:PutObjectLegalHold",
+        ]
+        Resource = [local.backup_bucket_arn, "${local.backup_bucket_arn}/*"]
+      },
 
       # --- Workload IAM roles: only ever with the permissions boundary ---------
       {

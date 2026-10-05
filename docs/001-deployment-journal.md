@@ -700,6 +700,25 @@ Any AI agent or human operator can review this document to pick up exactly where
 
 ---
 
+## 🎯 Milestone 11: Offsite Backup Hardening: Encryption, Immutability & Least Privilege (2026-10-05)
+
+- **Mandatory client-side encryption (`age`)**:
+  - Both backup CronJobs encrypt every artifact to an `age` public key (`configmap-backup-encryption.yaml`) and fail closed: a required ConfigMap, a script-level recipient check, streaming `tar | age` / `pg_dump | gzip | age`, and IAM plus bucket-policy rules that only accept `*.age` keys.
+  - The private identity is passphrase-wrapped and kept offline; the cluster can write backups but never read them.
+- **Write-only upload identity**: a new Terraform-managed IAM user, `svc-aws-backup-uploader-prod-001` (`bootstrap/aws/backups.tf`), with `PutObject` on `*.age` under two prefixes only. Its key is minted by CLI directly into the cluster and kept out of Terraform state.
+- **Immutability**: S3 Object Lock (governance, 30-day default retention). The bucket policy denies governance bypass to all principals, requires TLS, and rejects non-`*.age` uploads. The CI apply role gets an explicit Deny on changing these guardrails. Lifecycle (35-day expiry) is managed from `infra-cloud-deployments`.
+- **RBAC**: the cluster-state ServiceAccount moved from `*/*` read to an explicit list of kinds. Secrets are no longer readable or archived.
+- **Job hardening**: cluster-state moved from Alpine 3.20 (EOL) to 3.24. Uploads send a CRC32 checksum, which Object Lock requires. Dumps no longer swallow errors (`|| true` removed).
+- **Administrator access**: `admin-cli` no longer holds any long-lived access key. CLI access uses `aws login` (console session with FIDO MFA).
+- **Verification**: fail-closed test, 11-case uploader permission matrix, 12 SubjectAccessReview checks, administrator delete/bypass probes against locked objects, IAM policy simulator, and an end-to-end restore drill (Authentik into a throwaway database; cluster-state archive with 0 Secrets).
+- **Corrections to earlier entries**:
+  - The *Tiered Cost-Effective Disaster Recovery* entry described Postgres dumps as encrypted. They were not encrypted until this milestone.
+  - Milestone 10's Synology NFS mirror was never live: the PV/PVC were not deployed. It has been removed from the jobs and re-planned in [[307-garage-synology-dr-time-machine|Garage Synology NAS Onboarding]].
+  - The `backup-etcd-snapshot` CronJob described in that entry does not exist in the cluster.
+- Runbook: [[README|kubernetes/infrastructure/backups/README.md]].
+
+---
+
 ## 🎯 Immediate Next Actions & Infrastructure Backlog
 
 1. **GitOps Controller Evaluation (Flux CD)**:

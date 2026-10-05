@@ -95,7 +95,7 @@ Every control below either lives in this repository, or is called out explicitly
 - **Immutable subject claims.** Federated trust references only the repository's immutable numeric ID. A renamed or re-created repository cannot inherit trust. The format was verified against CloudTrail before the mutable subjects were removed.
 - **Least-privilege CI identities.** Pull request plans assume a read-only AWS role that can't read data (no S3 objects outside the state bucket, no secrets). Production applies assume a separate role scoped to the resources Terraform manages. Any IAM role CI creates must carry a permissions boundary, so the pipeline cannot escalate itself to administrator. These guarantees were checked with IAM Access Analyzer and the IAM policy simulator. See [`bootstrap/aws/oidc.tf`](bootstrap/aws/oidc.tf) and [OIDC GitOps](docs/409-github-azure-oidc-gitops.md).
 - **Centralized SSO.** Administrative web UIs (Omni, Grafana, Ceph) sit behind Cloudflare Zero Trust Access, and the published applications are covered by Access policies. Authentik federates to Microsoft Entra ID, where MFA is enforced. See [Identity & SSO](docs/403-identity-sso-authentik-aws.md) and [Entra ID Federation](docs/407-azure-entra-id-authentik-federation.md).
-- **Kubernetes RBAC.** Backup jobs use dedicated ServiceAccounts. The Postgres backup job can read exactly one named Secret, via `resourceNames`, in one namespace. See [`cronjob-postgres.yaml`](kubernetes/infrastructure/backups/cronjob-postgres.yaml).
+- **Kubernetes RBAC.** Backup jobs use dedicated ServiceAccounts. The cluster-state job has read-only access to the specific kinds it dumps and cannot read any Secret. The Postgres job can read exactly one named Secret, via `resourceNames`, in one namespace. Verified with SubjectAccessReview. See [`cronjob-cluster-state.yaml`](kubernetes/infrastructure/backups/cronjob-cluster-state.yaml) and [`cronjob-postgres.yaml`](kubernetes/infrastructure/backups/cronjob-postgres.yaml).
 - **Talos API.** In-cluster access to the Talos API is limited to the read-only `os:reader` role from `kube-system`. Talos has no SSH and no shell, and is managed only through its mTLS API.
 
 ### 3.2 Secrets Management
@@ -131,15 +131,20 @@ Every control below either lives in this repository, or is called out explicitly
 
 ### 3.5 Data Protection & Recovery
 
-The backup strategy is 3-2-1. See the [Backups README](kubernetes/infrastructure/backups/README.md) and the [Synology DR runbook](docs/307-garage-synology-dr-time-machine.md).
+Backups are designed on the assumption that the cluster, the upload credential, or the CI pipeline may be compromised. See the [Backups README](kubernetes/infrastructure/backups/README.md) for the design, setup, and restore runbook.
 
 | Copy | Location | Protections |
 | :--- | :--- | :--- |
 | Primary | Rook-Ceph | Replicated across nodes; `reclaimPolicy: Retain` |
-| Offsite | AWS S3 | Versioned; server-side encrypted; all public access blocked |
-| Local | Synology NAS | Separate physical failure domain (detached building); LAN-only |
+| Offsite | AWS S3 | Client-side `age` encryption; Object Lock (governance, 30 days); versioned; TLS-only; all public access blocked |
+| Local | Synology NAS | Planned. NAS onboarded ([Synology DR runbook](docs/307-garage-synology-dr-time-machine.md)); the Kubernetes NFS mirror is not yet deployed. |
 
-The S3 uploader identity cannot delete objects, and versioning preserves anything that gets overwritten. Terraform state lives in a versioned, encrypted, private S3 bucket with native state locking. It is never stored locally.
+- **Encrypted before it leaves the cluster, and the cluster can't decrypt it.** Every artifact is encrypted with `age` to a public key. The private key is kept offline and passphrase-wrapped. Jobs fail closed: without a valid recipient, no backup is produced. Both IAM and the bucket policy reject any object that isn't `*.age`. Verified with a fail-closed test and a restore drill.
+- **Write-only upload identity.** The uploader key can add backups under two prefixes, but cannot read, list, or delete anything. Verified from inside the cluster with an 11-case permission matrix.
+- **Immutable for 30 days.** S3 Object Lock in governance mode. Governance retention bypass is denied to every principal, so an administrator cannot delete or shorten retention on a locked backup without first editing the bucket policy. Verified as an administrator: delete and shorten-retention, with and without the bypass header, were all denied. Governance mode was chosen over compliance so that an accidental upload can still be purged through that deliberate path.
+- **CI cannot loosen the guardrails.** The bucket policy and Object Lock configuration are applied by an administrator from bootstrap, and the CI apply role carries an explicit Deny on changing them (verified with the IAM policy simulator).
+
+Terraform state lives in a versioned, encrypted, private S3 bucket with native state locking. It is never stored locally.
 
 ### 3.6 Software Supply Chain & CI/CD
 
@@ -188,7 +193,8 @@ These are known and deliberate. Each is reviewed when the threat model changes.
 
 Ordered by priority. Items move into §3 when completed.
 
-- [ ] **Encrypted backups by default.** Mandatory client-side `age` encryption for every backup artifact, using a public key only, so the cluster can write backups but never read them. Add S3 Object Lock for immutability.
+- [ ] **Local backup tier.** Deploy the Synology NFS mirror for the `age`-encrypted artifacts, restoring a third, physically separate copy.
+- [ ] **Cloud audit trail.** A multi-region CloudTrail trail, including S3 data events for the backup bucket, so object reads are logged as well as management events.
 - [ ] **Phishing-resistant admin access.** Require IdP-backed MFA (passkeys) on every Zero Trust Access policy.
 - [ ] **Workload identity for on-prem → AWS.** Replace the remaining static backup credential with IAM Roles Anywhere, backed by a cert-manager–issued certificate.
 - [ ] **East-west segmentation.** Migrate the CNI from Flannel to Cilium, and adopt default-deny NetworkPolicies per namespace.

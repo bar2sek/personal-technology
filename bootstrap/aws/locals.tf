@@ -12,4 +12,11 @@ locals {
   iam_policy_github_apply_name      = "policy-${var.platform}-github-apply-${var.env}-${var.iteration}"
   iam_policy_workload_boundary_name = "policy-${var.platform}-workload-boundary-${var.env}-${var.iteration}"
   s3_tfstate_bucket_name            = "s3-${var.platform}-tfstate-${var.env}-${var.region_code}-${local.account_id}"
+  iam_user_backup_uploader_name     = "svc-${var.platform}-backup-uploader-${var.env}-${var.iteration}"
+
+  # The backup bucket itself is owned by infra-cloud-deployments (terraform/aws).
+  # Built from the shared naming convention rather than a data source so this
+  # module plans without depending on that repository's state.
+  backup_bucket_name = "s3-${var.platform}-backups-${var.env}-${var.region_code}-${var.iteration}"
+  backup_bucket_arn  = "arn:aws:s3:::${local.backup_bucket_name}"
 }

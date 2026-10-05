@@ -116,7 +116,17 @@ echo "Omni DR archive created: omni-dr-${BACKUP_DATE}.tar.gz"
 ```
 
 ### Step 2: Offsite Storage
-Ship `omni-dr-*.tar.gz` to the encrypted AWS backup bucket (`s3-aws-backups-prod-use2-001/omni/`) or secondary offline storage.
+The archive contains Omni's secrets, so encrypt it before it leaves the host. Use the same `age` recipient as the cluster backups (in `kubernetes/infrastructure/backups/configmap-backup-encryption.yaml`), then upload as an administrator:
+
+```bash
+AGE_RECIPIENT=$(awk -F'"' '/AGE_RECIPIENT:/ {print $2}' kubernetes/infrastructure/backups/configmap-backup-encryption.yaml)
+age -r "${AGE_RECIPIENT}" -o "omni-dr-${BACKUP_DATE}.tar.gz.age" "omni-dr-${BACKUP_DATE}.tar.gz"
+aws s3 cp "omni-dr-${BACKUP_DATE}.tar.gz.age" "s3://s3-aws-backups-prod-use2-001/omni/" --checksum-algorithm CRC32
+rm -f "omni-dr-${BACKUP_DATE}.tar.gz"
+```
+
+> [!IMPORTANT]
+> The backup bucket rejects any object that isn't `*.age`, requires an upload checksum (Object Lock), and removes objects after about 36 days through lifecycle. Keep the most recent Omni archive in secondary offline storage too, because it changes rarely and must outlive that window. Restore with `age -d -i <identity> …`, as described in the Backups README.
 
 ### Step 3: Complete Bare-Metal Restoration
 If the OptiPlex host is replaced:
