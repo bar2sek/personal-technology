@@ -65,6 +65,12 @@ secrets.yaml
 *.secret.yaml
 *credentials*.yaml
 !*credentials*.example.yaml
+# Real counterparts of the tracked `*-secret(s).example.yaml` templates.
+# Invariant: for every tracked `X.example.Y`, the file `X.Y` must be ignored.
+*-secret.yaml
+*-secrets.yaml
+kubernetes/infrastructure/tailscale/operator-oauth.yaml
+bootstrap/backend-config.tf
 *.sops.yaml.dec
 client-tools/*.json
 client-tools/*.discovered
