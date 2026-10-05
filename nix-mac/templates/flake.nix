@@ -45,6 +45,7 @@
         pkgs.stern
         pkgs.yamllint
         pkgs.tflint
+        pkgs.gh # GitHub CLI (Actions runs, PRs, repo admin)
 
         # Cloud Storage & Sync Tooling
         pkgs.rclone
