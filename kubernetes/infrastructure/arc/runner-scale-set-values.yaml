@@ -1,0 +1,48 @@
+# Helm values: oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set
+# Chart version is pinned in the Justfile (`just gha-runners-deploy`).
+#
+# SECURITY: registered ONLY to a PRIVATE repository. Never point githubConfigUrl
+# at a public repo: `pull_request` runs workflow files from the PR itself, so any
+# fork could add a job targeting this runner label.
+# See docs/302-github-actions-runner-controller.md.
+
+githubConfigUrl: "https://github.com/bar2sek/homelab-ops" # PRIVATE repository
+
+# Pre-created Secret (GitHub App credentials), so Helm never handles the private
+# key. Created by `just gha-runners-secret`.
+githubConfigSecret: github-app-secret
+
+runnerScaleSetName: talos-homelab-runner # the `runs-on:` label
+minRunners: 0
+maxRunners: 5
+
+# Required because the controller watches a single namespace.
+controllerServiceAccount:
+  namespace: arc-systems
+  name: arc-gha-rs-controller
+
+template:
+  spec:
+    # Jobs run workflow code: no Kubernetes API token. Grant a dedicated,
+    # namespace-scoped ServiceAccount only if a workflow genuinely needs one.
+    automountServiceAccountToken: false
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1001 # `runner` user in ghcr.io/actions/actions-runner
+      seccompProfile:
+        type: RuntimeDefault
+    containers:
+      - name: runner
+        image: ghcr.io/actions/actions-runner:2.337.0
+        command: ["/home/runner/run.sh"]
+        securityContext:
+          allowPrivilegeEscalation: false # also disables `sudo` inside jobs
+          capabilities:
+            drop: ["ALL"]
+        resources:
+          requests:
+            cpu: "1000m"
+            memory: "2Gi"
+          limits:
+            cpu: "4000m"
+            memory: "8Gi"

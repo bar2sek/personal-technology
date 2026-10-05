@@ -81,6 +81,40 @@ arc-status:
 arc-logs:
     kubectl -n azure-arc logs -l app.kubernetes.io/name=clusterconnect-agent -f
 
+# GitHub Actions Runner Controller (ARC) - self-hosted runners for the PRIVATE
+# homelab-ops repo. Prefixed `gha-runners-` to avoid confusion with Azure Arc.
+gha_runners_chart_version := "0.15.0"
+gha_runners_chart_repo := "oci://ghcr.io/actions/actions-runner-controller-charts"
+
+# Create the GitHub App Secret straight from the downloaded .pem (key never touches the synced vault)
+gha-runners-secret app_id installation_id pem:
+    kubectl apply -f kubernetes/infrastructure/arc/namespaces.yaml
+    kubectl -n arc-runners create secret generic github-app-secret \
+        --from-literal=github_app_id={{app_id}} \
+        --from-literal=github_app_installation_id={{installation_id}} \
+        --from-file=github_app_private_key={{pem}} \
+        --dry-run=client -o yaml | kubectl apply -f -
+    @echo "Secret created. Now delete the .pem: rm {{pem}}"
+
+# Install/upgrade the ARC controller and the talos-homelab-runner scale set (pinned chart versions)
+gha-runners-deploy:
+    kubectl apply -f kubernetes/infrastructure/arc/namespaces.yaml
+    helm upgrade --install arc {{gha_runners_chart_repo}}/gha-runner-scale-set-controller \
+        --version {{gha_runners_chart_version}} --namespace arc-systems \
+        -f kubernetes/infrastructure/arc/controller-values.yaml --wait
+    helm upgrade --install talos-homelab-runner {{gha_runners_chart_repo}}/gha-runner-scale-set \
+        --version {{gha_runners_chart_version}} --namespace arc-runners \
+        -f kubernetes/infrastructure/arc/runner-scale-set-values.yaml --wait
+
+# Check ARC controller, listener, scale set registration and runner pods
+gha-runners-status:
+    @echo "===> Controller & listener (arc-systems):"
+    kubectl -n arc-systems get pods -o wide
+    @echo "===> Scale set registration (must be the PRIVATE repo):"
+    kubectl -n arc-runners get autoscalingrunnerset -o custom-columns=NAME:.metadata.name,URL:.spec.githubConfigUrl,MIN:.spec.minRunners,MAX:.spec.maxRunners
+    @echo "===> Runner pods (arc-runners):"
+    kubectl -n arc-runners get pods
+
 # ------------------------------------------------------------------------------
 # 3. Terraform Infrastructure as Code
 # ------------------------------------------------------------------------------

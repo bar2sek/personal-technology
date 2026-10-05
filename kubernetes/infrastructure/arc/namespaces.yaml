@@ -1,0 +1,24 @@
+# Actions Runner Controller (ARC) for GitHub Actions. Not to be confused with
+# Azure Arc (kubernetes/infrastructure/... and `just arc-status`).
+#
+# arc-systems: controller + listener (the only pods talking to the GitHub API)
+# arc-runners: ephemeral job pods. `restricted` is ENFORCED, so the cluster, not
+#              just the Helm values, guarantees non-root, no privilege
+#              escalation, dropped capabilities and a seccomp profile.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: arc-systems
+  labels:
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: arc-runners
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted

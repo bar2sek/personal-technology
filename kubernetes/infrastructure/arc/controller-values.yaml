@@ -1,0 +1,18 @@
+# Helm values: oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set-controller
+# Chart version is pinned in the Justfile (`just gha-runners-deploy`).
+
+flags:
+  # Namespaced RBAC instead of cluster-wide: the controller can only manage
+  # runner resources in arc-runners.
+  watchSingleNamespace: arc-runners
+
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
