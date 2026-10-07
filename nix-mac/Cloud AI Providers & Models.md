@@ -85,6 +85,7 @@ Retained for context on what was removed and what to expect if you find stale re
 ---
 
 ## Related Notes
+* [[Local LLMs with MLX]]
 * [[Dual-Tier AI Workflow]]
 * [[Hardware & Memory Budget]]
 * [[IDE Configuration Guide]]

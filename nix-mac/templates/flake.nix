@@ -405,10 +405,14 @@
         fi
 
         echo "--> Deploying declarative Antigravity IDE & AI configuration..."
-        # Declarative Roo Code multi-model profiles (Claude Sonnet 5 + Grok xAI + Claude Opus 5)
+        # Declarative Roo Code multi-model profiles:
+        # - Claude Sonnet 5 & Claude Opus 5 (Anthropic direct)
+        # - Grok (xAI)
+        # - AWS Bedrock (Claude 3.5 Sonnet via Bedrock IAM)
+        # - Local MLX (Qwen 2.5 Coder 32B Instruct on port 8080)
         # Model IDs are exact strings — never append date suffixes (e.g. claude-opus-5-20260401).
-        # apiKey is intentionally empty: Roo Code reads ANTHROPIC_API_KEY / XAI_API_KEY from the
-        # environment, so no credential is ever written into the Nix store (world-readable).
+        # API keys and AWS tokens are read from environment / AWS profile (~/.aws/credentials),
+        # so no credential is ever written into the Nix store (world-readable).
         mkdir -p "$USER_HOME/.config/roo-code"
         cat << 'EOF' > "$USER_HOME/.config/roo-code/settings.json"
 {
@@ -432,6 +436,25 @@
         "apiProvider": "anthropic",
         "apiKey": "",
         "apiModelId": "claude-opus-5"
+      },
+      "AWS Bedrock (Claude 3.5 Sonnet)": {
+        "id": "bedrock-claude-3-5-sonnet",
+        "apiProvider": "bedrock",
+        "apiModelId": "anthropic.claude-3-5-sonnet-20241022-v2:0",
+        "awsRegion": "us-east-1"
+      },
+      "Local MLX (Qwen 2.5 Coder 32B)": {
+        "id": "local-mlx-qwen-32b",
+        "apiProvider": "openai",
+        "openAiBaseUrl": "http://localhost:8080/v1",
+        "openAiApiKey": "local",
+        "openAiModelId": "mlx-community/Qwen2.5-Coder-32B-Instruct-4bit",
+        "openAiCustomModelInfo": {
+          "contextWindow": 32768,
+          "maxTokens": 8192,
+          "supportsImages": false,
+          "supportsPromptCache": false
+        }
       }
     }
   },

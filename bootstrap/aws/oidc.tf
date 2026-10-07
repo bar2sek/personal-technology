@@ -435,8 +435,8 @@ resource "aws_iam_policy" "github_apply" {
       },
       {
         # The one exception to "configuration only, never object data": the
-        # synthetic KB corpus is managed as aws_s3_object resources so the source
-        # documents are declarative too. Limited to s3-aws-bedrock-* buckets.
+        # apply job syncs the synthetic KB corpus (kb-corpus/ in git) into the
+        # bucket with `aws s3 sync --delete`. Limited to s3-aws-bedrock-* buckets.
         Sid    = "ManageBedrockSourceDocuments"
         Effect = "Allow"
         Action = [

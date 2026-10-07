@@ -78,8 +78,29 @@ Roo Code profiles are managed **declaratively** via `~/.config/roo-code/settings
 * **Model ID:** `claude-opus-5`
 * **Use Case:** Top-tier frontier reasoning, architectural reviews, and multi-file refactors.
 
-> [!TIP] Use the exact model ID strings
-> Never append date suffixes such as `claude-opus-5-20260401`. Dated variants are a convention from older model generations and are rejected. Previous-generation IDs like `claude-sonnet-4-6` still resolve but are a step down — see [[Cloud AI Providers & Models]] for the current tiering.
+### Profile 3: Grok (xAI Real-Time & Velocity)
+* **Provider:** `xAI`
+* **API Key:** Read from the environment (`XAI_API_KEY`)
+* **Model ID:** `grok-2`
+* **Use Case:** High-speed code generation, live information queries, alternative perspective.
+
+### Profile 4: AWS Bedrock (Enterprise Cloud Inference)
+* **Provider:** `Bedrock`
+* **Authentication:** AWS Profile (`default` or homelab profile) or AWS environment variables
+* **Region:** `us-east-1`
+* **Model ID:** `anthropic.claude-3-5-sonnet-20241022-v2:0` (or configured foundation models)
+* **Use Case:** Enterprise VPC isolation, corporate accounts, private cloud quota.
+
+### Profile 5: Local MLX (Qwen 2.5 Coder 32B Playground)
+* **Provider:** `OpenAI-Compatible`
+* **Base URL:** `http://localhost:8080/v1`
+* **API Key:** `local`
+* **Model ID:** `mlx-community/Qwen2.5-Coder-32B-Instruct-4bit`
+* **Lifecycle:** Start on-demand via `just serve-qwen-32b` (see [[Local LLMs with MLX]])
+* **Use Case:** Offline coding, zero-cost experimentation, open-weights testing.
+
+> [!TIP] Native Antigravity Tab Autocomplete
+> In-editor inline code completion as you type is handled seamlessly by **Antigravity Tab** (Google's native speculative decoding). Roo Code operates as an autonomous agent canvas, so local MLX is preserved purely for conversational reasoning, tests, and refactors.
 
 ---
 

@@ -27,9 +27,10 @@ Welcome to the **Mac AI Workstation** notes vault. This workspace documents the 
 * [[Hardware & Memory Budget]] — Unified memory allocation (48GB) and headroom math.
 * [[Hardware Protection & Keyboard Care]] — Step-by-step Barekey decal application & screen buffer setup.
 
-### 2. Cloud AI & Model Routing
+### 2. AI Architecture & Model Routing
 * [[Cloud AI Providers & Models]] — Model tiering, provider routing per tool, and credential hygiene.
-* [[IDE Configuration Guide]] — Step-by-step config for VS Code + Continue.dev and Antigravity.
+* [[Local LLMs with MLX]] — On-demand inference via Apple MLX, Qwen 2.5 Coder 32B, and Roo Code integration.
+* [[IDE Configuration Guide]] — Step-by-step config for Antigravity IDE and Roo Code multi-model profiles.
 
 ### 3. Containerization & Isolation
 * [[Container Strategy]] — Apple Container (`apple/container`) vs. OrbStack vs. Docker Desktop.

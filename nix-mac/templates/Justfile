@@ -24,6 +24,23 @@ gc:
     nix-collect-garbage -d
 
 # ------------------------------------------------------------------------------
+# Local LLM Serving (Apple MLX via uvx - Zero Bloat)
+# ------------------------------------------------------------------------------
+
+# Launch Qwen 2.5 Coder 32B (4-bit) MLX Server for Roo Code chat & refactoring (port 8080)
+serve-qwen-32b:
+    uvx --from mlx-lm mlx_lm.server \
+      --model mlx-community/Qwen2.5-Coder-32B-Instruct-4bit \
+      --port 8080 \
+      --chat-template-name chatml
+
+# Quick CLI prompt test against local Qwen 32B via MLX
+test-prompt:
+    uvx --from mlx-lm mlx_lm.generate \
+      --model mlx-community/Qwen2.5-Coder-32B-Instruct-4bit \
+      --prompt "Write a Python script that benchmarks GPU memory bandwidth on Apple Silicon."
+
+# ------------------------------------------------------------------------------
 # Workspace & IDE Shortcuts
 # ------------------------------------------------------------------------------
 
