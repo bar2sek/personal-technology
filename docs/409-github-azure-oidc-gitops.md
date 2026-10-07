@@ -128,8 +128,8 @@ A pull request must never hold write access to the cloud account. Each pipeline 
 
 | Role | Trusted `sub` | Permissions |
 | :--- | :--- | :--- |
-| `role-aws-github-plan-prod-001` | `repo:bar2sek@6226865/infra-cloud-deployments@1378897273:pull_request` | `ReadOnlyAccess`, minus data-plane reads (S3 objects outside the state bucket, Secrets Manager, SSM parameters, KMS decrypt, DynamoDB items), plus write access to `*.tflock` only |
-| `role-aws-github-actions-prod-001` (apply) | `repo:bar2sek@6226865/infra-cloud-deployments@1378897273:environment:production` | `policy-aws-github-apply-prod-001`: state read/write, `s3-aws-*` bucket **configuration** (never object data, never `DeleteBucket`), `role-aws-*` / `policy-aws-*` management |
+| `role-aws-github-plan-prod-001` | `repo:bar2sek@6226865/infra-cloud-deployments@1378897273:pull_request` | `ReadOnlyAccess`, minus data-plane reads (S3 objects outside the state bucket, Secrets Manager, SSM parameters, KMS decrypt, DynamoDB items, S3 vectors, AgentCore memory), plus write access to `*.tflock` only |
+| `role-aws-github-actions-prod-001` (apply) | `repo:bar2sek@6226865/infra-cloud-deployments@1378897273:environment:production` | `policy-aws-github-apply-prod-001`: state read/write, `s3-aws-*` bucket **configuration** (never object data, never `DeleteBucket`), `role-aws-*` / `policy-aws-*` management, Bedrock Knowledge Bases / Guardrails / S3 Vectors, objects in `s3-aws-bedrock-*` only, `iam:PassRole` on `role-aws-bedrock-*` to Bedrock only |
 
 No workflow change is needed. Variable precedence (`environment > repository`) hands each job the right role automatically.
 
@@ -155,6 +155,79 @@ graph LR
 > ```
 
 **Verification.** Policies were checked with IAM Access Analyzer (`aws accessanalyzer validate-policy`: zero findings), and the escalation paths were tested with `aws iam simulate-custom-policy`. Creating a role without the boundary, or with a different one, is denied. So are rewriting its own trust policy, attaching a policy to itself, stripping a boundary, reading backup objects, and changing the state bucket's configuration. The actions Terraform needs are allowed.
+
+#### 3a. Amazon Bedrock permissions (added 2026-10-06)
+
+The Bedrock lab in `infra-cloud-deployments` (Knowledge Base on S3 Vectors, Guardrails) needed three kinds of change. Each was applied here, by a human, before any Bedrock Terraform ran in CI.
+
+| Policy | Added | Why |
+| :--- | :--- | :--- |
+| **Workload boundary** | `bedrock:InvokeModel` on `foundation-model/*` in `us-east-2`; `s3:ListBucket`/`GetObject` on `s3-aws-bedrock-*` (same account only); `s3vectors:GetIndex/PutVectors/GetVectors/QueryVectors/DeleteVectors` on `s3v-aws-bedrock-*` indexes | The ceiling for the Knowledge Base **service role**: embed documents, read the source bucket, write and query vectors. Bucket-name prefixes mean a KB can never be pointed at the state or backup buckets. |
+| **Apply role** | Knowledge Base, data source and ingestion-job management; Guardrail management and versioning; vector bucket and index management; object read/write in `s3-aws-bedrock-*` | Terraform owns the full lifecycle, including the synthetic source documents (`aws_s3_object`). This is the single exception to "configuration only, never object data", and it is limited to the Bedrock source bucket. |
+| **Apply role** | `iam:PassRole` on `role-aws-bedrock-*`, condition `iam:PassedToService = bedrock.amazonaws.com` | `CreateKnowledgeBase` hands its service role to Bedrock. See below. |
+| **Plan role** | Explicit Deny: `s3vectors:GetVectors/ListVectors/QueryVectors`, AgentCore memory record and event reads | AWS-managed `ReadOnlyAccess` (v190) grants these **data-plane** reads. Vectors carry the source text chunks as metadata, so without the Deny a pull request could read the corpus back. |
+
+**Why PassRole needs both limits.** Passing a role to a service lets the service act with that role's permissions. Unscoped `iam:PassRole` is therefore an escalation path: pass a powerful role to a service you can drive, and borrow its permissions.
+
+- The **resource scope** (`role-aws-bedrock-*`) limits *which* roles can be passed. CI can only create roles in that namespace with the workload boundary, so any role it can pass is boundary-capped.
+- The **`iam:PassedToService` condition** limits *who receives* the role. Without it, the same roles could be handed to EC2, Lambda, or any other service the pipeline controls.
+
+Deliberately **not** granted:
+
+- `s3vectors:DeleteVectorBucket`: removing a bucket stays a human action, matching the existing no-`DeleteBucket` rule. `DeleteIndex` *is* allowed: an index holds only derived data that re-ingestion rebuilds, and changing an index's dimension forces Terraform to replace it.
+- Cross-Region inference profiles and chat models in the boundary. Only Region-pinned embedding models are needed so far; they are added when a workload needs them.
+- AgentCore and model-invocation-logging permissions. These arrive with those lab milestones, as separate reviewed changes.
+
+> [!WARNING] Residual risk: the `role-aws-bedrock-*` namespace
+> `iam:PassRole` cannot be conditioned on the passed role's permissions boundary. If a *human* creates a role in the `role-aws-bedrock-*` namespace without the boundary, CI could pass it to Bedrock. Treat the prefix as reserved for CI-created, boundary-capped roles.
+
+**Verification** (run after `terraform apply` of this bootstrap):
+
+```bash
+cd bootstrap/aws
+# 1. Lint the rendered policies. Expect zero ERROR findings; a warning about an
+#    unrecognised action means an action name is wrong.
+for arn in $(terraform output -raw workload_boundary_policy_arn) \
+           "arn:aws:iam::$(aws sts get-caller-identity --query Account --output text):policy/policy-aws-github-apply-prod-001"; do
+  aws iam get-policy-version --policy-arn "$arn" \
+    --version-id "$(aws iam get-policy --policy-arn "$arn" --query Policy.DefaultVersionId --output text)" \
+    --query PolicyVersion.Document --output json > /tmp/policy.json
+  aws accessanalyzer validate-policy --policy-type IDENTITY_POLICY \
+    --policy-document file:///tmp/policy.json --query 'findings[].[findingType,issueCode]' --output text
+done
+
+# 2. PassRole to a non-Bedrock service must be denied (expect implicitDeny).
+APPLY=$(terraform output -raw github_actions_role_arn)
+ACCT=$(aws sts get-caller-identity --query Account --output text)
+aws iam simulate-principal-policy --policy-source-arn "$APPLY" \
+  --action-names iam:PassRole \
+  --resource-arns "arn:aws:iam::$ACCT:role/role-aws-bedrock-kb-prod-001" \
+  --context-entries "ContextKeyName=iam:PassedToService,ContextKeyValues=ec2.amazonaws.com,ContextKeyType=string" \
+  --query 'EvaluationResults[].EvalDecision'
+
+# 3. The plan role must not read vectors (expect explicitDeny).
+PLAN=$(aws iam get-role --role-name role-aws-github-plan-prod-001 --query Role.Arn --output text)
+aws iam simulate-principal-policy --policy-source-arn "$PLAN" \
+  --action-names s3vectors:QueryVectors s3vectors:GetVectors \
+  --query 'EvaluationResults[].EvalDecision'
+```
+
+**Verified 2026-10-06** (applied: 0 added, 3 changed, 0 destroyed; the plan contained 114 added policy lines and 0 removed):
+
+| Check | Result |
+| :--- | :--- |
+| Access Analyzer: boundary, apply policy, plan-role inline policy | 0 errors, 0 warnings, so all action names are valid. Two `REDUNDANT_RESOURCE` suggestions, kept deliberately (see note below). |
+| Apply role: `iam:PassRole` `role-aws-bedrock-*` → `bedrock.amazonaws.com` | `allowed` |
+| Apply role: same role → `ec2.amazonaws.com` | `implicitDeny` |
+| Apply role: passing **itself** → Bedrock | `explicitDeny` (`ProtectCiIdentityAndBoundary`) |
+| Plan role: `s3vectors:QueryVectors`, `GetVectors`, `bedrock-agentcore:RetrieveMemoryRecords` | `explicitDeny` |
+| Plan role: `s3vectors:GetIndex`, `bedrock:GetKnowledgeBase`, `bedrock:GetGuardrail` | `allowed` (plan can still refresh) |
+| Apply role: `s3:PutObject` / `GetObject` on `s3-aws-bedrock-*` vs the backup bucket | `allowed` vs `implicitDeny` |
+| Apply role: `s3vectors:DeleteVectorBucket` | `implicitDeny` |
+
+> [!NOTE] Two simulator and analyzer gotchas
+> - **`*` in an ARN matches across `/`.** `arn:aws:s3:::s3-aws-bedrock-*` already matches every object ARN in those buckets, which is why Access Analyzer calls the separate `…/*` entry redundant. Both entries are kept anyway: they state intent (bucket vs objects) and match the AWS-documented pattern.
+> - **`simulate-principal-policy` with several `--resource-arns` returns one aggregated `EvalDecision`**: one denied resource makes the whole action read `implicitDeny`. Query `EvaluationResults[].ResourceSpecificResults[].[EvalResourceName,EvalResourceDecision]` to see each resource separately.
 
 ---
 
@@ -224,3 +297,7 @@ A workflow step tried to `git push` to `main`. This is blocked by design: CI job
 
 > [!NOTE] Why not required status checks?
 > The plan jobs are path-filtered per provider (`terraform/aws/**`, and so on). A required check that never starts, because the PR didn't touch that path, blocks the merge forever. Requiring checks here needs an always-running aggregator job first. That's tracked on the SECURITY.md roadmap.
+
+### 5. `AccessDenied ... iam:PassRole` when creating a Bedrock Knowledge Base
+
+The KB's service role is outside the `role-aws-bedrock-*` namespace, or the role is being passed to a different service. Rename the role to match `role-aws-bedrock-*`; don't widen the PassRole statement. An `AccessDenied` from the KB *ingestion job* (rather than from Terraform) is the service role hitting the **workload boundary**: check that the source bucket is named `s3-aws-bedrock-*` and the vector bucket `s3v-aws-bedrock-*`.

@@ -128,6 +128,25 @@ resource "aws_iam_role_policy" "github_plan" {
           "dynamodb:Scan",
         ]
         Resource = "*"
+      },
+      {
+        # ReadOnlyAccess (v190) grants these data-plane reads. Vectors carry the
+        # source text chunks as metadata, and AgentCore memory holds conversation
+        # content, so a PR must not be able to read either. Plan only needs the
+        # index and bucket configuration (GetIndex / GetVectorBucket).
+        Sid    = "DenyVectorAndAgentMemoryReads"
+        Effect = "Deny"
+        Action = [
+          "s3vectors:GetVectors",
+          "s3vectors:ListVectors",
+          "s3vectors:QueryVectors",
+          "bedrock-agentcore:GetMemoryRecord",
+          "bedrock-agentcore:ListMemoryRecords",
+          "bedrock-agentcore:RetrieveMemoryRecords",
+          "bedrock-agentcore:GetEvent",
+          "bedrock-agentcore:ListEvents",
+        ]
+        Resource = "*"
       }
     ]
   })
@@ -155,6 +174,50 @@ resource "aws_iam_policy" "workload_boundary" {
           "ssmmessages:OpenDataChannel",
         ]
         Resource = "*"
+      },
+
+      # --- Bedrock Knowledge Base service role ---------------------------------
+      # Ceiling only: the role's own policy in infra-cloud-deployments narrows
+      # these to the exact embedding model, bucket, and index. Names follow
+      # s3-aws-bedrock-* (source documents) and s3v-aws-bedrock-* (vector bucket),
+      # so a KB can never be pointed at the state or backup buckets.
+      {
+        Sid      = "KnowledgeBaseListModels"
+        Effect   = "Allow"
+        Action   = ["bedrock:ListFoundationModels", "bedrock:ListCustomModels"]
+        Resource = "*"
+      },
+      {
+        # Embedding calls during ingestion. Region-pinned on-demand models only;
+        # cross-Region inference profiles are added when a workload needs them.
+        Sid      = "KnowledgeBaseEmbeddingModels"
+        Effect   = "Allow"
+        Action   = "bedrock:InvokeModel"
+        Resource = "arn:aws:bedrock:${var.aws_region}::foundation-model/*"
+      },
+      {
+        Sid    = "KnowledgeBaseSourceDocuments"
+        Effect = "Allow"
+        Action = ["s3:ListBucket", "s3:GetObject"]
+        Resource = [
+          "arn:aws:s3:::s3-${var.platform}-bedrock-*",
+          "arn:aws:s3:::s3-${var.platform}-bedrock-*/*",
+        ]
+        Condition = {
+          StringEquals = { "aws:ResourceAccount" = local.account_id }
+        }
+      },
+      {
+        Sid    = "KnowledgeBaseVectorIndex"
+        Effect = "Allow"
+        Action = [
+          "s3vectors:GetIndex",
+          "s3vectors:PutVectors",
+          "s3vectors:GetVectors",
+          "s3vectors:QueryVectors",
+          "s3vectors:DeleteVectors",
+        ]
+        Resource = "arn:aws:s3vectors:${var.aws_region}:${local.account_id}:bucket/s3v-${var.platform}-bedrock-*/index/*"
       }
     ]
   })
@@ -304,6 +367,104 @@ resource "aws_iam_policy" "github_apply" {
           "iam:UntagPolicy",
         ]
         Resource = "arn:aws:iam::${local.account_id}:policy/policy-${var.platform}-*"
+      },
+
+      # --- Bedrock: Knowledge Bases, Guardrails, S3 Vectors --------------------
+      # Knowledge base and guardrail IDs are service-generated, so these are
+      # scoped to this account and Region rather than by name.
+      {
+        # StartIngestionJob lets a post-apply CI step sync the KB; it is a
+        # runtime operation with no Terraform resource.
+        Sid    = "ManageBedrockKnowledgeBases"
+        Effect = "Allow"
+        Action = [
+          "bedrock:CreateKnowledgeBase",
+          "bedrock:GetKnowledgeBase",
+          "bedrock:UpdateKnowledgeBase",
+          "bedrock:DeleteKnowledgeBase",
+          "bedrock:CreateDataSource",
+          "bedrock:GetDataSource",
+          "bedrock:UpdateDataSource",
+          "bedrock:DeleteDataSource",
+          "bedrock:ListDataSources",
+          "bedrock:StartIngestionJob",
+          "bedrock:GetIngestionJob",
+          "bedrock:ListIngestionJobs",
+          "bedrock:TagResource",
+          "bedrock:UntagResource",
+          "bedrock:ListTagsForResource",
+        ]
+        Resource = "arn:aws:bedrock:${var.aws_region}:${local.account_id}:knowledge-base/*"
+      },
+      {
+        Sid    = "ManageBedrockGuardrails"
+        Effect = "Allow"
+        Action = [
+          "bedrock:CreateGuardrail",
+          "bedrock:GetGuardrail",
+          "bedrock:UpdateGuardrail",
+          "bedrock:DeleteGuardrail",
+          "bedrock:CreateGuardrailVersion",
+          "bedrock:TagResource",
+          "bedrock:UntagResource",
+          "bedrock:ListTagsForResource",
+        ]
+        Resource = "arn:aws:bedrock:${var.aws_region}:${local.account_id}:guardrail/*"
+      },
+      {
+        # No DeleteVectorBucket, matching the no-DeleteBucket rule above. Indexes
+        # may be deleted: they hold derived data that re-ingestion rebuilds, and
+        # changing an index's dimension forces replacement.
+        Sid    = "ManageBedrockVectorStore"
+        Effect = "Allow"
+        Action = [
+          "s3vectors:CreateVectorBucket",
+          "s3vectors:GetVectorBucket",
+          "s3vectors:ListIndexes",
+          "s3vectors:CreateIndex",
+          "s3vectors:GetIndex",
+          "s3vectors:DeleteIndex",
+          "s3vectors:TagResource",
+          "s3vectors:UntagResource",
+          "s3vectors:ListTagsForResource",
+        ]
+        Resource = [
+          "arn:aws:s3vectors:${var.aws_region}:${local.account_id}:bucket/s3v-${var.platform}-bedrock-*",
+          "arn:aws:s3vectors:${var.aws_region}:${local.account_id}:bucket/s3v-${var.platform}-bedrock-*/index/*",
+        ]
+      },
+      {
+        # The one exception to "configuration only, never object data": the
+        # synthetic KB corpus is managed as aws_s3_object resources so the source
+        # documents are declarative too. Limited to s3-aws-bedrock-* buckets.
+        Sid    = "ManageBedrockSourceDocuments"
+        Effect = "Allow"
+        Action = [
+          "s3:PutObject",
+          "s3:GetObject",
+          "s3:DeleteObject",
+          "s3:GetObjectTagging",
+          "s3:PutObjectTagging",
+        ]
+        Resource = "arn:aws:s3:::s3-${var.platform}-bedrock-*/*"
+      },
+
+      {
+        # CreateKnowledgeBase hands ("passes") a service role to Bedrock, which
+        # then acts with that role's permissions. Unscoped PassRole is a classic
+        # escalation path: pass any powerful role to any service the pipeline
+        # can drive, and borrow its permissions. Both limits are needed:
+        #   Resource  - only role-aws-bedrock-*, which CI can only create with
+        #               the workload boundary (GrantPrivilegeOnlyWithinBoundary).
+        #   Condition - only to bedrock.amazonaws.com, so the same roles can't be
+        #               handed to, say, EC2 or Lambda and used from there.
+        Sid      = "PassBedrockServiceRoles"
+        Effect   = "Allow"
+        Action   = "iam:PassRole"
+        Resource = "arn:aws:iam::${local.account_id}:role/role-${var.platform}-bedrock-*"
+        Condition = {
+          StringEquals = { "iam:PassedToService" = "bedrock.amazonaws.com" }
+        }
       },
 
       # --- Guardrails: CI can never modify its own identity or its ceiling ----
