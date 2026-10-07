@@ -467,6 +467,7 @@ EOF
   "git.scanRepositories": [
     "food-diet-nutrition",
     "home-projects",
+    "homelab-ops",
     "infra-cloud-deployments",
     "personal-technology",
     "professional-technology"
