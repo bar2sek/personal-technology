@@ -15,20 +15,19 @@ aliases: []
 Routing work across **frontier cloud providers** inside a single unified canvas (**Antigravity IDE**) balances speed, cost, and depth of reasoning. The tiers below are ordered by how often you should reach for them, not by capability — escalate only when the cheaper tier stalls.
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                 HYBRID AGENTIC ARCHITECTURE                 │
-├─────────────────────────────────────────────────────────────┤
-│               WORKSPACE CANVAS: ANTIGRAVITY IDE             │
-├──────────────────────────────┬──────────────────────────────┤
-│ PRIMARY: Native AGY Agent    │ EXTENSION: Roo Code Switcher │
-├──────────────────────────────┼──────────────────────────────┤
-│ • Gemini Flash / Pro (Cloud) │ • Claude Sonnet 5 / Opus 5   │
-│ • Native Tab Autocomplete    │ • xAI Grok (API)             │
-│ • Multi-file Planning & Docs │ • AWS Bedrock (Claude / IAM) │
-│ • Subagent Orchestration     │ • Local MLX (Qwen 2.5 Coder) │
-│ • Terminal Sandbox Tools     │ • Rate-Limit Relief Valve    │
-│ • Built-in Cloud Intelligence│ • 100% In-IDE Seamless Flow  │
-└──────────────────────────────┴──────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────┐
+│                      HYBRID AGENTIC ARCHITECTURE                       │
+├────────────────────────────────────────────────────────────────────────┤
+│                   WORKSPACE CANVAS: ANTIGRAVITY IDE                    │
+├────────────────────────────┬────────────────────────────┬──────────────┤
+│ PRIMARY: Native AGY Agent  │ EXTENSION: Claude Code     │ ROO CODE     │
+├────────────────────────────┼────────────────────────────┼──────────────┤
+│ • Gemini Flash/Pro (Cloud) │ • Claude 3.7 / Sonnet      │ • Grok (xAI) │
+│ • Native Tab Autocomplete  │ • Claude.ai Subscription   │ • Local MLX  │
+│ • Multi-file Planning      │ • Zero per-token API fees  │   (Qwen 32B) │
+│ • Terminal Sandbox Tools   │ • Deep code refactoring    │ • AWS Bedrock│
+│ • Autonomous Subagents     │ • Graphical chat & diffs   │   (Hosted)   │
+└────────────────────────────┴────────────────────────────┴──────────────┘
 ```
 
 ---
@@ -46,11 +45,12 @@ Routing work across **frontier cloud providers** inside a single unified canvas 
 
 ---
 
-## Tier 2: Frontier Multi-Model Engine (Claude Sonnet 5 & Opus 5 via Roo Code)
-* **Goal:** Alternative reasoning perspective, deep architectural tie-breakers, and maximum-reasoning audits.
-* **Provider:** Anthropic API (Pay-As-You-Go with spending limits).
-* **Environment:** Toggle dropdown in Roo Code inside Antigravity IDE — `claude-sonnet-5` for fast, cost-efficient edits; `claude-opus-5` for heavy reasoning.
-* **Model reference:** see [[Cloud AI Providers & Models]] for the full tiering table and exact model ID strings.
+## Tier 2: Subscription Frontier Reasoning (Claude Code Extension)
+* **Goal:** Top-tier reasoning, deep codebase comprehension, and multi-turn pair programming.
+* **Platform:** Official Claude Code extension in Antigravity IDE sidebar (`anthropic.claude-code`).
+* **Authentication:** **Claude.ai paid subscription** (Pro/Team/Enterprise).
+* **Cost Advantage:** Billed under your existing monthly Claude subscription — **zero per-token Anthropic API charges**.
+* **Capabilities:** Full workspace indexing, interactive chat, inline diff application, and git status awareness.
 
 ---
 
@@ -61,20 +61,20 @@ Routing work across **frontier cloud providers** inside a single unified canvas 
 
 ---
 
-## Tier 4: Enterprise Cloud Inference (AWS Bedrock via Roo Code)
-* **Goal:** Enterprise security boundary, provisioned models, and private cloud quota.
-* **Provider:** AWS Bedrock (IAM credentials or AWS profile from `~/.aws/credentials`).
-* **Model:** `anthropic.claude-3-5-sonnet-20241022-v2:0` (or provisioned foundation models).
-* **Environment:** Configured in Roo Code with region `us-east-1`.
-
----
-
-## Tier 5: Local Playground & Offline Coder (Apple MLX via Roo Code)
+## Tier 4: Local Playground & Offline Coder (Apple MLX via Roo Code)
 * **Goal:** Zero-cost experimentation, offline coding, and playing with open-weights without cloud quotas.
 * **Provider:** Apple MLX running on Apple Silicon Metal GPU via `uvx` (`http://localhost:8080/v1`).
 * **Model:** `mlx-community/Qwen2.5-Coder-32B-Instruct-4bit` (~22 GB footprint active).
 * **Lifecycle:** On-demand via `just serve-qwen-32b` — memory is freed immediately upon exiting.
 * **Guide:** see [[Local LLMs with MLX]] for server commands and hardware sizing.
+
+---
+
+## Tier 5: Enterprise Cloud Inference (AWS Bedrock via Roo Code)
+* **Goal:** Enterprise security boundary, provisioned models, and private cloud quota.
+* **Provider:** AWS Bedrock (IAM credentials or AWS profile from `~/.aws/credentials`).
+* **Model:** Private hosted LLM ARN or provisioned foundation model in `us-east-1`.
+* **Environment:** Configured in Roo Code provider profiles.
 
 ---
 

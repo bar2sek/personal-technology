@@ -406,42 +406,21 @@
 
         echo "--> Deploying declarative Antigravity IDE & AI configuration..."
         # Declarative Roo Code multi-model profiles:
-        # - Claude Sonnet 5 & Claude Opus 5 (Anthropic direct)
         # - Grok (xAI)
-        # - AWS Bedrock (Claude 3.5 Sonnet via Bedrock IAM)
         # - Local MLX (Qwen 2.5 Coder 32B Instruct on port 8080)
-        # Model IDs are exact strings — never append date suffixes (e.g. claude-opus-5-20260401).
-        # API keys and AWS tokens are read from environment / AWS profile (~/.aws/credentials),
-        # so no credential is ever written into the Nix store (world-readable).
+        # - AWS Bedrock (Hosted LLM / Bedrock IAM)
+        # Note: Claude is handled via the official Claude Code extension using a Claude.ai subscription.
         mkdir -p "$USER_HOME/.config/roo-code"
         cat << 'EOF' > "$USER_HOME/.config/roo-code/settings.json"
 {
   "providerProfiles": {
-    "currentApiConfigName": "Claude Sonnet 5",
+    "currentApiConfigName": "Grok (xAI)",
     "apiConfigs": {
-      "Claude Sonnet 5": {
-        "id": "claude-sonnet-5",
-        "apiProvider": "anthropic",
-        "apiKey": "",
-        "apiModelId": "claude-sonnet-5"
-      },
       "Grok (xAI)": {
         "id": "grok-xai",
         "apiProvider": "xai",
         "apiKey": "",
         "apiModelId": "grok-2"
-      },
-      "Claude Opus 5": {
-        "id": "claude-opus-5",
-        "apiProvider": "anthropic",
-        "apiKey": "",
-        "apiModelId": "claude-opus-5"
-      },
-      "AWS Bedrock (Claude 3.5 Sonnet)": {
-        "id": "bedrock-claude-3-5-sonnet",
-        "apiProvider": "bedrock",
-        "apiModelId": "anthropic.claude-3-5-sonnet-20241022-v2:0",
-        "awsRegion": "us-east-1"
       },
       "Local MLX (Qwen 2.5 Coder 32B)": {
         "id": "local-mlx-qwen-32b",
@@ -455,6 +434,12 @@
           "supportsImages": false,
           "supportsPromptCache": false
         }
+      },
+      "AWS Bedrock": {
+        "id": "bedrock-hosted-llm",
+        "apiProvider": "bedrock",
+        "apiModelId": "anthropic.claude-3-5-sonnet-20241022-v2:0",
+        "awsRegion": "us-east-1"
       }
     }
   },
@@ -517,6 +502,7 @@ EOF
           "/opt/homebrew/bin/code"; do
           if [ -x "$ide_bin" ]; then
             for ext in \
+              "anthropic.claude-code" \
               "RooVeterinaryInc.roo-cline" \
               "enkia.tokyo-night" \
               "PKief.material-icon-theme" \
