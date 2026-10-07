@@ -55,8 +55,7 @@ Under the hood, this executes:
 ```bash
 uvx --from mlx-lm mlx_lm.server \
   --model mlx-community/Qwen2.5-Coder-32B-Instruct-4bit \
-  --port 8080 \
-  --chat-template-name chatml
+  --port 8080
 ```
 
 The server exposes standard OpenAI-compatible endpoints:
