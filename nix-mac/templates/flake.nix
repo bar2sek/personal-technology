@@ -445,8 +445,19 @@
   },
   "globalSettings": {}
 }
-EOF
         chown -R "$PRIMARY_USER" "$USER_HOME/.config/roo-code"
+
+        # Deploy declarative Roo Code custom modes (pure Chat mode with zero tools for local LLMs)
+        mkdir -p "$USER_HOME/Library/Application Support/Antigravity IDE/User/globalStorage/rooveterinaryinc.roo-cline/settings"
+        cat << 'EOF' > "$USER_HOME/Library/Application Support/Antigravity IDE/User/globalStorage/rooveterinaryinc.roo-cline/settings/custom_modes.yaml"
+customModes:
+  - slug: "chat"
+    name: "💬 Chat / Pair Programmer"
+    roleDefinition: "You are an expert pair programmer and software architect. Answer questions, provide clear explanations, and write clean, idiomatic code without executing tools."
+    groups: []
+    customInstructions: "Answer all questions directly in clear markdown with code blocks. Do not attempt to invoke tools or execute terminal commands."
+EOF
+        chown -R "$PRIMARY_USER" "$USER_HOME/Library/Application Support/Antigravity IDE/User/globalStorage/rooveterinaryinc.roo-cline/settings"
 
         # Apply settings to both Antigravity IDE and Code OSS
         for settings_dir in \
