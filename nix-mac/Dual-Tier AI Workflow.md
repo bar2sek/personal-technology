@@ -73,8 +73,8 @@ Routing work across **frontier cloud providers** inside a single unified canvas 
 ## Tier 5: Enterprise Cloud Inference (AWS Bedrock via Roo Code)
 * **Goal:** Enterprise security boundary, provisioned models, and private cloud quota.
 * **Provider:** AWS Bedrock (IAM credentials or AWS profile from `~/.aws/credentials`).
-* **Model:** Private hosted LLM ARN or provisioned foundation model in `us-east-1`.
-* **Environment:** Configured in Roo Code provider profiles.
+* **Model Roadmap:** Current foundation models, with future plans to host and route **OpenAI models inside AWS Bedrock** (via Bedrock provisioned throughput / custom model import ARNs).
+* **Environment:** Configured in Roo Code provider profiles (`us-east-2`).
 
 ---
 

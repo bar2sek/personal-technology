@@ -41,7 +41,7 @@ Each editor reaches a different provider. Knowing which is which avoids configur
 | :--- | :--- | :--- |
 | **Antigravity IDE** | Google Gemini | Native agent canvas. Antigravity Tab uses Google's proprietary speculative decoding for autocomplete. |
 | **Claude Code Extension** | Anthropic Claude | Official IDE extension (`anthropic.claude-code`) authenticated directly via **Claude.ai subscription** (zero per-token charges). |
-| **Roo Code** | xAI Grok, Local MLX, AWS Bedrock | Multi-model switchboard in the IDE for real-time Grok, on-demand local Qwen 32B, and hosted AWS Bedrock models. |
+| **Roo Code** | xAI Grok, Local MLX, AWS Bedrock | Multi-model switchboard in the IDE for real-time Grok, on-demand local Qwen 32B, and AWS Bedrock (with future plans to host OpenAI models in Bedrock). |
 | **Claude Code (CLI)** | Anthropic Claude | Terminal-native agent, installed declaratively via `pkgs.claude-code` in the flake. |
 | **Claude Desktop** | Anthropic Claude | Official macOS desktop application, installed declaratively via Homebrew cask `claude`. |
 

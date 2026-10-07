@@ -439,7 +439,7 @@
         "id": "bedrock-hosted-llm",
         "apiProvider": "bedrock",
         "apiModelId": "anthropic.claude-3-5-sonnet-20241022-v2:0",
-        "awsRegion": "us-east-1"
+        "awsRegion": "us-east-2"
       }
     }
   },

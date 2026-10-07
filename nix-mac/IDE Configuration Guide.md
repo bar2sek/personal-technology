@@ -90,9 +90,9 @@ Roo Code profiles are managed **declaratively** via `~/.config/roo-code/settings
 ### Profile 3: AWS Bedrock (Enterprise Cloud Inference)
 * **Provider:** `Bedrock`
 * **Authentication:** AWS Profile (`default` or homelab profile) or AWS environment variables
-* **Region:** `us-east-1`
-* **Model ID:** Configured foundation model or private deployed model ARN
-* **Use Case:** Enterprise VPC isolation, corporate accounts, private cloud quota, and custom fine-tuned models hosted in AWS.
+* **Region:** `us-east-2`
+* **Model ID:** Configured foundation model or private deployed model ARN (with plans to host OpenAI models on AWS Bedrock)
+* **Use Case:** Enterprise VPC isolation, corporate accounts, private cloud quota, and eventually routing to OpenAI models hosted directly inside AWS Bedrock.
 
 > [!TIP] Native Antigravity Tab Autocomplete
 > In-editor inline code completion as you type is handled seamlessly by **Antigravity Tab** (Google's native speculative decoding). Roo Code operates as an autonomous agent canvas, so local MLX is preserved purely for conversational reasoning, tests, and refactors.
@@ -151,7 +151,7 @@ Configure your user settings (`~/Library/Application Support/Antigravity/User/se
 │ 4. Alternative Models, Offline Coding & AWS in ROO CODE:    │
 │    • Toggle Grok (xAI) for rapid second opinions            │
 │    • Toggle Local MLX (Qwen 32B) for offline / zero quota   │
-│    • Toggle AWS Bedrock for enterprise / private models     │
+│    • Toggle AWS Bedrock for enterprise & hosted OpenAI models│
 └─────────────────────────────────────────────────────────────┘
 ```
 
