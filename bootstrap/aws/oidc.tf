@@ -106,6 +106,21 @@ resource "aws_iam_role_policy" "github_plan" {
         Resource = "${local.tfstate_bucket_arn}/*.tflock"
       },
       {
+        # ReadOnlyAccess omits the tag-read actions for S3 Vectors and Bedrock,
+        # which the provider calls when refreshing vector buckets, indexes,
+        # knowledge bases and guardrails. Tags are configuration, not data.
+        # Verified with `aws iam simulate-principal-policy` (doc 409).
+        Sid    = "RefreshBedrockResourceTags"
+        Effect = "Allow"
+        Action = ["s3vectors:ListTagsForResource", "bedrock:ListTagsForResource"]
+        Resource = [
+          "arn:aws:s3vectors:${var.aws_region}:${local.account_id}:bucket/s3v-${var.platform}-bedrock-*",
+          "arn:aws:s3vectors:${var.aws_region}:${local.account_id}:bucket/s3v-${var.platform}-bedrock-*/index/*",
+          "arn:aws:bedrock:${var.aws_region}:${local.account_id}:knowledge-base/*",
+          "arn:aws:bedrock:${var.aws_region}:${local.account_id}:guardrail/*",
+        ]
+      },
+      {
         # Configuration is readable; DATA is not. Object reads are limited to
         # the state bucket, so a PR can never download backups.
         Sid         = "DenyObjectReadsOutsideState"

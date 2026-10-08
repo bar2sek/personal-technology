@@ -170,6 +170,7 @@ The Bedrock lab in `infra-cloud-deployments` (Knowledge Base on S3 Vectors, Guar
 | **Apply role** | Knowledge Base, data source and ingestion-job management; Guardrail management and versioning; vector bucket and index management; object read/write in `s3-aws-bedrock-*` | Terraform owns the resource lifecycle; the apply job then syncs the synthetic source documents from git (`aws s3 sync --delete`). They are deliberately not `aws_s3_object` resources, because every plan would re-read them and the plan role is denied object reads. Object write is the single exception to "configuration only, never object data", and it is limited to the Bedrock source bucket. |
 | **Apply role** | `iam:PassRole` on `role-aws-bedrock-*`, condition `iam:PassedToService = bedrock.amazonaws.com` | `CreateKnowledgeBase` hands its service role to Bedrock. See below. |
 | **Plan role** | Explicit Deny: `s3vectors:GetVectors/ListVectors/QueryVectors`, AgentCore memory record and event reads | AWS-managed `ReadOnlyAccess` (v190) grants these **data-plane** reads. Vectors carry the source text chunks as metadata, so without the Deny a pull request could read the corpus back. |
+| **Plan role** | Allow `s3vectors:ListTagsForResource` and `bedrock:ListTagsForResource` on `s3v-aws-bedrock-*` buckets/indexes, knowledge bases and guardrails | `ReadOnlyAccess` omits both, but the provider calls them to refresh those resources. Found 2026-10-07: the first PR after the KB stack existed failed its plan with `AccessDeniedException`, one service at a time. Tags are configuration, not data. |
 
 **Why PassRole needs both limits.** Passing a role to a service lets the service act with that role's permissions. Unscoped `iam:PassRole` is therefore an escalation path: pass a powerful role to a service you can drive, and borrow its permissions.
 
@@ -226,6 +227,7 @@ aws iam simulate-principal-policy --policy-source-arn "$PLAN" \
 | Apply role: passing **itself** → Bedrock | `explicitDeny` (`ProtectCiIdentityAndBoundary`) |
 | Plan role: `s3vectors:QueryVectors`, `GetVectors`, `bedrock-agentcore:RetrieveMemoryRecords` | `explicitDeny` |
 | Plan role: `s3vectors:GetIndex`, `bedrock:GetKnowledgeBase`, `bedrock:GetGuardrail` | `allowed` (plan can still refresh) |
+| Plan role: `s3vectors:ListTagsForResource` (bucket, index), `bedrock:ListTagsForResource` (knowledge base, guardrail) | `allowed` |
 | Apply role: `s3:PutObject` / `GetObject` on `s3-aws-bedrock-*` vs the backup bucket | `allowed` vs `implicitDeny` |
 | Apply role: `s3vectors:DeleteVectorBucket` | `implicitDeny` |
 
@@ -294,6 +296,22 @@ git push -u origin main
 ### 3. `AccessDenied` in the AWS apply job after a Terraform change
 
 The apply role is scoped to the resource types Terraform manages today. A new resource type (for example a DynamoDB table or an SNS topic) will plan successfully, because the plan role is read-only across the account, but fail to apply. That is the intended failure mode: add the specific actions to `aws_iam_policy.github_apply` in `bootstrap/aws/oidc.tf`, apply bootstrap locally, then re-run the workflow. If the error names `iam:CreateRole` or `iam:AttachRolePolicy`, the new role is missing `permissions_boundary = local.workload_boundary_arn`.
+
+The reverse also happens: a PR **plan** fails with `AccessDenied` on a `Get*`/`List*` action for a newer service. `ReadOnlyAccess` lags behind new APIs (for example, it has no `s3vectors:ListTagsForResource`). The first plan after a resource is created is the first one that refreshes it, so the gap only appears then. Add the specific read action to `aws_iam_role_policy.github_plan`, scoped to the resource, and never to a data-plane read that the Deny statements exclude.
+
+Terraform can stop at the first failing refresh, so these gaps surface one per run. Find them all at once by simulating the plan role against every resource type the stack refreshes:
+
+```bash
+ACCT=$(aws sts get-caller-identity --query Account --output text)
+aws iam simulate-principal-policy \
+  --policy-source-arn "arn:aws:iam::${ACCT}:role/role-aws-github-plan-prod-001" \
+  --action-names bedrock:GetKnowledgeBase bedrock:ListTagsForResource \
+  --resource-arns "arn:aws:bedrock:us-east-2:${ACCT}:knowledge-base/<KB_ID>" \
+  --query 'EvaluationResults[].[EvalActionName,EvalDecision]' --output text
+```
+
+> [!TIP] zsh gotcha
+> Write `${ACCT}:role`, not `$ACCT:role`. zsh treats `:r` after a variable as a modifier (strip extension) and mangles the ARN.
 
 ### 4. `GH006: Protected branch update failed` from a CI job
 
