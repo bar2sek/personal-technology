@@ -68,14 +68,16 @@ variable "azure_subscription_id" {
 
 variable "aws_role_arn" {
   type        = string
-  description = "APPLY role ARN (bootstrap/aws output github_actions_role_arn). Set on the production environment."
+  description = "APPLY role ARN (bootstrap/aws output github_actions_role_arn). Published as the production environment SECRET AWS_ROLE_TO_ASSUME; it embeds the AWS account ID."
   default     = ""
+  sensitive   = true
 }
 
 variable "aws_plan_role_arn" {
   type        = string
-  description = "Read-only PLAN role ARN (bootstrap/aws output github_plan_role_arn). Set at repository scope for pull request plans."
+  description = "Read-only PLAN role ARN (bootstrap/aws output github_plan_role_arn). Published as the repository-scope SECRET AWS_ROLE_TO_ASSUME for pull request plans."
   default     = ""
+  sensitive   = true
 }
 
 variable "aws_region" {
@@ -109,8 +111,9 @@ variable "cloudflare_zone_id" {
 
 variable "cloudflare_destination_email" {
   type        = string
-  description = "Cloudflare destination email for SSO & routing"
+  description = "Cloudflare destination email for SSO & routing. Personal address, so published as a SECRET."
   default     = ""
+  sensitive   = true
 }
 
 variable "cloudflare_api_token" {

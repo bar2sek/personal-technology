@@ -66,29 +66,32 @@ resource "github_repository_environment" "production" {
 
 locals {
   # Non-secret identifiers. Readable by collaborators and unmasked in logs —
-  # acceptable, because possession of them confers no access.
+  # acceptable, because possession of them confers no access and they reveal
+  # nothing private about the account owner.
   actions_variables = {
     for name, value in {
-      AZURE_CLIENT_ID              = var.azure_client_id
-      AZURE_TENANT_ID              = var.azure_tenant_id
-      AZURE_SUBSCRIPTION_ID        = var.azure_subscription_id
-      AWS_ROLE_TO_ASSUME           = var.aws_role_arn
-      AWS_REGION                   = var.aws_region
-      CLOUDFLARE_ACCOUNT_ID        = var.cloudflare_account_id
-      CLOUDFLARE_ZONE_ID           = var.cloudflare_zone_id
-      CLOUDFLARE_DESTINATION_EMAIL = var.cloudflare_destination_email
-      ENTRA_CLIENT_ID              = var.entra_client_id
-      ENTRA_TENANT_ID              = var.entra_tenant_id
+      AZURE_CLIENT_ID       = var.azure_client_id
+      AZURE_TENANT_ID       = var.azure_tenant_id
+      AZURE_SUBSCRIPTION_ID = var.azure_subscription_id
+      AWS_REGION            = var.aws_region
+      CLOUDFLARE_ACCOUNT_ID = var.cloudflare_account_id
+      CLOUDFLARE_ZONE_ID    = var.cloudflare_zone_id
+      ENTRA_CLIENT_ID       = var.entra_client_id
+      ENTRA_TENANT_ID       = var.entra_tenant_id
     } : name => value if value != ""
   }
 
-  # Values that must never surface in a workflow log. The state bucket name
-  # embeds the AWS account ID and is interpolated into a `run:` command, which
-  # Actions echoes verbatim — as a secret it is masked to `***` instead.
+  # Values that must never surface in a workflow log. The repository is public,
+  # and Actions prints every step input (`with:`) and every `run:` command with
+  # expressions already expanded. A secret is masked to `***`; a variable is not.
+  #   * AWS_ROLE_TO_ASSUME and AWS_TF_STATE_BUCKET embed the AWS account ID.
+  #   * CLOUDFLARE_DESTINATION_EMAIL is a personal email address (PII).
   actions_secrets = {
-    AWS_TF_STATE_BUCKET  = var.aws_tf_state_bucket
-    CLOUDFLARE_API_TOKEN = var.cloudflare_api_token
-    ENTRA_CLIENT_SECRET  = var.entra_client_secret
+    AWS_ROLE_TO_ASSUME           = var.aws_role_arn
+    AWS_TF_STATE_BUCKET          = var.aws_tf_state_bucket
+    CLOUDFLARE_API_TOKEN         = var.cloudflare_api_token
+    CLOUDFLARE_DESTINATION_EMAIL = var.cloudflare_destination_email
+    ENTRA_CLIENT_SECRET          = var.entra_client_secret
   }
 
   # Terraform forbids sensitive values as `for_each` arguments, since instance
@@ -106,14 +109,19 @@ locals {
 # request plans assume the read-only PLAN role, while the `production`
 # environment (which takes precedence for the apply job) keeps the APPLY role.
 locals {
-  repository_variables = merge(
-    local.actions_variables,
-    var.aws_plan_role_arn == "" ? {} : { AWS_ROLE_TO_ASSUME = var.aws_plan_role_arn },
+  repository_secrets = merge(
+    local.actions_secrets,
+    nonsensitive(var.aws_plan_role_arn == "") ? {} : { AWS_ROLE_TO_ASSUME = var.aws_plan_role_arn },
   )
+
+  repository_secret_names = toset([
+    for name, value in local.repository_secrets : name
+    if !nonsensitive(value == "")
+  ])
 }
 
 resource "github_actions_variable" "shared" {
-  for_each = local.repository_variables
+  for_each = local.actions_variables
 
   repository    = github_repository.infra_cloud_deployments.name
   variable_name = each.key
@@ -130,11 +138,11 @@ resource "github_actions_environment_variable" "production" {
 }
 
 resource "github_actions_secret" "shared" {
-  for_each = local.actions_secret_names
+  for_each = local.repository_secret_names
 
   repository  = github_repository.infra_cloud_deployments.name
   secret_name = each.value
-  value       = local.actions_secrets[each.value]
+  value       = local.repository_secrets[each.value]
 }
 
 resource "github_actions_environment_secret" "production" {

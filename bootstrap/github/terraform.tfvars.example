@@ -20,10 +20,9 @@ repository_visibility = "private"
 
 # AWS OIDC Federation Parameters (retrieved from 'bootstrap/aws' outputs).
 # Both of these embed the AWS account ID — keep them out of version control.
-# The role ARN is published as a non-secret Actions variable (an ARN grants
-# nothing without a matching IAM trust policy); the state bucket is published
-# as a masked Actions SECRET, because it is interpolated into a `run:` command
-# that GitHub echoes verbatim into publicly readable workflow logs.
+# All three are published as masked Actions SECRETS. An ARN grants nothing on
+# its own, but GitHub prints step inputs and `run:` commands verbatim into the
+# publicly readable workflow logs, and the account ID must not appear there.
 # aws_role_arn        = "arn:aws:iam::000000000000:role/role-aws-github-actions-prod-001" # apply (production env)
 # aws_plan_role_arn   = "arn:aws:iam::000000000000:role/role-aws-github-plan-prod-001"    # plan (pull requests)
 # aws_region          = "us-east-2"
