@@ -157,6 +157,7 @@
           # Productivity, Notes & Keyboards
           "google-drive"
           "microsoft-onenote"
+          "microsoft-teams"
           "keymapp"
           "navigator"
           "obsidian"
