@@ -38,6 +38,7 @@ Welcome to the **Mac AI Workstation** notes vault. This workspace documents the 
 ### 4. System Hygiene & Operations
 * [[Declarative macOS Setup]] — Extending "System as Code" across dotfiles, settings, runtimes, and runners.
 * [[Nix-Darwin Guide]] — The single-file (`flake.nix`) agent-driven declarative OS setup.
+* [[AWS CDK & TypeScript Workstation Guide]] — Declarative AWS CDK v2 & TypeScript toolchain, aliases, and workflows.
 * [[Cloud Storage & Google Drive Guide]] — Disabling iCloud syncing & configuring Google Drive for Desktop.
 * [[Mac Cleanliness & Anti-Bloat Guide]] — Best practices for keeping macOS pristine (uv, Brewfile, ephemeral environments).
 * [[Setup Checklist]] — Step-by-step unboxing and setup checklist for the new Mac.

@@ -37,7 +37,7 @@ bash templates/bootstrap.sh
 * Builds and applies the **`nix-darwin`** system state from `templates/flake.nix`.
 * Installs all GUI applications: **Visual Studio Code, Ghostty, Google Drive, Obsidian, OrbStack, and AppCleaner**.
 * Installs modern CLI utilities: `git`, `uv`, `ripgrep`, `fd`, `jq`, `just`, `eza`, `bat`, `zoxide`, `fzf`, and `p10k`.
-* Installs cloud infrastructure CLIs: `awscli`, `azure-cli`, `terraform`, and `node`.
+* Installs cloud infrastructure CLIs: `awscli`, `aws-cdk`, `azure-cli`, `terraform`, `node`, and `typescript`.
 * Deploys **JetBrainsMono Nerd Font** system-wide.
 * Auto-configures **Visual Studio Code** (`Default Dark+` theme, font ligatures, Material Icons, and declarative extensions).
 * Deploys **Continue.dev** pre-configured for Anthropic Claude endpoints.
@@ -97,6 +97,7 @@ The root of this repository contains an Obsidian-compatible documentation vault 
 * [[Hardware Protection & Keyboard Care]] — Step-by-step Barekey decal application & screen buffer setup.
 * [[Container Strategy]] — Why OrbStack replaces Docker Desktop for minimal CPU/RAM overhead.
 * [[IDE Configuration Guide]] — Step-by-step configuration for VS Code, Continue.dev, and Antigravity.
+* [[AWS CDK & TypeScript Workstation Guide]] — Declarative AWS CDK v2 & TypeScript toolchain, aliases, and workflows.
 * [[Cloud AI Providers & Models]] — Model tiering, provider routing per tool, and credential hygiene.
 * [[Mac Cleanliness & Anti-Bloat Guide]] — Best practices for keeping macOS pristine (`uv`, Homebrew zap, cache pruning).
 * [[Cloud Storage & Google Drive Guide]] — Disabling iCloud syncing and configuring Google Drive for Desktop.

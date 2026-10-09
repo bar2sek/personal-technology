@@ -64,6 +64,12 @@
         tf = "terraform";
         ts = "tailscale";
 
+        # AWS & Cloud Development Kit (CDK) Shortcuts
+        cdks = "cdk synth";
+        cdkd = "cdk diff";
+        cdkl = "cdk list";
+        cdkw = "cdk watch";
+
         # Modern Eza Listing (Colors + File Icons + Git status)
         ls = "eza --icons --group-directories-first";
         ll = "eza -lah --icons --group-directories-first --git";
@@ -142,9 +148,11 @@
         # CLI Developer & Cloud Tools (Python managed purely via uv)
         brews = [
           "awscli"                   # AWS CLI
+          "aws-cdk"                  # AWS Cloud Development Kit CLI (cdk)
           "azure-cli"                 # Microsoft Azure CLI (az)
           "hashicorp/tap/terraform"   # HashiCorp Terraform CLI
           "node"                      # Node.js runtime & npm
+          "typescript"                # TypeScript compiler & CLI (tsc)
         ];
 
         # GUI Applications
@@ -521,6 +529,8 @@ EOF
               "jnoortheen.nix-ide" \
               "hashicorp.terraform" \
               "amazonwebservices.aws-toolkit-vscode" \
+              "dbaeumer.vscode-eslint" \
+              "esbenp.prettier-vscode" \
               "ms-vscode.azure-account" \
               "ms-azuretools.vscode-azureresourcegroups" \
               "ms-azuretools.vscode-docker" \
