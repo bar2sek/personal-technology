@@ -42,3 +42,13 @@ output "workload_boundary_policy_arn" {
   description = "Permissions boundary every CI-created workload role must carry"
   value       = aws_iam_policy.workload_boundary.arn
 }
+
+output "github_gateway_diff_role_arn" {
+  description = "bedrock-ai-gateway PR diff role ARN -> GitHub secret AWS_DIFF_ROLE_ARN"
+  value       = aws_iam_role.github_gateway_diff.arn
+}
+
+output "github_gateway_deploy_role_arn" {
+  description = "bedrock-ai-gateway deploy role ARN -> GitHub environment secret AWS_DEPLOY_ROLE_ARN"
+  value       = aws_iam_role.github_gateway_deploy.arn
+}

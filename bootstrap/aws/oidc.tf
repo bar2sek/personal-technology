@@ -15,7 +15,7 @@
 # against CloudTrail AssumeRoleWithWebIdentity events on 2026-10-04: GitHub
 # emits this format for this repository. A mutable `repo:owner/name` subject
 # would let a re-created repository of the same name inherit trust.
-# See docs/409-github-azure-oidc-gitops.md.
+# See docs/409-github-cloud-oidc-gitops.md.
 # ==============================================================================
 
 # 1. GitHub Actions OIDC Identity Provider

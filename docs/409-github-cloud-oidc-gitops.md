@@ -1,18 +1,21 @@
 ---
-title: "GitHub Actions & Azure OIDC GitOps Deployment Engine"
+title: "GitHub Actions & Multi-Cloud OIDC GitOps Deployment Engine"
 date: 2026-09-20
 tags:
   - azure/devops
+  - aws/iam
+  - aws/cdk
   - github/actions
   - architecture/gitops
   - security/oidc
 status: evergreen
 aliases:
+  - GitHub Cloud OIDC
   - GitHub Azure OIDC
   - infra-cloud-deployments
 ---
 
-# GitHub Actions & Azure OIDC GitOps Deployment Engine
+# GitHub Actions & Multi-Cloud OIDC GitOps Deployment Engine
 
 This document outlines the architecture, security invariants, and operational runbook for executing automated cloud deployments via **GitHub Actions** using **OpenID Connect (OIDC) Workload Identity Federation** and a dedicated GitOps repository (**`infra-cloud-deployments`**).
 
@@ -234,6 +237,38 @@ aws iam simulate-principal-policy --policy-source-arn "$PLAN" \
 > [!NOTE] Two simulator and analyzer gotchas
 > - **`*` in an ARN matches across `/`.** `arn:aws:s3:::s3-aws-bedrock-*` already matches every object ARN in those buckets, which is why Access Analyzer calls the separate `…/*` entry redundant. Both entries are kept anyway: they state intent (bucket vs objects) and match the AWS-documented pattern.
 > - **`simulate-principal-policy` with several `--resource-arns` returns one aggregated `EvalDecision`**: one denied resource makes the whole action read `implicitDeny`. Query `EvaluationResults[].ResourceSpecificResults[].[EvalResourceName,EvalResourceDecision]` to see each resource separately.
+
+### 4. AWS CDK pipeline roles for `bedrock-ai-gateway` (`bootstrap/aws/oidc-cdk-gateway.tf`, added 2026-10-10)
+
+The [bedrock-ai-gateway](https://github.com/bar2sek/bedrock-ai-gateway) repository deploys with AWS CDK instead of Terraform. CDK needs its own groundwork first: `cdk bootstrap` creates the `CDKToolkit` stack, with an asset bucket and a set of roles named `cdk-hnb659fds-<purpose>-role-<account>-<region>`. The CDK CLI does its work by assuming those roles.
+
+So the GitHub roles for this repository hold **no AWS permissions of their own** except `sts:AssumeRole` on specific bootstrap roles:
+
+| Role | Trusted subject | May assume | Used for |
+|---|---|---|---|
+| `role-aws-github-gateway-diff-prod-001` | `…/bedrock-ai-gateway@1413642267:pull_request` | `lookup` (ReadOnlyAccess) | `cdk diff --method=template` on PRs |
+| `role-aws-github-gateway-deploy-prod-001` | `…/bedrock-ai-gateway@1413642267:environment:production` | `deploy`, `file-publishing`, `lookup` | `cdk deploy` on merge to `main` |
+
+Design notes:
+
+- **Why `--method=template` on PRs.** The default `cdk diff` creates a CloudFormation change set, which requires the `deploy` role. The template method reads the deployed template through the `lookup` role instead (verified in the CDK CLI source), so pull requests stay read-only. The trade-off: the template diff is less precise about whether an update *replaces* a resource.
+- **Why this scopes anything.** The bootstrap roles trust the whole account, so any principal in it with `sts:AssumeRole` on them can use them. The per-role identity policy above is the actual control.
+- **No `image-publishing`.** The stack builds no container images. Add it if one ever does.
+
+> [!CAUTION]
+> The bootstrap's CloudFormation execution role is **AdministratorAccess** by default. Assuming the `deploy` role is therefore effectively admin, for anything a CDK stack can define. The protected `production` environment and branch protection are the guard today. The proper fix is re-bootstrapping with `--cloudformation-execution-policies` set to a scoped policy, and managing the bootstrap template as code.
+
+Verification after `terraform apply`. Expect `allowed` for the lookup role and `implicitDeny` for the deploy role:
+
+```bash
+ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+aws iam simulate-principal-policy \
+  --policy-source-arn "arn:aws:iam::${ACCOUNT}:role/role-aws-github-gateway-diff-prod-001" \
+  --action-names sts:AssumeRole \
+  --resource-arns "arn:aws:iam::${ACCOUNT}:role/cdk-hnb659fds-lookup-role-${ACCOUNT}-us-east-2" \
+                  "arn:aws:iam::${ACCOUNT}:role/cdk-hnb659fds-deploy-role-${ACCOUNT}-us-east-2" \
+  --query 'EvaluationResults[].ResourceSpecificResults[].[EvalResourceName,EvalResourceDecision]' --output text
+```
 
 ---
 

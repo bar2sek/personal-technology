@@ -72,7 +72,7 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 - [406 - Floci: In-Cluster Local AWS Cloud Emulator for Terraform & CI/CD](docs/406-floci-local-aws-emulator.md)
 - [407 - Microsoft Entra ID & Authentik Enterprise Identity Federation](docs/407-azure-entra-id-authentik-federation.md)
 - [408 - Azure Arc-Enabled Kubernetes & Zero-Cost Cloud Monitoring](docs/408-azure-arc-hybrid-kubernetes.md)
-- [409 - GitHub Actions & Azure OIDC GitOps Deployment Engine](docs/409-github-azure-oidc-gitops.md)
+- [409 - GitHub Actions & Multi-Cloud OIDC GitOps Deployment Engine](docs/409-github-cloud-oidc-gitops.md)
 
 ### 📦 Section 5: Self-Hosted Application Suite
 - [501 - TeslaMate Vehicle Telemetry & Analytics Platform](docs/501-teslamate-telemetry-deployment.md)
