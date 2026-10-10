@@ -52,6 +52,9 @@
 
         # Terminal AI Agents & Assistants
         pkgs.claude-code
+
+        # Cloud & AWS Multi-Account Identity Federation
+        pkgs.granted
       ];
 
       # Shell Aliases (Modern, Colorized with Nerd Font Icons)
@@ -65,6 +68,7 @@
         ts = "tailscale";
 
         # AWS & Cloud Development Kit (CDK) Shortcuts
+        assume = "source assume";
         cdks = "cdk synth";
         cdkd = "cdk diff";
         cdkl = "cdk list";
