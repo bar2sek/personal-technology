@@ -95,6 +95,28 @@ Ensure your terminal has active AWS credentials configured:
 aws sts get-caller-identity
 ```
 
+#### How each tool gets credentials (`aws login`)
+
+Human access uses `aws login --remote` on the `[default]` profile (passkey on the phone). The tools read that session in different ways:
+
+| Tool | How | Setup |
+|---|---|---|
+| AWS CLI, CDK CLI | Read the `aws login` session natively | none |
+| Terraform | `[profile terraform]`, whose `credential_process` fetches fresh credentials from the login session on every run | `terraform` shell alias (flake `environment.shellAliases`) sets `AWS_PROFILE=terraform` for Terraform only |
+
+The profile is the one imperative piece, because `~/.aws/config` isn't managed by nix-darwin:
+
+```ini
+[profile terraform]
+region = us-east-2
+credential_process = aws configure export-credentials --profile default
+```
+
+> [!WARNING] Gotchas (2026-10-11)
+> - **Never put `credential_process` on `[default]`.** `aws login` refuses to re-authenticate a profile that has one ("already configured with Credential Process credentials").
+> - **Don't export `AWS_PROFILE=terraform` globally.** `aws login` would then target that profile and fail. That's why the alias is scoped to `terraform`.
+> - **Avoid `eval "$(aws configure export-credentials --format env)"`.** It's a snapshot that expires in about 15 minutes, and environment variables override every profile. Stale ones cause "expired credentials" and "refreshed credentials are still expired" errors even after a fresh login. Fix: `unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN AWS_CREDENTIAL_EXPIRATION`, or open a new terminal window.
+
 ---
 
 ## 🛠️ CDK TypeScript Project Workflow

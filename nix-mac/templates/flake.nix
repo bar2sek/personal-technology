@@ -65,6 +65,11 @@
         k9 = "k9s";
         talos = "talosctl";
         tf = "terraform";
+        # Terraform can't read `aws login` sessions, so it uses the
+        # [profile terraform] in ~/.aws/config, whose credential_process
+        # fetches fresh credentials on every run. Scoped to terraform only:
+        # a global AWS_PROFILE would point `aws login` at that profile and fail.
+        terraform = "AWS_PROFILE=\${AWS_PROFILE:-terraform} terraform";
         ts = "tailscale";
 
         # AWS & Cloud Development Kit (CDK) Shortcuts

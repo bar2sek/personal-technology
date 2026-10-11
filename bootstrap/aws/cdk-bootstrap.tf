@@ -69,6 +69,10 @@ resource "aws_cloudformation_stack" "cdk_toolkit" {
 # ------------------------------------------------------------------------------
 locals {
   cdk_gateway_stack = "BedrockAiGateway"
+
+  # Built from the name, not the resource, so cdk_cfn_exec can reference it
+  # in conditions without ordering surprises. Same pattern as oidc.tf.
+  cdk_gateway_boundary_arn = "arn:aws:iam::${local.account_id}:policy/${local.iam_policy_cdk_gateway_boundary_name}"
 }
 
 resource "aws_iam_policy" "cdk_cfn_exec" {
@@ -132,11 +136,27 @@ resource "aws_iam_policy" "cdk_cfn_exec" {
         Resource = "*"
       },
       {
-        # The function's execution role and its inline policy.
-        Sid    = "LambdaExecutionRoles"
+        # Roles may only be created, or given permissions, while they carry the
+        # gateway boundary. Whatever policy gets attached, the role can never
+        # exceed the boundary, which closes the "create an admin role" path.
+        Sid    = "GrantPrivilegeOnlyWithinBoundary"
         Effect = "Allow"
         Action = [
           "iam:CreateRole",
+          "iam:PutRolePermissionsBoundary",
+          "iam:PutRolePolicy",
+          "iam:AttachRolePolicy",
+        ]
+        Resource = "arn:aws:iam::${local.account_id}:role/${local.cdk_gateway_stack}-*"
+        Condition = {
+          StringEquals = { "iam:PermissionsBoundary" = local.cdk_gateway_boundary_arn }
+        }
+      },
+      {
+        # The function's execution role: everything except granting privilege.
+        Sid    = "LambdaExecutionRoles"
+        Effect = "Allow"
+        Action = [
           "iam:DeleteRole",
           "iam:GetRole",
           "iam:UpdateRole",
@@ -145,11 +165,9 @@ resource "aws_iam_policy" "cdk_cfn_exec" {
           "iam:TagRole",
           "iam:UntagRole",
           "iam:ListRoleTags",
-          "iam:PutRolePolicy",
           "iam:GetRolePolicy",
           "iam:DeleteRolePolicy",
           "iam:ListRolePolicies",
-          "iam:AttachRolePolicy",
           "iam:DetachRolePolicy",
           "iam:ListAttachedRolePolicies",
           "iam:ListInstanceProfilesForRole",
@@ -198,6 +216,66 @@ resource "aws_iam_policy" "cdk_cfn_exec" {
         Effect   = "Allow"
         Action   = ["apigateway:GET", "apigateway:POST", "apigateway:PUT", "apigateway:PATCH", "apigateway:DELETE"]
         Resource = "arn:aws:apigateway:${var.aws_region}::/*"
+      },
+      {
+        # Explicit denies win over any allow, including a future broad one.
+        Sid      = "NeverRemoveBoundaries"
+        Effect   = "Deny"
+        Action   = "iam:DeleteRolePermissionsBoundary"
+        Resource = "*"
+      },
+      {
+        Sid      = "ProtectBoundaryPolicy"
+        Effect   = "Deny"
+        Action   = ["iam:CreatePolicyVersion", "iam:DeletePolicyVersion", "iam:SetDefaultPolicyVersion", "iam:DeletePolicy"]
+        Resource = local.cdk_gateway_boundary_arn
+      },
+    ]
+  })
+}
+
+# ------------------------------------------------------------------------------
+# Permissions boundary — the ceiling for every role the gateway stack creates
+#
+# CDK stamps it onto every role in the app (bedrock-ai-gateway cdk.json,
+# "@aws-cdk/core:permissionsBoundary"), and cdk_cfn_exec only lets
+# CloudFormation create or empower roles that carry it. A role's effective
+# permissions are the intersection of its policies and this boundary.
+#
+# Actions mirror what the chat function's role uses today; resource scoping
+# stays in the stack's own identity policies. A new runtime permission in the
+# app (DynamoDB, CloudWatch metrics, ...) must be added here first, or it is
+# silently ineffective: the deploy succeeds, the call fails with AccessDenied.
+# ------------------------------------------------------------------------------
+resource "aws_iam_policy" "cdk_gateway_boundary" {
+  name        = local.iam_policy_cdk_gateway_boundary_name
+  description = "Permissions boundary: maximum permissions for roles in the ${local.cdk_gateway_stack} CDK stack"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        # RAG path: Retrieve from the Knowledge Base, Converse (InvokeModel)
+        # with the guardrail applied.
+        Sid      = "BedrockRag"
+        Effect   = "Allow"
+        Action   = ["bedrock:InvokeModel", "bedrock:Retrieve", "bedrock:ApplyGuardrail"]
+        Resource = "*"
+      },
+      {
+        # Active tracing on the function.
+        Sid      = "XRayTracing"
+        Effect   = "Allow"
+        Action   = ["xray:PutTraceSegments", "xray:PutTelemetryRecords"]
+        Resource = "*"
+      },
+      {
+        # AWSLambdaBasicExecutionRole grants these on "*"; the boundary narrows
+        # them to the stack's own log groups.
+        Sid      = "FunctionLogs"
+        Effect   = "Allow"
+        Action   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
+        Resource = "arn:aws:logs:${var.aws_region}:${local.account_id}:log-group:${local.cdk_gateway_stack}-*"
       },
     ]
   })
