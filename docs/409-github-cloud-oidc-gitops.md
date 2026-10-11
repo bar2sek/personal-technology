@@ -254,6 +254,7 @@ Design notes:
 - **Why `--method=template` on PRs.** The default `cdk diff` creates a CloudFormation change set, which requires the `deploy` role. The template method reads the deployed template through the `lookup` role instead (verified in the CDK CLI source), so pull requests stay read-only. The trade-off: the template diff is less precise about whether an update *replaces* a resource.
 - **Why this scopes anything.** The bootstrap roles trust the whole account, so any principal in it with `sts:AssumeRole` on them can use them. The per-role identity policy above is the actual control.
 - **No `image-publishing`.** The stack builds no container images. Add it if one ever does.
+- **GitHub side** (`bootstrap/github/bedrock-ai-gateway.tf`): the role ARNs reach GitHub as secrets read directly from this module's state (`terraform_remote_state`, local backend). `AWS_DIFF_ROLE_ARN` is a repository secret. `AWS_DEPLOY_ROLE_ARN` is scoped to the `production` environment only, which requires owner approval, accepts only protected branches, and doesn't let admins bypass it. `main` requires a PR plus the `verify` check, with `enforce_admins` on.
 
 > [!CAUTION]
 > The bootstrap's CloudFormation execution role is **AdministratorAccess** by default. Assuming the `deploy` role is therefore effectively admin, for anything a CDK stack can define. The protected `production` environment and branch protection are the guard today. The proper fix is re-bootstrapping with `--cloudformation-execution-policies` set to a scoped policy, and managing the bootstrap template as code.
@@ -315,6 +316,53 @@ git push -u origin main
 2. Observe the automated workflow triggering on `push` to `main`.
 3. Verify step `Azure Login via OIDC Workload Identity Federation` exchanges tokens successfully with zero static secrets.
 4. Verify `terraform apply` provisions resources and saves state into `stazutfstateprodcus001/tfstate`.
+
+### Step 5: Bootstrap an AWS CDK repository (`bedrock-ai-gateway`)
+
+The order used on 2026-10-10, and the order to follow when rebuilding from scratch. Each step depends on the one before it.
+
+```mermaid
+graph LR
+  A[1. cdk bootstrap<br/>CDKToolkit stack] --> B[2. bootstrap/aws<br/>diff + deploy roles]
+  B --> C[3. bootstrap/github<br/>import repo · env · secrets · protection]
+  C --> D[4. Workflow via PR<br/>verify → approve → deploy]
+```
+
+**Prerequisites:** AWS CLI signed in as an administrator (`aws login --remote`), `gh auth status` showing the owner account, and the repository already created (`gh repo create`, adopted by Terraform in step 3).
+
+```bash
+# 1. CDK groundwork — run once per account/region, from the CDK repository root.
+#    Creates the CDKToolkit stack: asset bucket + cdk-hnb659fds-*-role-<account>-<region> roles.
+npx cdk bootstrap
+
+# 2. Pipeline roles (bootstrap/aws/oidc-cdk-gateway.tf). Expect 4 to add on first apply.
+cd bootstrap/aws
+eval "$(aws configure export-credentials --format env)"
+export TF_DATA_DIR=~/.terraform-data/bootstrap-aws
+terraform init && terraform plan && terraform apply
+
+# 3. GitHub side (bootstrap/github/bedrock-ai-gateway.tf). Reads the role ARNs from
+#    bootstrap/aws state, so step 2 must be applied first.
+#    Expect "1 to import" the first time.
+cd ../github
+export TF_DATA_DIR=~/.terraform-data/bootstrap-github
+export GITHUB_TOKEN="$(gh auth token)"
+terraform init && terraform plan && terraform apply
+
+# 4. The workflow must arrive through a pull request (enforce_admins blocks direct pushes).
+#    The PR runs `verify`; merging runs `deploy` after reviewer approval.
+```
+
+**Verification:**
+
+| Check | Expected |
+|---|---|
+| `simulate-principal-policy` for the diff role (§4 above) | lookup `allowed`, deploy `implicitDeny` |
+| PR checks | `verify` green; run summary shows the `cdk diff` with the account ID redacted |
+| Push to `main` | `deploy` waits on **Review deployments**, then succeeds; logs show the account ID as `***` |
+
+> [!NOTE] What is still imperative
+> `cdk bootstrap` (step 1) and `gh repo create` are CLI commands. The repository is adopted into Terraform by an `import` block. The CDKToolkit stack is the open item: manage its template as code (`cdk bootstrap --show-template`), with a scoped execution policy instead of `AdministratorAccess`.
 
 ---
 
