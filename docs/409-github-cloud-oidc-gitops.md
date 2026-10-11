@@ -321,8 +321,8 @@ The policy allows only the resource types the `BedrockAiGateway` stack contains 
 - **Every statement includes delete.** Rollback runs with the same role, so a missing delete action would leave a failed deploy stuck in `UPDATE_ROLLBACK_FAILED` instead of rolling back cleanly.
 - **Adding a resource type** (DynamoDB, CloudWatch alarms and so on): the deploy fails with `AccessDenied` and rolls back, and the running version keeps serving. Add the actions to the policy, apply bootstrap locally, then re-run the deploy. Widening what CI can create stays a reviewed, human change.
 
-> [!CAUTION]
-> The policy still lets CloudFormation attach *any* policy to a `BedrockAiGateway-*` role, so a stack could create an admin role. A permissions boundary on the roles CDK creates closes that path. It's the next hardening step.
+> [!NOTE]
+> On its own, this policy would still let CloudFormation create a `BedrockAiGateway-*` role and attach *any* policy to it, including admin. §4c closes that path.
 
 **Verification (2026-10-11):**
 
@@ -333,6 +333,40 @@ The policy allows only the resource types the `BedrockAiGateway` stack contains 
 | `simulate-principal-policy`: `lambda:UpdateFunctionCode` and `lambda:UpdateFunctionConfiguration` on the stack's function | `allowed` |
 | `aws accessanalyzer validate-policy` | no errors or warnings |
 | Real deploy through CI: added a Lambda description (PR merged 2026-10-11) | `UPDATE_COMPLETE` |
+
+#### 4c. Permissions boundary for gateway roles (`aws_iam_policy.cdk_gateway_boundary`, added 2026-10-11)
+
+A permissions boundary caps a role. Its effective permissions are the **intersection** of its policies and the boundary, so attaching `AdministratorAccess` to a bounded role grants nothing beyond the boundary.
+
+```mermaid
+graph LR
+  CDK["cdk.json<br/>@aws-cdk/core:permissionsBoundary"] -->|stamps boundary on every role| ROLE[BedrockAiGateway-* role]
+  EXEC[cfn-exec policy] -->|CreateRole / Put / Attach only if<br/>iam:PermissionsBoundary = gateway boundary| ROLE
+  B[policy-aws-cdk-gateway-boundary-prod-001] -->|ceiling| ROLE
+```
+
+| Piece | Where | What it does |
+|---|---|---|
+| Boundary policy | `bootstrap/aws/cdk-bootstrap.tf` | The ceiling: `bedrock:InvokeModel`/`Retrieve`/`ApplyGuardrail`, X-Ray writes, and logs only to `BedrockAiGateway-*` log groups |
+| Stamping | `bedrock-ai-gateway` `cdk.json` | CDK adds the boundary to **every** role in the app, including ones it creates implicitly. Only the policy name is committed; CDK builds the ARN at deploy time. |
+| Enforcement | `GrantPrivilegeOnlyWithinBoundary` in the cfn-exec policy | `CreateRole`, `PutRolePermissionsBoundary`, `PutRolePolicy` and `AttachRolePolicy` are allowed only while the role carries this exact boundary |
+| Guardrails | `NeverRemoveBoundaries`, `ProtectBoundaryPolicy` (explicit Deny) | No removing boundaries, no editing or deleting the boundary policy through CDK |
+
+**Order of rollout:** Terraform first (boundary plus enforcement), then the CDK PR that stamps the boundary. Adding a boundary to an existing role is a `PutRolePermissionsBoundary` call that the enforcement statement explicitly allows.
+
+> [!IMPORTANT]
+> A boundary fails **quietly**. If the app gains a runtime permission (DynamoDB, CloudWatch metrics, ...) that isn't in the boundary, the deploy still succeeds but the call fails with `AccessDenied` at runtime. Widen the boundary here first, apply, then ship the app change. Always smoke-test after deploys that touch IAM.
+
+**Verification (2026-10-11):**
+
+| Check | Result |
+|---|---|
+| Simulate `CreateRole`/`AttachRolePolicy`/`PutRolePolicy` with no boundary, or with `AdministratorAccess` as the boundary | `implicitDeny` |
+| Same actions with the gateway boundary (`--context-entries iam:PermissionsBoundary=...`) | `allowed` |
+| `DeleteRolePermissionsBoundary`; `CreatePolicyVersion`/`DeletePolicy` on the boundary | `explicitDeny` |
+| `validate-policy` on both policies | no findings |
+| `get-role` on the function role after the CDK deploy | `PermissionsBoundaryArn` = the gateway boundary |
+| Live `POST /chat` | grounded answer, 4 sources, guardrail evaluated |
 
 Troubleshooting a failed deploy:
 
@@ -433,7 +467,7 @@ terraform init && terraform plan && terraform apply
 | Push to `main` | `deploy` waits on **Review deployments**, then succeeds; logs show the account ID as `***` |
 
 > [!NOTE] What is still imperative
-> Only `gh repo create` is still a CLI command, and Terraform adopts that repository with an `import` block. Since 2026-10-11 the CDKToolkit stack is Terraform-managed (§4a). Its execution role is scoped (§4b). Still open: a permissions boundary on the roles CDK creates.
+> Only `gh repo create` is still a CLI command, and Terraform adopts that repository with an `import` block. Since 2026-10-11 the CDKToolkit stack is Terraform-managed (§4a). Its execution role is scoped (§4b), and every role it creates is capped by a permissions boundary (§4c).
 
 ---
 
