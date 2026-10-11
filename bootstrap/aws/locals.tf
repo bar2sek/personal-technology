@@ -20,6 +20,7 @@ locals {
   iam_role_github_gateway_deploy       = "role-${var.platform}-github-gateway-deploy-${var.env}-${var.iteration}"
   iam_policy_cdk_cfn_exec_name         = "policy-${var.platform}-cdk-cfn-exec-${var.env}-${var.iteration}"
   iam_policy_cdk_gateway_boundary_name = "policy-${var.platform}-cdk-gateway-boundary-${var.env}-${var.iteration}"
+  sns_topic_alerts_name                = "sns-${var.platform}-alerts-${var.env}-${var.region_code}-${var.iteration}"
 
   # The backup bucket itself is owned by infra-cloud-deployments (terraform/aws).
   # Built from the shared naming convention rather than a data source so this

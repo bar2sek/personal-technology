@@ -218,6 +218,28 @@ resource "aws_iam_policy" "cdk_cfn_exec" {
         Resource = "arn:aws:apigateway:${var.aws_region}::/*"
       },
       {
+        # Metric alarms. Alarm *actions* that notify the shared alerts topic
+        # (alerts.tf) need no SNS permission here: CloudWatch publishes to the
+        # topic itself when the alarm changes state.
+        Sid    = "CloudWatchAlarms"
+        Effect = "Allow"
+        Action = [
+          "cloudwatch:PutMetricAlarm",
+          "cloudwatch:DeleteAlarms",
+          "cloudwatch:TagResource",
+          "cloudwatch:UntagResource",
+          "cloudwatch:ListTagsForResource",
+        ]
+        Resource = "arn:aws:cloudwatch:${var.aws_region}:${local.account_id}:alarm:${local.cdk_gateway_stack}-*"
+      },
+      {
+        # DescribeAlarms has no resource-level scoping.
+        Sid      = "DescribeAlarms"
+        Effect   = "Allow"
+        Action   = ["cloudwatch:DescribeAlarms"]
+        Resource = "*"
+      },
+      {
         # Explicit denies win over any allow, including a future broad one.
         Sid      = "NeverRemoveBoundaries"
         Effect   = "Deny"

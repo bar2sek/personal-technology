@@ -33,3 +33,9 @@ variable "github_repo_name" {
   type        = string
   default     = "bar2sek/infra-cloud-deployments"
 }
+
+variable "alert_email" {
+  description = "Email address subscribed to the shared alerts SNS topic. Set in the gitignored terraform.tfvars."
+  type        = string
+  sensitive   = true # personal data: keep it out of plan output and logs
+}
