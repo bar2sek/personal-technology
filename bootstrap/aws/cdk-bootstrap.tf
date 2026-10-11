@@ -240,6 +240,35 @@ resource "aws_iam_policy" "cdk_cfn_exec" {
         Resource = "*"
       },
       {
+        # Operational dashboard. Dashboards are global (no region in the ARN)
+        # and have no generated names, so the stack names it explicitly.
+        Sid      = "Dashboards"
+        Effect   = "Allow"
+        Action   = ["cloudwatch:PutDashboard", "cloudwatch:GetDashboard", "cloudwatch:DeleteDashboards"]
+        Resource = "arn:aws:cloudwatch::${local.account_id}:dashboard/${local.cdk_gateway_stack}*"
+      },
+      {
+        # Per-consumer usage log table: lifecycle, TTL, backups and tags. The
+        # DynamoDB resource handler reads many table settings while creating or
+        # updating, hence Describe*/List* (read-only, same tables).
+        Sid    = "DynamoDbTables"
+        Effect = "Allow"
+        Action = [
+          "dynamodb:CreateTable",
+          "dynamodb:DeleteTable",
+          "dynamodb:UpdateTable",
+          "dynamodb:UpdateTimeToLive",
+          "dynamodb:UpdateContinuousBackups",
+          "dynamodb:UpdateContributorInsights",
+          "dynamodb:TagResource",
+          "dynamodb:UntagResource",
+          "dynamodb:Describe*",
+          "dynamodb:List*",
+          "dynamodb:GetResourcePolicy",
+        ]
+        Resource = "arn:aws:dynamodb:${var.aws_region}:${local.account_id}:table/${local.cdk_gateway_stack}-*"
+      },
+      {
         # Explicit denies win over any allow, including a future broad one.
         Sid      = "NeverRemoveBoundaries"
         Effect   = "Deny"
@@ -266,7 +295,7 @@ resource "aws_iam_policy" "cdk_cfn_exec" {
 #
 # Actions mirror what the chat function's role uses today; resource scoping
 # stays in the stack's own identity policies. A new runtime permission in the
-# app (DynamoDB, CloudWatch metrics, ...) must be added here first, or it is
+# app (SQS, CloudWatch PutMetricData, ...) must be added here first, or it is
 # silently ineffective: the deploy succeeds, the call fails with AccessDenied.
 # ------------------------------------------------------------------------------
 resource "aws_iam_policy" "cdk_gateway_boundary" {
@@ -298,6 +327,14 @@ resource "aws_iam_policy" "cdk_gateway_boundary" {
         Effect   = "Allow"
         Action   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
         Resource = "arn:aws:logs:${var.aws_region}:${local.account_id}:log-group:${local.cdk_gateway_stack}-*"
+      },
+      {
+        # Usage log: one item per request. Write-only by design: the function
+        # can't read, update or delete usage records.
+        Sid      = "UsageLogWrite"
+        Effect   = "Allow"
+        Action   = ["dynamodb:PutItem"]
+        Resource = "arn:aws:dynamodb:${var.aws_region}:${local.account_id}:table/${local.cdk_gateway_stack}-*"
       },
     ]
   })
