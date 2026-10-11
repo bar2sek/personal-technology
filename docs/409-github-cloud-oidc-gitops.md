@@ -317,6 +317,7 @@ The policy allows only the resource types the `BedrockAiGateway` stack contains 
 | `LambdaExecutionRoles`, `PassRoleToLambdaOnly` | The function's role and its inline policy; PassRole only to `lambda.amazonaws.com` |
 | `LogGroups`, `DescribeLogGroups` | The function's log group |
 | `ApiGateway` | API Gateway authorizes HTTP verbs on paths; region-wide because API keys and usage plans sit outside `/restapis/<id>` |
+| `CloudWatchAlarms`, `DescribeAlarms` | `BedrockAiGateway-*` metric alarms (added 2026-10-11 for M2). Alarm actions need no SNS permission: CloudWatch publishes to the topic itself |
 
 - **Every statement includes delete.** Rollback runs with the same role, so a missing delete action would leave a failed deploy stuck in `UPDATE_ROLLBACK_FAILED` instead of rolling back cleanly.
 - **Adding a resource type** (DynamoDB, CloudWatch alarms and so on): the deploy fails with `AccessDenied` and rolls back, and the running version keeps serving. Add the actions to the policy, apply bootstrap locally, then re-run the deploy. Widening what CI can create stays a reviewed, human change.
@@ -367,6 +368,19 @@ graph LR
 | `validate-policy` on both policies | no findings |
 | `get-role` on the function role after the CDK deploy | `PermissionsBoundaryArn` = the gateway boundary |
 | Live `POST /chat` | grounded answer, 4 sources, guardrail evaluated |
+
+#### 4d. Shared alerts topic (`bootstrap/aws/alerts.tf`, added 2026-10-11)
+
+`sns-aws-alerts-prod-use2-001` is where CloudWatch alarms send notifications, with an email subscription. It lives here rather than in an application stack for two reasons:
+
+- **The email address stays out of Git.** `alert_email` is a `sensitive` variable set in the gitignored `terraform.tfvars` (format: `terraform.tfvars.example`), and it lives only in local state. In a CDK stack it would appear in the CloudFormation template and in the PR's public `cdk diff` summary.
+- **It's shared.** Any stack alarms to it by name; `bedrock-ai-gateway` reads the name from `cdk.json` (`gateway.alertTopicName`).
+
+Design notes:
+
+- **Not encrypted.** CloudWatch alarms can't publish to a topic encrypted with the AWS-managed `aws/sns` key, and a customer-managed key isn't worth it for alert notifications.
+- **Email subscriptions start as `PendingConfirmation`.** Click the link in the confirmation email once. `list-subscriptions-by-topic` then shows a real subscription ARN.
+- **Verified 2026-10-11:** `set-alarm-state --state-value ALARM` on the gateway's `ServerErrors` alarm delivered an ALARM email, then an OK email.
 
 Troubleshooting a failed deploy:
 
