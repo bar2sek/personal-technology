@@ -18,6 +18,7 @@ locals {
   github_gateway_repo_immutable  = "bar2sek@6226865/bedrock-ai-gateway@1413642267"
   iam_role_github_gateway_diff   = "role-${var.platform}-github-gateway-diff-${var.env}-${var.iteration}"
   iam_role_github_gateway_deploy = "role-${var.platform}-github-gateway-deploy-${var.env}-${var.iteration}"
+  iam_policy_cdk_cfn_exec_name   = "policy-${var.platform}-cdk-cfn-exec-${var.env}-${var.iteration}"
 
   # The backup bucket itself is owned by infra-cloud-deployments (terraform/aws).
   # Built from the shared naming convention rather than a data source so this

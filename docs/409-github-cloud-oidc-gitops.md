@@ -256,8 +256,8 @@ Design notes:
 - **No `image-publishing`.** The stack builds no container images. Add it if one ever does.
 - **GitHub side** (`bootstrap/github/bedrock-ai-gateway.tf`): the role ARNs reach GitHub as secrets read directly from this module's state (`terraform_remote_state`, local backend). `AWS_DIFF_ROLE_ARN` is a repository secret. `AWS_DEPLOY_ROLE_ARN` is scoped to the `production` environment only, which requires owner approval, accepts only protected branches, and doesn't let admins bypass it. `main` requires a PR plus the `verify` check, with `enforce_admins` on.
 
-> [!CAUTION]
-> The bootstrap's CloudFormation execution role is **AdministratorAccess** by default. Assuming the `deploy` role is therefore effectively admin, for anything a CDK stack can define. The protected `production` environment and branch protection are the guard today. The bootstrap stack itself is now managed as code (§4a); the remaining fix is passing a scoped policy through its `CloudFormationExecutionPolicies` parameter.
+> [!NOTE]
+> The bootstrap's CloudFormation execution role used to have **AdministratorAccess** by default, which made the `deploy` role effectively admin. Since 2026-10-11 it holds a scoped policy instead (§4b). The `production` environment and branch protection are still the outer guard.
 
 Verification after `terraform apply`. Expect `allowed` for the lookup role and `implicitDeny` for the deploy role:
 
@@ -302,6 +302,44 @@ graph LR
 
 > [!WARNING]
 > Never run `cdk bootstrap` against this account and region again. It would update the stack outside Terraform, and the next apply would revert it. To upgrade: save the new template as `templates/cdk-bootstrap-v<N>.yaml`, point `template_body` at it, and review the plan in a PR.
+
+#### 4b. Scoped CloudFormation execution policy (`aws_iam_policy.cdk_cfn_exec`, added 2026-10-11)
+
+CloudFormation assumes `cdk-hnb659fds-cfn-exec-role-<account>-<region>` to create, update and delete every resource in a CDK stack. When the template's `CloudFormationExecutionPolicies` parameter is empty, it **silently falls back to `AdministratorAccess`**. Now Terraform passes `policy-aws-cdk-cfn-exec-prod-001` through that parameter.
+
+The policy allows only the resource types the `BedrockAiGateway` stack contains (`list-stack-resources`). Each statement is limited to physical names that start with `BedrockAiGateway-`, because CloudFormation names resources `<stack>-<logicalId>-<suffix>`.
+
+| Statement | Purpose |
+|---|---|
+| `ReadBootstrapVersion` | CDK templates check `/cdk-bootstrap/hnb659fds/version` |
+| `ReadAssets`, `DecryptAssetsViaS3` | Lambda fetches the code bundle from the asset bucket with the caller's permissions |
+| `LambdaFunctions`, `LambdaHandlerLookups` | Function lifecycle, including the API Gateway invoke permission |
+| `LambdaExecutionRoles`, `PassRoleToLambdaOnly` | The function's role and its inline policy; PassRole only to `lambda.amazonaws.com` |
+| `LogGroups`, `DescribeLogGroups` | The function's log group |
+| `ApiGateway` | API Gateway authorizes HTTP verbs on paths; region-wide because API keys and usage plans sit outside `/restapis/<id>` |
+
+- **Every statement includes delete.** Rollback runs with the same role, so a missing delete action would leave a failed deploy stuck in `UPDATE_ROLLBACK_FAILED` instead of rolling back cleanly.
+- **Adding a resource type** (DynamoDB, CloudWatch alarms and so on): the deploy fails with `AccessDenied` and rolls back, and the running version keeps serving. Add the actions to the policy, apply bootstrap locally, then re-run the deploy. Widening what CI can create stays a reviewed, human change.
+
+> [!CAUTION]
+> The policy still lets CloudFormation attach *any* policy to a `BedrockAiGateway-*` role, so a stack could create an admin role. A permissions boundary on the roles CDK creates closes that path. It's the next hardening step.
+
+**Verification (2026-10-11):**
+
+| Check | Result |
+|---|---|
+| `list-attached-role-policies` on the `cfn-exec` role | only `policy-aws-cdk-cfn-exec-prod-001` |
+| `simulate-principal-policy`: `ec2:RunInstances`, `iam:CreateUser`, `s3:DeleteBucket`, `lambda:UpdateFunctionCode` on another function | `implicitDeny` |
+| `simulate-principal-policy`: `lambda:UpdateFunctionCode` and `lambda:UpdateFunctionConfiguration` on the stack's function | `allowed` |
+| `aws accessanalyzer validate-policy` | no errors or warnings |
+| Real deploy through CI: added a Lambda description (PR merged 2026-10-11) | `UPDATE_COMPLETE` |
+
+Troubleshooting a failed deploy:
+
+```bash
+aws cloudformation describe-stack-events --stack-name BedrockAiGateway --region us-east-2 --no-cli-pager --max-items 15 \
+  --query 'StackEvents[?contains(ResourceStatus,`FAILED`)].[LogicalResourceId,ResourceStatusReason]' --output text
+```
 
 ---
 
@@ -395,7 +433,7 @@ terraform init && terraform plan && terraform apply
 | Push to `main` | `deploy` waits on **Review deployments**, then succeeds; logs show the account ID as `***` |
 
 > [!NOTE] What is still imperative
-> Only `gh repo create` is still a CLI command, and Terraform adopts that repository with an `import` block. Since 2026-10-11 the CDKToolkit stack is Terraform-managed (§4a). Still open: a scoped execution policy in place of `AdministratorAccess`.
+> Only `gh repo create` is still a CLI command, and Terraform adopts that repository with an `import` block. Since 2026-10-11 the CDKToolkit stack is Terraform-managed (§4a). Its execution role is scoped (§4b). Still open: a permissions boundary on the roles CDK creates.
 
 ---
 
