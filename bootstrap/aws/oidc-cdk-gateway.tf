@@ -2,7 +2,7 @@
 # GitHub Actions roles for bedrock-ai-gateway (AWS CDK)
 #
 # These roles hold no AWS permissions of their own beyond assuming the CDK
-# bootstrap roles (created by `cdk bootstrap`, stack CDKToolkit). The CDK CLI
+# bootstrap roles (stack CDKToolkit, managed in cdk-bootstrap.tf). The CDK CLI
 # then works through those roles, and CloudFormation creates resources with
 # the bootstrap's execution role.
 #

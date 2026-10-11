@@ -257,7 +257,7 @@ Design notes:
 - **GitHub side** (`bootstrap/github/bedrock-ai-gateway.tf`): the role ARNs reach GitHub as secrets read directly from this module's state (`terraform_remote_state`, local backend). `AWS_DIFF_ROLE_ARN` is a repository secret. `AWS_DEPLOY_ROLE_ARN` is scoped to the `production` environment only, which requires owner approval, accepts only protected branches, and doesn't let admins bypass it. `main` requires a PR plus the `verify` check, with `enforce_admins` on.
 
 > [!CAUTION]
-> The bootstrap's CloudFormation execution role is **AdministratorAccess** by default. Assuming the `deploy` role is therefore effectively admin, for anything a CDK stack can define. The protected `production` environment and branch protection are the guard today. The proper fix is re-bootstrapping with `--cloudformation-execution-policies` set to a scoped policy, and managing the bootstrap template as code.
+> The bootstrap's CloudFormation execution role is **AdministratorAccess** by default. Assuming the `deploy` role is therefore effectively admin, for anything a CDK stack can define. The protected `production` environment and branch protection are the guard today. The bootstrap stack itself is now managed as code (§4a); the remaining fix is passing a scoped policy through its `CloudFormationExecutionPolicies` parameter.
 
 Verification after `terraform apply`. Expect `allowed` for the lookup role and `implicitDeny` for the deploy role:
 
@@ -270,6 +270,38 @@ aws iam simulate-principal-policy \
                   "arn:aws:iam::${ACCOUNT}:role/cdk-hnb659fds-deploy-role-${ACCOUNT}-us-east-2" \
   --query 'EvaluationResults[].ResourceSpecificResults[].[EvalResourceName,EvalResourceDecision]' --output text
 ```
+
+#### 4a. The CDK bootstrap as code (`bootstrap/aws/cdk-bootstrap.tf`, added 2026-10-11)
+
+The `CDKToolkit` stack was first created with `cdk bootstrap` and then adopted into Terraform. Terraform **wraps** the stack: an `aws_cloudformation_stack` resource owns the stack's lifecycle and parameters, while CloudFormation still creates the bucket, ECR repository, roles and version parameter inside it.
+
+```mermaid
+graph LR
+  T[templates/cdk-bootstrap-v32.yaml<br/>CDK's own template] --> TF[Terraform<br/>cdk-bootstrap.tf]
+  TF -->|owns| STK[CloudFormation stack<br/>CDKToolkit]
+  STK --> B[asset bucket · ECR repo]
+  STK --> R[5 cdk-hnb659fds-* roles]
+  STK --> P[SSM /cdk-bootstrap/hnb659fds/version]
+```
+
+- **Template**: CDK's own, saved unmodified with `npx cdk bootstrap --show-template` (no account ID in it; it uses `${AWS::AccountId}`). The version is in the filename, so an upgrade shows up as a new file in a PR.
+- **Parameters**: set to exactly the values `cdk bootstrap` deployed with (`describe-stacks`), so adoption changed nothing but tags.
+- **Why wrap instead of rewriting the resources in Terraform**: the CDK CLI checks the bootstrap version in SSM and expects exact role and bucket names. Keeping CDK's template means upgrades stay a file swap and match the documented, supported bootstrap.
+- **`prevent_destroy`**: every CDK deploy in the account depends on this stack.
+
+**Adoption (one-time, 2026-10-11):** an `import` block (`id = "CDKToolkit"`) adopted the live stack. The first plan read `1 to import, 1 to change`. It looked noisy but was safe:
+
+| Plan line | Meaning |
+|---|---|
+| `template_body ~` with no `+`/`-` lines | Whitespace only. `get-template` output was identical to the committed file. |
+| every `parameters` key shown as `+` | Import doesn't record parameters in state; the values matched the live stack. |
+| `tags_all +` | Provider `default_tags`, which CloudFormation then propagates to the resources in the stack. |
+| `capabilities -` | Config listed fewer acknowledgements than `cdk bootstrap` passes. Fixed by listing all three. |
+
+**Verification:** a second `terraform plan` shows `No changes`; `describe-stacks` shows `UPDATE_COMPLETE` with the four default tags, which also appear on the `cfn-exec` role.
+
+> [!WARNING]
+> Never run `cdk bootstrap` against this account and region again. It would update the stack outside Terraform, and the next apply would revert it. To upgrade: save the new template as `templates/cdk-bootstrap-v<N>.yaml`, point `template_body` at it, and review the plan in a PR.
 
 ---
 
@@ -323,7 +355,7 @@ The order used on 2026-10-10, and the order to follow when rebuilding from scrat
 
 ```mermaid
 graph LR
-  A[1. cdk bootstrap<br/>CDKToolkit stack] --> B[2. bootstrap/aws<br/>diff + deploy roles]
+  A[1. bootstrap/aws<br/>CDKToolkit stack] --> B[2. bootstrap/aws<br/>diff + deploy roles]
   B --> C[3. bootstrap/github<br/>import repo · env · secrets · protection]
   C --> D[4. Workflow via PR<br/>verify → approve → deploy]
 ```
@@ -331,11 +363,12 @@ graph LR
 **Prerequisites:** AWS CLI signed in as an administrator (`aws login --remote`), `gh auth status` showing the owner account, and the repository already created (`gh repo create`, adopted by Terraform in step 3).
 
 ```bash
-# 1. CDK groundwork — run once per account/region, from the CDK repository root.
-#    Creates the CDKToolkit stack: asset bucket + cdk-hnb659fds-*-role-<account>-<region> roles.
-npx cdk bootstrap
-
-# 2. Pipeline roles (bootstrap/aws/oidc-cdk-gateway.tf). Expect 4 to add on first apply.
+# 1 + 2. CDK groundwork and pipeline roles, both in bootstrap/aws.
+#    cdk-bootstrap.tf creates the CDKToolkit stack (asset bucket +
+#    cdk-hnb659fds-*-role-<account>-<region> roles) from the committed template;
+#    oidc-cdk-gateway.tf creates the diff and deploy roles.
+#    On a fresh account, remove the `import` block in cdk-bootstrap.tf first:
+#    there is no existing stack to adopt.
 cd bootstrap/aws
 eval "$(aws configure export-credentials --format env)"
 export TF_DATA_DIR=~/.terraform-data/bootstrap-aws
@@ -362,7 +395,7 @@ terraform init && terraform plan && terraform apply
 | Push to `main` | `deploy` waits on **Review deployments**, then succeeds; logs show the account ID as `***` |
 
 > [!NOTE] What is still imperative
-> `cdk bootstrap` (step 1) and `gh repo create` are CLI commands. The repository is adopted into Terraform by an `import` block. The CDKToolkit stack is the open item: manage its template as code (`cdk bootstrap --show-template`), with a scoped execution policy instead of `AdministratorAccess`.
+> Only `gh repo create` is still a CLI command, and Terraform adopts that repository with an `import` block. Since 2026-10-11 the CDKToolkit stack is Terraform-managed (§4a). Still open: a scoped execution policy in place of `AdministratorAccess`.
 
 ---
 
