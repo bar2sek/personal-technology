@@ -317,6 +317,8 @@ The policy allows only the resource types the `BedrockAiGateway` stack contains 
 | `LambdaExecutionRoles`, `PassRoleToLambdaOnly` | The function's role and its inline policy; PassRole only to `lambda.amazonaws.com` |
 | `LogGroups`, `DescribeLogGroups` | The function's log group |
 | `ApiGateway` | API Gateway authorizes HTTP verbs on paths; region-wide because API keys and usage plans sit outside `/restapis/<id>` |
+| `Dashboards` | The `BedrockAiGateway` dashboard. Dashboards are global (no region in the ARN) and get no generated name, so the stack names it explicitly |
+| `DynamoDbTables` | The `BedrockAiGateway-*` usage-log table: lifecycle, TTL, backups and tags, plus read-only `Describe*`/`List*` that the resource handler calls |
 | `CloudWatchAlarms`, `DescribeAlarms` | `BedrockAiGateway-*` metric alarms (added 2026-10-11 for M2). Alarm actions need no SNS permission: CloudWatch publishes to the topic itself |
 
 - **Every statement includes delete.** Rollback runs with the same role, so a missing delete action would leave a failed deploy stuck in `UPDATE_ROLLBACK_FAILED` instead of rolling back cleanly.
@@ -348,7 +350,7 @@ graph LR
 
 | Piece | Where | What it does |
 |---|---|---|
-| Boundary policy | `bootstrap/aws/cdk-bootstrap.tf` | The ceiling: `bedrock:InvokeModel`/`Retrieve`/`ApplyGuardrail`, X-Ray writes, and logs only to `BedrockAiGateway-*` log groups |
+| Boundary policy | `bootstrap/aws/cdk-bootstrap.tf` | The ceiling: `bedrock:InvokeModel`/`Retrieve`/`ApplyGuardrail`, X-Ray writes, logs only to `BedrockAiGateway-*` log groups, and `dynamodb:PutItem` only on `BedrockAiGateway-*` tables (the write-only usage log, added 2026-10-11) |
 | Stamping | `bedrock-ai-gateway` `cdk.json` | CDK adds the boundary to **every** role in the app, including ones it creates implicitly. Only the policy name is committed; CDK builds the ARN at deploy time. |
 | Enforcement | `GrantPrivilegeOnlyWithinBoundary` in the cfn-exec policy | `CreateRole`, `PutRolePermissionsBoundary`, `PutRolePolicy` and `AttachRolePolicy` are allowed only while the role carries this exact boundary |
 | Guardrails | `NeverRemoveBoundaries`, `ProtectBoundaryPolicy` (explicit Deny) | No removing boundaries, no editing or deleting the boundary policy through CDK |
