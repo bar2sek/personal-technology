@@ -127,7 +127,7 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 │   │   ├── kubevirt/          # Bazzite Gaming VM (GPU passthrough) & Arch VMs
 │   │   ├── arc/               # Actions Runner Controller AutoscalingRunnerSet
 │   │   ├── floci/             # In-cluster local AWS cloud emulator
-│   │   ├── authentik/         # Authentik master IdP & PostgreSQL/Redis
+│   │   ├── authentik/         # Authentik master IdP & PostgreSQL
 │   │   └── aws-hybrid/        # AWS ACK (S3, Route53) & EKS Connector
 │   └── apps/                  # Containerized self-hosted application suite
 │       ├── teslamate/         # Tesla telemetry, MQTT, PostgreSQL, Grafana

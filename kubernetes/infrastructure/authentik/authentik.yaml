@@ -118,74 +118,6 @@ spec:
       targetPort: 5432
 ---
 # ==============================================================================
-# Redis Cache & Task Broker
-# ==============================================================================
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: authentik-redis
-  namespace: identity
-  labels:
-    app.kubernetes.io/name: authentik-redis
-    app.kubernetes.io/part-of: authentik
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: authentik-redis
-  template:
-    metadata:
-      labels:
-        app: authentik-redis
-        app.kubernetes.io/name: authentik-redis
-        app.kubernetes.io/part-of: authentik
-    spec:
-      containers:
-        - name: redis
-          image: redis:7-alpine
-          imagePullPolicy: IfNotPresent
-          ports:
-            - containerPort: 6379
-              name: redis
-          resources:
-            requests:
-              cpu: 50m
-              memory: 64Mi
-            limits:
-              cpu: 500m
-              memory: 256Mi
-          livenessProbe:
-            exec:
-              command:
-                - redis-cli
-                - ping
-            initialDelaySeconds: 15
-            periodSeconds: 10
-          readinessProbe:
-            exec:
-              command:
-                - redis-cli
-                - ping
-            initialDelaySeconds: 10
-            periodSeconds: 10
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: authentik-redis
-  namespace: identity
-  labels:
-    app.kubernetes.io/name: authentik-redis
-    app.kubernetes.io/part-of: authentik
-spec:
-  selector:
-    app: authentik-redis
-  ports:
-    - name: redis
-      port: 6379
-      targetPort: 6379
----
-# ==============================================================================
 # Authentik Server (Web Console, Flow Engine, OIDC & SAML Provider)
 # ==============================================================================
 apiVersion: apps/v1
@@ -210,7 +142,7 @@ spec:
     spec:
       containers:
         - name: authentik-server
-          image: ghcr.io/goauthentik/server:2024.12.5@sha256:717323d68507fb76dd79f8958f42ce57f8ae0c10a55a7807efa1cfec5752b77c
+          image: ghcr.io/goauthentik/server:2026.8.3@sha256:ab9b4e8cc4ab3f8d1198d2db6aeea66bafea1963b3f2843589e0d163f97d9849
           imagePullPolicy: IfNotPresent
           args: ["server"]
           env:
@@ -219,8 +151,9 @@ spec:
                 secretKeyRef:
                   name: authentik-secrets
                   key: secret-key
-            - name: AUTHENTIK_REDIS__HOST
-              value: authentik-redis
+            # Public URL authentik uses to build links; required from 2026.11
+            - name: AUTHENTIK_WEB__BASE_URL
+              value: https://auth.bar2sek.com
             - name: AUTHENTIK_POSTGRESQL__HOST
               value: authentik-db
             - name: AUTHENTIK_POSTGRESQL__NAME
@@ -290,7 +223,7 @@ spec:
     spec:
       containers:
         - name: authentik-worker
-          image: ghcr.io/goauthentik/server:2024.12.5@sha256:717323d68507fb76dd79f8958f42ce57f8ae0c10a55a7807efa1cfec5752b77c
+          image: ghcr.io/goauthentik/server:2026.8.3@sha256:ab9b4e8cc4ab3f8d1198d2db6aeea66bafea1963b3f2843589e0d163f97d9849
           imagePullPolicy: IfNotPresent
           args: ["worker"]
           env:
@@ -299,8 +232,9 @@ spec:
                 secretKeyRef:
                   name: authentik-secrets
                   key: secret-key
-            - name: AUTHENTIK_REDIS__HOST
-              value: authentik-redis
+            # Public URL authentik uses to build links; required from 2026.11
+            - name: AUTHENTIK_WEB__BASE_URL
+              value: https://auth.bar2sek.com
             - name: AUTHENTIK_POSTGRESQL__HOST
               value: authentik-db
             - name: AUTHENTIK_POSTGRESQL__NAME
