@@ -52,6 +52,7 @@ The key architectural invariant is that **local inference holds NO permanent res
 ---
 
 ## Related Notes
+* [[Workstation Display & Monitor Mounting Guide]]
 * [[System Architecture]]
 * [[Local LLMs with MLX]]
 * [[Dual-Tier AI Workflow]]

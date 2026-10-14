@@ -25,6 +25,7 @@ Welcome to the **Mac AI Workstation** notes vault. This workspace documents the 
 * [[System Architecture]] — The containerized applications paradigm and Metal GPU access boundary.
 * [[Dual-Tier AI Workflow]] — Routing work between fast and deep cloud model tiers.
 * [[Hardware & Memory Budget]] — Unified memory allocation (48GB) and headroom math.
+* [[Workstation Display & Monitor Mounting Guide]] — Dual ultrawide (49" + 39") stacked topology, 2-cable M5 Pro routing, and mounting arm cost analysis.
 * [[Hardware Protection & Keyboard Care]] — Step-by-step Barekey decal application & screen buffer setup.
 
 ### 2. AI Architecture & Model Routing
