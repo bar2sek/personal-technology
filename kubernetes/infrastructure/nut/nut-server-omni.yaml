@@ -28,8 +28,8 @@ data:
         productid = 2012
         busport = 004
         user = root
-        desc = "Tripp Lite UPS 1 (Port 004)"
         pollinterval = 2
+        desc = "Tripp Lite UPS 1 (Port 004)"
 
     [ups-02]
         driver = usbhid-ups
@@ -38,8 +38,8 @@ data:
         productid = 2012
         busport = 006
         user = root
-        desc = "Tripp Lite UPS 2 (Port 006)"
         pollinterval = 2
+        desc = "Tripp Lite UPS 2 (Port 006)"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -80,10 +80,21 @@ spec:
               cp /etc/nut-config/* /etc/nut/
               chmod 640 /etc/nut/*
               chmod 750 /var/run/nut
+              echo "Starting upsd on 0.0.0.0:3493..."
+              /usr/sbin/upsd -u root
               echo "Starting UPS drivers..."
-              /usr/sbin/upsdrvctl -u root start
-              echo "Starting upsd daemon on 0.0.0.0:3493..."
-              exec /usr/sbin/upsd -u root -D
+              /usr/sbin/upsdrvctl -u root start || true
+              while true; do
+                for u in ups-01 ups-02; do
+                  if ! upsc $u@localhost >/dev/null 2>&1; then
+                    echo "[watchdog] UPS $u data stale or driver stopped; restarting $u..."
+                    /usr/sbin/upsdrvctl -u root stop $u 2>/dev/null || true
+                    sleep 1
+                    /usr/sbin/upsdrvctl -u root start $u 2>/dev/null || true
+                  fi
+                done
+                sleep 5
+              done
           ports:
             - containerPort: 3493
               name: upsd
