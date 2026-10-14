@@ -48,6 +48,7 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 - [106 - Phase 3: Observability Stack (Prometheus, Grafana & Ceph Monitoring)](docs/106-observability-prometheus-grafana.md)
 - [107 - Ingress Traffic Architecture: MetalLB, Ingress-Nginx & Cert-Manager](docs/107-ingress-traffic-metallb-cert-manager.md)
 - [108 - Sidero Omni, Dex & Booter Platform Architecture](docs/108-omni-dex-platform-architecture.md)
+- [109 - Phase 4: UPS Power Resiliency & Network UPS Tools (NUT) Monitoring](docs/109-ups-power-monitoring-nut.md)
 
 ### 🌐 Section 2: UniFi Networking & Infrastructure
 - [201 - UniFi Physical Cabling & Logical Topology Diagrams](docs/201-unifi-network-topology.md)

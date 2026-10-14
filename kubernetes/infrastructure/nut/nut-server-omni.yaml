@@ -1,0 +1,102 @@
+# ==============================================================================
+# NUT Server (upsd) Daemon for Sidero Omni Seed Host (Dell OptiPlex Micro)
+# Applied via: kubectl --kubeconfig=talos/omni-server/kubeconfig apply -f ...
+# ==============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nut-config
+  namespace: kube-system
+data:
+  nut.conf: |
+    MODE=netserver
+
+  upsd.conf: |
+    LISTEN 0.0.0.0 3493
+    MAXAGE 30
+
+  upsd.users: |
+    [monuser]
+        password = secretpass
+        upsmon master
+
+  ups.conf: |
+    [ups-01]
+        driver = usbhid-ups
+        port = auto
+        vendorid = 09AE
+        productid = 2012
+        busport = 004
+        user = root
+        desc = "Tripp Lite UPS 1 (Port 004)"
+        pollinterval = 2
+
+    [ups-02]
+        driver = usbhid-ups
+        port = auto
+        vendorid = 09AE
+        productid = 2012
+        busport = 006
+        user = root
+        desc = "Tripp Lite UPS 2 (Port 006)"
+        pollinterval = 2
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nut-server
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: nut-server
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: nut-server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: nut-server
+    spec:
+      hostNetwork: true
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: nut-server
+          image: alpine:3.20
+          securityContext:
+            privileged: true
+          command:
+            - /bin/sh
+            - -c
+            - |
+              apk add --no-cache nut >/dev/null 2>&1
+              chmod -R a+rw /dev/bus/usb 2>/dev/null || true
+              mkdir -p /etc/nut /var/run/nut
+              cp /etc/nut-config/* /etc/nut/
+              chmod 640 /etc/nut/*
+              chmod 750 /var/run/nut
+              echo "Starting UPS drivers..."
+              /usr/sbin/upsdrvctl -u root start
+              echo "Starting upsd daemon on 0.0.0.0:3493..."
+              exec /usr/sbin/upsd -u root -D
+          ports:
+            - containerPort: 3493
+              name: upsd
+              protocol: TCP
+          volumeMounts:
+            - name: usb
+              mountPath: /dev/bus/usb
+            - name: config
+              mountPath: /etc/nut-config
+      volumes:
+        - name: usb
+          hostPath:
+            path: /dev/bus/usb
+        - name: config
+          configMap:
+            name: nut-config

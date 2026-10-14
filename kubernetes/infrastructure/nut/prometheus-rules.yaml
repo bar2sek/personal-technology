@@ -1,0 +1,55 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: nut-ups-alerts
+  namespace: monitoring-ups
+  labels:
+    app.kubernetes.io/name: nut-exporter
+    role: alert-rules
+spec:
+  groups:
+    - name: nut-ups.rules
+      rules:
+        # Alert when UPS transitions from AC Line to Battery Power
+        - alert: UPSOnBattery
+          expr: network_ups_tools_ups_status{flag="OB"} == 1
+          for: 30s
+          labels:
+            severity: warning
+            category: power
+          annotations:
+            summary: "UPS {{ $labels.ups }} is running on Battery Power"
+            description: "Mains AC utility power has dropped or breaker has tripped. UPS {{ $labels.ups }} is discharging on battery."
+
+        # Alert when Battery charge drops below 40%
+        - alert: UPSBatteryLow
+          expr: (network_ups_tools_battery_charge < 40) or (network_ups_tools_ups_status{flag="LB"} == 1)
+          for: 1m
+          labels:
+            severity: critical
+            category: power
+          annotations:
+            summary: "UPS {{ $labels.ups }} Battery Low (< 40%)"
+            description: "UPS {{ $labels.ups }} battery is at {{ $value }}%. Prepare for graceful node eviction / shutdown if grid power is not restored."
+
+        # Alert when UPS load exceeds 85% rated capacity
+        - alert: UPSLoadCritical
+          expr: network_ups_tools_ups_load > 85
+          for: 2m
+          labels:
+            severity: warning
+            category: power
+          annotations:
+            summary: "UPS {{ $labels.ups }} High Load (> 85%)"
+            description: "UPS {{ $labels.ups }} load is at {{ $value }}% capacity. Risk of breaker trip or overload during power transfer."
+
+        # Alert when UPS input voltage sags (brownout) or surges
+        - alert: UPSInputVoltageAbnormal
+          expr: (network_ups_tools_input_voltage < 105 and network_ups_tools_input_voltage > 0) or (network_ups_tools_input_voltage > 132)
+          for: 1m
+          labels:
+            severity: warning
+            category: power
+          annotations:
+            summary: "UPS {{ $labels.ups }} Utility Voltage Out of Bounds"
+            description: "Grid input voltage is {{ $value }}V, indicating severe line sag/brownout or voltage surge."

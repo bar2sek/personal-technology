@@ -57,6 +57,15 @@ This document tracks the physical hardware available in the homelab and their in
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | `synology-nas`<br>*(Active)* | Synology DS713+ (2-Bay) | 2x 2TB HDDs (SHR / RAID 1, 2.0TB Usable) | 1GbE RJ45 to USW-Lite-8-PoE Port 2 (`10.0.1.223`) | Garage Workshop | Tier 3 Bulk Backup Target (Immich mirror, K8s state / Postgres local replica), Apple Time Machine Server (`nix-mac`), Out-of-Band DR |
 
+### 5. Power & Resiliency Infrastructure (Dual UPS Battery Backup)
+
+| Device | Class / Form Factor | Connected Equipment & Roles | Monitoring Architecture |
+| :--- | :--- | :--- | :--- |
+| **Primary Rack UPS (`ups-rack`)** | Pure Sine Wave Line-Interactive (1500VA / 900W) | Core Gateway (UDM-Pro), Core Aggregation Switches, USW-24-G2, Supermicro Control Plane Nodes (`sm-node-01`, `sm-node-02`, `sm-node-03`), Omni Controller | Network UPS Tools (NUT) via USB / Network (`upsd` Port 3493) |
+| **Auxiliary Storage UPS (`ups-storage`)** | Pure Sine Wave Line-Interactive (1500VA / 900W) | Storage Worker `pc-node-04` (11 HDDs), GPU Worker `pc-node-05` (RTX 4070), Rack Fans & Auxiliary Equipment | Network UPS Tools (NUT) via USB / Network (`upsd` Port 3493) |
+
+*Full telemetry, Kubernetes Prometheus exporter, and alerting rules detailed in [[109-ups-power-monitoring-nut|109: UPS Power Resiliency & NUT Monitoring]].*
+
 ---
 
 ## Key Architecture & Design Considerations

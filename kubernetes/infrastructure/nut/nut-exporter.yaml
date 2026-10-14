@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nut-exporter
+  namespace: monitoring-ups
+  labels:
+    app.kubernetes.io/name: nut-exporter
+    app.kubernetes.io/component: metrics
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: nut-exporter
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: nut-exporter
+        app.kubernetes.io/component: metrics
+    spec:
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: nut-exporter
+          image: ghcr.io/druggeri/nut_exporter:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: metrics
+              containerPort: 9199
+              protocol: TCP
+          env:
+            # Point to omni-server running upsd
+            - name: NUT_EXPORTER_SERVER
+              value: "10.10.10.5"
+            - name: NUT_EXPORTER_SERVERPORT
+              value: "3493"
+            - name: NUT_EXPORTER_VARIABLES
+              value: "battery.charge,battery.runtime,battery.voltage,input.voltage,ups.load,ups.status"
+          resources:
+            limits:
+              cpu: 100m
+              memory: 64Mi
+            requests:
+              cpu: 10m
+              memory: 32Mi
+          livenessProbe:
+            httpGet:
+              path: /
+              port: metrics
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: metrics
+            initialDelaySeconds: 5
+            periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nut-exporter
+  namespace: monitoring-ups
+  labels:
+    app.kubernetes.io/name: nut-exporter
+spec:
+  type: ClusterIP
+  ports:
+    - name: metrics
+      port: 9199
+      targetPort: metrics
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: nut-exporter
