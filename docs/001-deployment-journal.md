@@ -725,7 +725,7 @@ Any AI agent or human operator can review this document to pick up exactly where
 - **Redis retired**: from 2025.10 Authentik runs caching, sessions, WebSockets and tasks on PostgreSQL. After confirming Redis had no remaining clients, its Deployment, Service and `AUTHENTIK_REDIS__HOST` were removed.
 - **Forward-compatibility**: `AUTHENTIK_WEB__BASE_URL` is set ahead of 2026.11, which will require it.
 - **Incident during the 2025.2 hop**: the upstream `2025.2.4` tag is published as an arm64-only manifest. Pods failed with `exec format error` before any migration ran, so the database was untouched; the hop was re-pinned to 2025.2.3. Every later hop checks the tag's platforms before applying.
-- **Verification**: per hop, migrations ran exactly once (DB lock), zero error log lines, and `/-/health/live|ready` returned 200. At the end, the passkey device, users and Grafana OAuth redirect URIs were intact; external probes matched the Access-gate baseline (root `302` to Access, token endpoint `400 invalid_client`, userinfo `401`); Grafana SSO login test pending.
+- **Verification**: per hop, migrations ran exactly once (DB lock), zero error log lines, and `/-/health/live|ready` returned 200. At the end, the passkey device, users and Grafana OAuth redirect URIs were intact; external probes matched the Access-gate baseline (root `302` to Access, token endpoint `400 invalid_client`, userinfo `401`); Grafana SSO login verified by hand on 2026.8.3.
 - Runbook and per-release notes: [[403-identity-sso-authentik-aws#🔁 Upgrade Runbook (Raw Manifests)|Authentik Upgrade Runbook]].
 
 ---

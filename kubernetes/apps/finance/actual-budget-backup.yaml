@@ -1,0 +1,162 @@
+# ==============================================================================
+# Actual Budget: nightly encrypted backup of the data volume to S3
+# ==============================================================================
+# Actual stores its data as SQLite files on an RWO Ceph volume, so the backup
+# pod must run in this namespace and on the same node as the app (RWO volumes
+# can be shared by pods on one node). It mounts the volume read-only.
+#
+# Two containers, because no single small image has both tar and the AWS CLI:
+#   1. pack-and-encrypt (alpine): download a pinned, checksum-verified `age`,
+#      then stream tar | gzip | age into an emptyDir. Plaintext never touches disk.
+#   2. upload (aws-cli): copy the .age file to s3://<bucket>/apps/actual/.
+#
+# The uploader key (Secret `s3-backup-credentials`) is a copy of the one in the
+# `backups` namespace; it can only PutObject *.age under fixed prefixes and is
+# minted straight into the cluster, never committed. See
+# kubernetes/infrastructure/backups/README.md.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backup-encryption
+  namespace: finance
+data:
+  # Public age key (same recipient as the cluster backups). Safe to commit.
+  AGE_RECIPIENT: "age1ggkknhaz68ups8ysvnxpdcly29jpntkhekmvyhyq8qxthajupugq7lvgch"
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: backup-actual-budget
+  namespace: finance
+spec:
+  schedule: "45 3 * * *" # Daily at 03:45 UTC, after the Postgres backups
+  suspend: false
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      ttlSecondsAfterFinished: 259200 # 3 days
+      template:
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000 # same UID as the app, so it can read every file
+            runAsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          affinity:
+            # Must land on the node where the app has the RWO volume attached
+            podAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - labelSelector:
+                    matchLabels:
+                      app: actual-budget
+                  topologyKey: kubernetes.io/hostname
+          initContainers:
+            - name: pack-and-encrypt
+              image: alpine:3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -euo pipefail
+                  # Fail closed: no valid recipient means no backup, never an unencrypted one.
+                  case "${AGE_RECIPIENT:-}" in
+                    age1*) ;;
+                    *) echo "ERROR: AGE_RECIPIENT missing or invalid. Refusing to back up." >&2; exit 1 ;;
+                  esac
+
+                  AGE_VERSION=v1.3.2
+                  AGE_SHA256=cbe24006683f8eb669266162894b9a522a1af52f2665fbc63a4bb032ed26ac10
+                  cd /tmp
+                  wget -qO age.tgz "https://github.com/FiloSottile/age/releases/download/${AGE_VERSION}/age-${AGE_VERSION}-linux-amd64.tar.gz"
+                  echo "${AGE_SHA256}  age.tgz" | sha256sum -c -
+                  tar xzf age.tgz
+                  AGE=/tmp/age/age
+                  echo probe | "${AGE}" -r "${AGE_RECIPIENT}" > /dev/null
+
+                  TIMESTAMP=$(date -u +%Y%m%d_%H%M%S)
+                  OUT="/work/actual_${TIMESTAMP}.tar.gz.age"
+                  echo "Packing and encrypting /data..."
+                  tar -C /data --exclude=lost+found -cf - . | gzip | "${AGE}" -r "${AGE_RECIPIENT}" -o "${OUT}"
+                  ls -l "${OUT}"
+              envFrom:
+                - configMapRef:
+                    name: backup-encryption
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+                limits:
+                  cpu: 500m
+                  memory: 256Mi
+              volumeMounts:
+                - name: actual-data
+                  mountPath: /data
+                  readOnly: true
+                - name: work
+                  mountPath: /work
+                - name: tmp
+                  mountPath: /tmp
+          containers:
+            - name: upload
+              image: amazon/aws-cli:2.37.13@sha256:d32864c20087d486f5988c3e70817d67a73f584a47535cada9ad97e0ea1e5196
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -euo pipefail
+                  if [ -z "${AWS_ACCESS_KEY_ID:-}" ] || [ -z "${S3_BUCKET:-}" ]; then
+                    echo "ERROR: Secret 's3-backup-credentials' is missing or incomplete." >&2
+                    exit 1
+                  fi
+                  for f in /work/actual_*.tar.gz.age; do
+                    # CRC32 checksum: Object Lock buckets reject uploads without one
+                    aws s3 cp "${f}" "s3://${S3_BUCKET}/apps/actual/$(basename "${f}")" \
+                      --storage-class STANDARD --checksum-algorithm CRC32
+                  done
+                  echo "Actual Budget backup successful."
+              env:
+                - name: HOME # aws-cli writes its cache under $HOME
+                  value: /tmp
+              envFrom:
+                - secretRef:
+                    name: s3-backup-credentials
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 128Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+              volumeMounts:
+                - name: work
+                  mountPath: /work
+                  readOnly: true
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: actual-data
+              persistentVolumeClaim:
+                claimName: actual-budget-data-pvc
+                readOnly: true
+            - name: work
+              emptyDir:
+                sizeLimit: 1Gi
+            - name: tmp
+              emptyDir:
+                sizeLimit: 256Mi

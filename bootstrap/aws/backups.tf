@@ -121,7 +121,9 @@ resource "aws_iam_user_policy" "backup_uploader" {
         ]
         Resource = [
           "${local.backup_bucket_arn}/cluster-state/*.age",
-          "${local.backup_bucket_arn}/postgres/*.age"
+          "${local.backup_bucket_arn}/postgres/*.age",
+          # File-based app data (e.g. Actual Budget SQLite) backed up from app namespaces
+          "${local.backup_bucket_arn}/apps/*.age"
         ]
       }
     ]
