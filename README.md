@@ -70,10 +70,10 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 - [403 - Authentik Master IdP & AWS SAML 2.0 Identity Federation](docs/403-identity-sso-authentik-aws.md)
 - [404 - AWS Multi-Account Landing Zone (Organizations, IAM Identity Center & Terraform)](docs/404-aws-landing-zone-organizations-terraform.md)
 - [405 - AWS Account Factory for Terraform (AFT) vs GitHub Actions GitOps](docs/405-aws-account-factory-terraform.md)
-- [406 - Floci: In-Cluster Local AWS Cloud Emulator for Terraform & CI/CD](docs/406-floci-local-aws-emulator.md)
 - [407 - Microsoft Entra ID & Authentik Enterprise Identity Federation](docs/407-azure-entra-id-authentik-federation.md)
 - [408 - Azure Arc-Enabled Kubernetes & Zero-Cost Cloud Monitoring](docs/408-azure-arc-hybrid-kubernetes.md)
 - [409 - GitHub Actions & Multi-Cloud OIDC GitOps Deployment Engine](docs/409-github-cloud-oidc-gitops.md)
+- [410 - Azure Cloud & AI Transformation Roadmap: Homelab Hybrid Architecture](docs/410-azure-cloud-and-ai-transformation-roadmap.md)
 
 ### 📦 Section 5: Self-Hosted Application Suite
 - [501 - TeslaMate Vehicle Telemetry & Analytics Platform](docs/501-teslamate-telemetry-deployment.md)
@@ -127,7 +127,6 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 │   │   ├── tailscale/         # Tailscale operator & subnet router
 │   │   ├── kubevirt/          # Bazzite Gaming VM (GPU passthrough) & Arch VMs
 │   │   ├── arc/               # Actions Runner Controller AutoscalingRunnerSet
-│   │   ├── floci/             # In-cluster local AWS cloud emulator
 │   │   ├── authentik/         # Authentik master IdP & PostgreSQL
 │   │   └── aws-hybrid/        # AWS ACK (S3, Route53) & EKS Connector
 │   └── apps/                  # Containerized self-hosted application suite

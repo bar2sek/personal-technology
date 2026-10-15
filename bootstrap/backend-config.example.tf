@@ -1,5 +1,5 @@
 # Example Terraform Remote Backend Configurations
-# Choose either AWS S3 + DynamoDB (Production Cloud) or Floci (In-Cluster Offline)
+# Choose either AWS S3 + native S3 lockfile or AzureRM Blob Storage with OIDC
 
 # Option A: AWS Production S3 Backend with Native S3 Lockfile (Terraform 1.10+)
 # terraform {
@@ -12,15 +12,14 @@
 #   }
 # }
 
-# Option B: Floci In-Cluster AWS Emulator Backend (Zero Cost / Offline)
+# Option B: AzureRM Production Backend with OIDC Workload Identity
 # terraform {
-#   backend "s3" {
-#     bucket                      = "floci-tfstate-bucket"
-#     key                         = "terraform/state/<module-name>/terraform.tfstate"
-#     region                      = "us-east-2"
-#     endpoint                    = "http://floci.aws-emulator.svc.cluster.local:4566"
-#     skip_credentials_validation = true
-#     skip_metadata_api_check     = true
-#     force_path_style            = true
+#   backend "azurerm" {
+#     resource_group_name  = "rg-azure-tfstate-prod-cus-001"
+#     storage_account_name = "stazutfstateprodcus001"
+#     container_name       = "tfstate"
+#     key                  = "terraform/state/<module-name>/terraform.tfstate"
+#     use_azuread_auth     = true
+#     use_oidc             = true
 #   }
 # }
