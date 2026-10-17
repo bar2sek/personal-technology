@@ -226,11 +226,11 @@
             "/Applications/Microsoft Edge.app"
             "/Applications/Brave Browser.app"
 
-            # 2. Apple Core Productivity & OneNote (Middle)
+            # 2. Apple Core Productivity, Google Photos & OneNote (Middle)
             "/System/Applications/Messages.app"
             "/System/Applications/Mail.app"
             "/System/Applications/Maps.app"
-            "/System/Applications/Photos.app"
+            "/Users/${config.system.primaryUser}/Applications/Chrome Apps.localized/Google Photos.app"
             "/System/Applications/FaceTime.app"
             "/System/Applications/Calendar.app"
             "/System/Applications/Contacts.app"
