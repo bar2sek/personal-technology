@@ -66,7 +66,7 @@ One bucket, deliberately split by **who may change it**:
 | :--- | :--- | :--- | :--- | :--- |
 | 1 | Declarative cluster state (CRDs, cluster-scoped resources, namespaced workloads, ConfigMaps, PVCs). **No Secrets.** | 03:00 UTC | `s3://…/cluster-state/*.tar.gz.age` | Active |
 | 2 | PostgreSQL: Authentik (active), TeslaMate (when deployed) | 03:30 UTC | `s3://…/postgres/<app>/*.sql.gz.age` | Active |
-| 3 | Local mirror on the garage Synology NAS | — | NFS `k8s-backups` share | **Planned.** The NFS PV/PVC were never deployed; the mirror was removed from the jobs on 2026-10-05 until it is wired up and tested. See [[307-garage-synology-dr-time-machine\|Synology DR]]. |
+| 3 | Local mirror on the garage Synology NAS | 03:00 / 03:30 UTC | NFS `k8s-backups` share | **Active.** Synology NFS PersistentVolume bound and verified; CronJobs mirror `*.age` encrypted artifacts locally immediately after S3 upload. See [[307-garage-synology-dr-time-machine\|Synology DR]]. |
 
 ### Retention timeline
 

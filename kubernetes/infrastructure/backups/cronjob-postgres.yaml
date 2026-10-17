@@ -133,6 +133,10 @@ spec:
                   echo "Uploading encrypted Authentik backup to S3 (s3://${S3_BUCKET}/postgres/authentik/)..."
                   aws s3 cp "/tmp/authentik_${TIMESTAMP}.sql.gz.age" "s3://${S3_BUCKET}/postgres/authentik/authentik_${TIMESTAMP}.sql.gz.age" --storage-class STANDARD --checksum-algorithm CRC32
 
+                  echo "Mirroring encrypted Authentik backup to Synology NAS Tier-3 DR (/mnt/synology-dr/postgres/authentik/)..."
+                  mkdir -p "/mnt/synology-dr/postgres/authentik"
+                  cp "/tmp/authentik_${TIMESTAMP}.sql.gz.age" "/mnt/synology-dr/postgres/authentik/authentik_${TIMESTAMP}.sql.gz.age"
+
                   rm -f "/tmp/authentik_${TIMESTAMP}.sql.gz.age"
                   echo "Authentik PostgreSQL database backup successful."
 
@@ -158,6 +162,10 @@ spec:
                     echo "Uploading encrypted TeslaMate backup to S3 (s3://${S3_BUCKET}/postgres/teslamate/)..."
                     aws s3 cp "/tmp/teslamate_${TIMESTAMP}.sql.gz.age" "s3://${S3_BUCKET}/postgres/teslamate/teslamate_${TIMESTAMP}.sql.gz.age" --storage-class STANDARD --checksum-algorithm CRC32
 
+                    echo "Mirroring encrypted TeslaMate backup to Synology NAS Tier-3 DR (/mnt/synology-dr/postgres/teslamate/)..."
+                    mkdir -p "/mnt/synology-dr/postgres/teslamate"
+                    cp "/tmp/teslamate_${TIMESTAMP}.sql.gz.age" "/mnt/synology-dr/postgres/teslamate/teslamate_${TIMESTAMP}.sql.gz.age"
+
                     rm -f "/tmp/teslamate_${TIMESTAMP}.sql.gz.age"
                     echo "TeslaMate PostgreSQL database backup successful."
                   else
@@ -165,9 +173,16 @@ spec:
                   fi
 
                   echo "===> All PostgreSQL backups completed successfully at $(date)."
+              volumeMounts:
+                - name: synology-dr
+                  mountPath: /mnt/synology-dr
               envFrom:
                 - secretRef:
                     name: s3-backup-credentials
                 # Required (not optional): a missing ConfigMap blocks the pod from starting.
                 - configMapRef:
                     name: backup-encryption
+          volumes:
+            - name: synology-dr
+              persistentVolumeClaim:
+                claimName: pvc-synology-nfs-backups

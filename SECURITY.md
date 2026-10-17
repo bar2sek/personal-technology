@@ -137,7 +137,7 @@ Backups are designed on the assumption that the cluster, the upload credential, 
 | :--- | :--- | :--- |
 | Primary | Rook-Ceph | Replicated across nodes; `reclaimPolicy: Retain` |
 | Offsite | AWS S3 | Client-side `age` encryption; Object Lock (governance, 30 days); versioned; TLS-only; all public access blocked |
-| Local | Synology NAS | Planned. NAS onboarded ([Synology DR runbook](docs/307-garage-synology-dr-time-machine.md)); the Kubernetes NFS mirror is not yet deployed. |
+| Local | Synology NAS | Active. NAS onboarded ([Synology DR runbook](docs/307-garage-synology-dr-time-machine.md)); Kubernetes NFS mirror actively writes `age`-encrypted daily backups to `/volume1/k8s-backups`. |
 
 - **Encrypted before it leaves the cluster, and the cluster can't decrypt it.** Every artifact is encrypted with `age` to a public key. The private key is kept offline and passphrase-wrapped. Jobs fail closed: without a valid recipient, no backup is produced. Both IAM and the bucket policy reject any object that isn't `*.age`. Verified with a fail-closed test and a restore drill.
 - **Write-only upload identity.** The uploader key can add backups under two prefixes, but cannot read, list, or delete anything. Verified from inside the cluster with an 11-case permission matrix.
@@ -193,7 +193,7 @@ These are known and deliberate. Each is reviewed when the threat model changes.
 
 Ordered by priority. Items move into §3 when completed.
 
-- [ ] **Local backup tier.** Deploy the Synology NFS mirror for the `age`-encrypted artifacts, restoring a third, physically separate copy.
+- [x] **Local backup tier.** Deploy the Synology NFS mirror for the `age`-encrypted artifacts, restoring a third, physically separate copy (completed 2026-10-17).
 - [ ] **Cloud audit trail.** A multi-region CloudTrail trail, including S3 data events for the backup bucket, so object reads are logged as well as management events.
 - [ ] **Phishing-resistant admin access.** Require IdP-backed MFA (passkeys) on every Zero Trust Access policy.
 - [ ] **Workload identity for on-prem → AWS.** Replace the remaining static backup credential with IAM Roles Anywhere, backed by a cert-manager–issued certificate.

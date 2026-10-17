@@ -55,8 +55,8 @@ graph TD
    - **1 Offsite Copy**: AWS S3 in `us-east-2`.
 3. **Zero-Egress Rapid Recovery**: Cluster state and database dumps mirrored locally over NFS, enabling local recovery without S3 egress costs or WAN connectivity.
 
-> [!WARNING]
-> **Status (2026-10-05): the Kubernetes NFS mirror (Phase 5) is not live.** The NAS and Time Machine are onboarded, but the NFS PersistentVolume/Claim were never deployed, so the backup jobs never wrote to the NAS. The mirror was removed from the CronJobs during backup hardening. Today there are two copies (Ceph + immutable S3). Phase 5 below is the plan for restoring the third.
+> [!NOTE]
+> **Status (2026-10-17): Fully Live and Verified.** Both the macOS Time Machine encrypted backup and the Kubernetes Tier-3 local DR NFS mirror (`pv-synology-nfs-backups` / `pvc-synology-nfs-backups`) are actively deployed and verified. Daily automated CronJobs copy `age`-encrypted cluster state and PostgreSQL database backups directly to the Synology NAS alongside AWS S3 Object Lock.
 
 ---
 
@@ -188,25 +188,22 @@ tmutil startbackup --auto
 
 ---
 
-## ☸️ Phase 5: Kubernetes Tier-3 Local DR Mirroring (Planned)
+## ☸️ Phase 5: Kubernetes Tier-3 Local DR Mirroring (Active & Verified)
 
 > [!NOTE]
-> Not yet deployed. See the status warning under *Key Architectural Tenets*.
+> Deployed and verified on 2026-10-17. The volume mounts natively via `nfsvers=4` (matching DSM 7.1.1 on DS713+).
 
-The NFS PersistentVolume and Claim are codified in `kubernetes/infrastructure/backups/` (`pv-synology-nfs.yaml`, `pvc-synology-nfs.yaml`) but not applied. To bring the mirror online:
+The NFS PersistentVolume and Claim are codified in `kubernetes/infrastructure/backups/` (`pv-synology-nfs.yaml`, `pvc-synology-nfs.yaml`) and bound to the cluster:
 
-1. **Confirm the NFS export** on DSM allows the Kubernetes node subnet (`10.10.20.0/24`), with read/write access.
-2. **Apply and bind the volume:**
+1. **NFS Export Verified:** Synology DSM exports `/volume1/k8s-backups` with read/write access to `10.10.20.0/24`.
+2. **Applied Volume & Claim:**
    ```bash
    kubectl apply -f kubernetes/infrastructure/backups/pv-synology-nfs.yaml
    kubectl apply -f kubernetes/infrastructure/backups/pvc-synology-nfs.yaml
    kubectl get pvc -n backups pvc-synology-nfs-backups
    ```
-3. **Re-add the mirror to the CronJobs.** Mount the PVC and copy the **already-encrypted** `*.age` artifact after the S3 upload. Never mirror plaintext: the NAS must hold only the same ciphertext as S3.
-4. **Test** with a manual job, and confirm a `*.age` file appears on the share.
-5. **Update** the Backups README tier table and SECURITY.md §3.5.
-
-NFS volumes are mounted by the kubelet, so this does not require privileged pods.
+3. **CronJob Mirroring Integrated:** Daily automated CronJobs (`cronjob-cluster-state.yaml` and `cronjob-postgres.yaml`) mount `pvc-synology-nfs-backups` at `/mnt/synology-dr` and replicate the **already-encrypted** `*.age` artifacts immediately following the S3 upload. The NAS stores only encrypted ciphertext.
+4. **Verified:** Successfully tested end-to-end; test backups write to `/volume1/k8s-backups/cluster-state/*.tar.gz.age`.
 
 ---
 

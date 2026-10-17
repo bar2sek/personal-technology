@@ -138,11 +138,22 @@ spec:
                   echo "Uploading encrypted archive to s3://${S3_BUCKET}/cluster-state/${OBJECT_NAME}..."
                   aws s3 cp "${ENCRYPTED_FILE}" "s3://${S3_BUCKET}/cluster-state/${OBJECT_NAME}" --storage-class STANDARD --checksum-algorithm CRC32
 
+                  echo "Mirroring encrypted archive to Synology NAS Tier-3 DR (/mnt/synology-dr/cluster-state/)..."
+                  mkdir -p "/mnt/synology-dr/cluster-state"
+                  cp "${ENCRYPTED_FILE}" "/mnt/synology-dr/cluster-state/${OBJECT_NAME}"
+
                   rm -f "${ENCRYPTED_FILE}"
                   echo "Encrypted cluster state backup completed: ${OBJECT_NAME}"
+              volumeMounts:
+                - name: synology-dr
+                  mountPath: /mnt/synology-dr
               envFrom:
                 - secretRef:
                     name: s3-backup-credentials
                 # Required (not optional): a missing ConfigMap blocks the pod from starting.
                 - configMapRef:
                     name: backup-encryption
+          volumes:
+            - name: synology-dr
+              persistentVolumeClaim:
+                claimName: pvc-synology-nfs-backups
