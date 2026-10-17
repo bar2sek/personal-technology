@@ -198,7 +198,7 @@ data:
           "id": 4,
           "type": "stat",
           "title": "Disks down",
-          "description": "Ceph disks (OSDs) that are down or out. 0 is normal. Anything else means storage is running with less redundancy.",
+          "description": "Ceph disks (OSDs) that are down, counted two ways and taking the larger: Ceph's own up/down flag, and Rook OSD deployments that are not running. Both are needed because Ceph's exporter stops reporting a disk that has failed completely (seen with osd.5). 0 is normal; anything else means storage is running with less redundancy.",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
@@ -215,7 +215,7 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "count(ceph_osd_up) - sum(ceph_osd_up) + (count(ceph_osd_in) - sum(ceph_osd_in))",
+              "expr": "max(label_replace((count(ceph_osd_up == 0) or vector(0)), \"src\", \"ceph\", \"\", \"\") or label_replace((count(kube_deployment_status_replicas_unavailable{namespace=\"rook-ceph\",deployment=~\"rook-ceph-osd-.*\"} > 0) or vector(0)), \"src\", \"rook\", \"\", \"\"))",
               "legendFormat": "",
               "instant": true,
               "range": false,
