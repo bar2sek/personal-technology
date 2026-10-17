@@ -137,7 +137,7 @@ Backups are designed on the assumption that the cluster, the upload credential, 
 | :--- | :--- | :--- |
 | Primary | Rook-Ceph | Replicated across nodes; `reclaimPolicy: Retain` |
 | Offsite | AWS S3 | Client-side `age` encryption; Object Lock (governance, 30 days); versioned; TLS-only; all public access blocked |
-| Local | Synology NAS | Active. NAS onboarded ([Synology DR runbook](docs/307-garage-synology-dr-time-machine.md)); Kubernetes NFS mirror actively writes `age`-encrypted daily backups to `/volume1/k8s-backups`. |
+| Local | Synology NAS | Active. NAS onboarded ([Synology DR runbook](docs/307-garage-synology-dr-time-machine.md)); Separate NAS CronJobs write `age`-encrypted daily backups to `/volume1/k8s-backups` (pruned after 35 days). They run independently of the S3 jobs and hold no AWS credential. |
 
 - **Encrypted before it leaves the cluster, and the cluster can't decrypt it.** Every artifact is encrypted with `age` to a public key. The private key is kept offline and passphrase-wrapped. Jobs fail closed: without a valid recipient, no backup is produced. Both IAM and the bucket policy reject any object that isn't `*.age`. Verified with a fail-closed test and a restore drill.
 - **Write-only upload identity.** The uploader key can add backups under two prefixes, but cannot read, list, or delete anything. Verified from inside the cluster with an 11-case permission matrix.

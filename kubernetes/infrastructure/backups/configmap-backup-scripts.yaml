@@ -1,0 +1,173 @@
+# ==============================================================================
+# Backup scripts, shared by the S3 and NAS CronJobs
+# ==============================================================================
+# Each dataset runs as two CronJobs that execute the same script with a
+# different DEST:
+#   DEST=s3   offsite copy. Has the uploader key; does NOT mount the NAS.
+#   DEST=nas  local copy on the garage Synology. Mounts the NAS; has NO AWS key.
+# Keeping the destinations in separate pods means each one fails on its own:
+# an NFS volume is mounted before any container starts, so a NAS outage would
+# otherwise stop the offsite backup as well.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backup-scripts
+  namespace: backups
+data:
+  lib.sh: |
+    # Shared helpers. Sourced by every backup script.
+    set -euo pipefail
+
+    NAS_ROOT=/mnt/synology-dr
+    RETENTION_DAYS=35 # NAS copies; matches the S3 lifecycle rule
+
+    case "${DEST:-}" in
+      s3|nas) ;;
+      *) echo "ERROR: DEST must be 's3' or 'nas' (got '${DEST:-}')." >&2; exit 1 ;;
+    esac
+
+    # Fail closed: without an age recipient there is no backup at all,
+    # never an unencrypted one.
+    case "${AGE_RECIPIENT:-}" in
+      age1*) ;;
+      *) echo "ERROR: AGE_RECIPIENT missing or invalid (ConfigMap 'backup-encryption'). Refusing to back up." >&2; exit 1 ;;
+    esac
+
+    if [ "${DEST}" = s3 ] && [ -z "${AWS_ACCESS_KEY_ID:-}" ]; then
+      echo "ERROR: AWS credentials not configured in secret 's3-backup-credentials'. See README.md." >&2
+      exit 1
+    fi
+
+    # install_deps <apk packages...>: adds aws-cli only for the S3 destination.
+    install_deps() {
+      if [ "${DEST}" = s3 ]; then set -- "$@" aws-cli; fi
+      echo "Installing dependencies: $*"
+      apk add --no-cache "$@"
+      # age parses the recipient strictly; a typo fails here, before any data is read.
+      echo probe | age -r "${AGE_RECIPIENT}" > /dev/null
+    }
+
+    # ship <local-file> <key>: deliver an encrypted artifact to DEST.
+    # <key> is the path under the bucket / NAS share, e.g. cluster-state/x.tar.gz.age
+    ship() {
+      local file="$1" key="$2"
+      case "${key}" in
+        *.age) ;;
+        *) echo "ERROR: refusing to ship non-.age artifact '${key}'." >&2; return 1 ;;
+      esac
+      if [ "${DEST}" = s3 ]; then
+        echo "Uploading to s3://${S3_BUCKET}/${key}"
+        # CRC32 checksum: Object Lock buckets reject uploads without one
+        aws s3 cp "${file}" "s3://${S3_BUCKET}/${key}" --storage-class STANDARD --checksum-algorithm CRC32
+      else
+        local dir="${NAS_ROOT}/$(dirname "${key}")"
+        echo "Writing to NAS: ${NAS_ROOT}/${key}"
+        mkdir -p "${dir}"
+        # Temporary name, then rename: a half-written file never looks like a complete backup.
+        cp "${file}" "${NAS_ROOT}/${key}.partial"
+        mv "${NAS_ROOT}/${key}.partial" "${NAS_ROOT}/${key}"
+        find "${dir}" -maxdepth 1 -name '*.age' -mtime +"${RETENTION_DAYS}" -print -delete
+        find "${dir}" -maxdepth 1 -name '*.partial' -mmin +60 -print -delete
+      fi
+    }
+
+  cluster-state.sh: |
+    . /scripts/lib.sh
+    TIMESTAMP=$(date -u +%Y%m%d_%H%M%S)
+    BACKUP_DIR="/tmp/k8s-backup-${TIMESTAMP}"
+    OBJECT_NAME="k8s-cluster-state-${TIMESTAMP}.tar.gz.age"
+    ENCRYPTED_FILE="/tmp/${OBJECT_NAME}"
+
+    install_deps curl tar gzip jq age
+
+    KUBECTL_VERSION="v1.36.4"
+    KUBECTL_SHA256="8b8f088da2dab964f853b38464033b1be15ede2839eca751482357c45abdd05a"
+    echo "Installing verified kubectl ${KUBECTL_VERSION} CLI..."
+    curl -fsSL "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl
+    echo "${KUBECTL_SHA256}  /usr/local/bin/kubectl" | sha256sum -c -
+    chmod +x /usr/local/bin/kubectl
+
+    mkdir -p "${BACKUP_DIR}/cluster-scoped" "${BACKUP_DIR}/namespaces"
+    STRIP='del(.items[].metadata.resourceVersion, .items[].metadata.uid, .items[].metadata.creationTimestamp, .items[].metadata.generation, .items[].metadata.managedFields, .items[].status)'
+
+    echo "Dumping Custom Resource Definitions (CRDs)..."
+    kubectl get crd -o json | jq "${STRIP}" > "${BACKUP_DIR}/cluster-scoped/crds.json"
+
+    echo "Dumping Cluster-Scoped Resources (StorageClasses, PVs, ClusterRoles)..."
+    kubectl get storageclass,persistentvolume,clusterroles,clusterrolebindings,ingressclasses -o json | jq "${STRIP}" > "${BACKUP_DIR}/cluster-scoped/cluster-resources.json"
+
+    # Secrets are intentionally not dumped (see the ClusterRole in cronjob-cluster-state.yaml).
+    echo "Dumping Declarative Namespaced Resources across all namespaces..."
+    TARGET_RESOURCES="deployments,statefulsets,daemonsets,cronjobs,services,configmaps,persistentvolumeclaims,ingresses,networkpolicies"
+    for ns in $(kubectl get namespaces -o jsonpath='{.items[*].metadata.name}'); do
+      mkdir -p "${BACKUP_DIR}/namespaces/${ns}"
+      echo " -> Backing up namespace: ${ns}..."
+      kubectl get ${TARGET_RESOURCES} -n "${ns}" -o json | jq "${STRIP} | del(.items[].spec.clusterIP, .items[].spec.clusterIPs)" > "${BACKUP_DIR}/namespaces/${ns}/declarative-resources.json"
+    done
+
+    echo "Compressing and encrypting cluster state archive (age)..."
+    tar -czf - -C "${BACKUP_DIR}" . | age -r "${AGE_RECIPIENT}" -o "${ENCRYPTED_FILE}"
+    rm -rf "${BACKUP_DIR}"
+
+    ship "${ENCRYPTED_FILE}" "cluster-state/${OBJECT_NAME}"
+    rm -f "${ENCRYPTED_FILE}"
+    echo "Encrypted cluster state backup completed (${DEST}): ${OBJECT_NAME}"
+
+  postgres.sh: |
+    . /scripts/lib.sh
+    TIMESTAMP=$(date -u +%Y%m%d_%H%M%S)
+
+    install_deps curl jq gzip age
+
+    APISERVER="https://kubernetes.default.svc"
+    SERVICEACCOUNT="/var/run/secrets/kubernetes.io/serviceaccount"
+    TOKEN=$(cat "${SERVICEACCOUNT}/token")
+    CACERT="${SERVICEACCOUNT}/ca.crt"
+
+    fetch_secret_key() {
+      local ns="$1" secret="$2" key="$3" resp val
+      resp=$(curl -fsS --cacert "${CACERT}" -H "Authorization: Bearer ${TOKEN}" \
+        "${APISERVER}/api/v1/namespaces/${ns}/secrets/${secret}") || {
+          echo "ERROR: Failed to retrieve secret '${secret}' from namespace '${ns}' via Kubernetes API." >&2
+          return 1
+      }
+      val=$(echo "${resp}" | jq -er --arg k "${key}" '.data[$k] // empty' | base64 -d) || {
+          echo "ERROR: Key '${key}' not found or empty in secret '${secret}' (namespace '${ns}')." >&2
+          return 1
+      }
+      echo "${val}"
+    }
+
+    # dump_db <name> <host> <user> <db> <secret-ns> <secret-name>
+    dump_db() {
+      local name="$1" host="$2" user="$3" db="$4" sns="$5" sname="$6" pw file
+      pw=$(fetch_secret_key "${sns}" "${sname}" "db-password")
+      if [ -z "${pw}" ]; then
+        echo "ERROR: Retrieved empty database password for ${name}." >&2
+        return 1
+      fi
+      file="/tmp/${name}_${TIMESTAMP}.sql.gz.age"
+      echo "Dumping and encrypting ${name} database (${db})..."
+      PGPASSWORD="${pw}" pg_dump -h "${host}" -p 5432 -U "${user}" -d "${db}" | gzip | age -r "${AGE_RECIPIENT}" -o "${file}"
+      ship "${file}" "postgres/${name}/$(basename "${file}")"
+      rm -f "${file}"
+      echo "${name} PostgreSQL database backup successful."
+    }
+
+    # Authentik (active production): unreachable is an error.
+    echo "===> Starting backup for Authentik PostgreSQL database..."
+    if ! nc -z -w 5 authentik-db.identity.svc.cluster.local 5432 2>/dev/null; then
+      echo "ERROR: Cannot reach Authentik PostgreSQL service." >&2
+      exit 1
+    fi
+    dump_db authentik authentik-db.identity.svc.cluster.local authentik authentik identity authentik-secrets
+
+    # TeslaMate (conditional): skipped until it is deployed.
+    if nc -z -w 3 teslamate-db.teslamate.svc.cluster.local 5432 2>/dev/null; then
+      echo "===> Starting backup for TeslaMate PostgreSQL database..."
+      dump_db teslamate teslamate-db.teslamate.svc.cluster.local teslamate teslamate teslamate teslamate-secrets
+    else
+      echo "TeslaMate database service not reachable (app uninstalled or not deployed yet); skipping."
+    fi
+
+    echo "===> All PostgreSQL backups completed successfully (${DEST}) at $(date -u)."

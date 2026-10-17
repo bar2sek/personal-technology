@@ -10,6 +10,9 @@
 #      then stream tar | gzip | age into an emptyDir. Plaintext never touches disk.
 #   2. upload (aws-cli): copy the .age file to s3://<bucket>/apps/actual/.
 #
+# A second CronJob at the end of this file writes an independent copy to the
+# Synology NAS (tier 3).
+#
 # The uploader key (Secret `s3-backup-credentials`) is a copy of the one in the
 # `backups` namespace; it can only PutObject *.age under fixed prefixes and is
 # minted straight into the cluster, never committed. See
@@ -157,6 +160,160 @@ spec:
             - name: work
               emptyDir:
                 sizeLimit: 1Gi
+            - name: tmp
+              emptyDir:
+                sizeLimit: 256Mi
+---
+# ==============================================================================
+# Tier 3: local copy on the garage Synology NAS
+# ==============================================================================
+# A separate CronJob rather than a step in the S3 job: NFS volumes are mounted
+# before any container starts, so if the NAS were down a shared job would never
+# start and the offsite S3 backup would be skipped too. Separate jobs fail
+# independently. This one needs no AWS credential.
+#
+# The PV points only at the `apps/actual` subfolder of the `k8s-backups` share,
+# so this namespace cannot see or touch the other backups. The DSM NFS rule maps
+# all users to admin, which is what lets this non-root pod write.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-synology-nfs-actual
+  labels:
+    tier: tier-3-dr
+    destination: synology-nas
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  # Reserve this PV for exactly one claim, so no other namespace can bind it
+  claimRef:
+    namespace: finance
+    name: pvc-synology-nfs-actual
+  nfs:
+    server: 10.0.1.223
+    path: /volume1/k8s-backups/apps/actual
+  mountOptions:
+    - hard
+    - nfsvers=4
+    - noatime
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-synology-nfs-actual
+  namespace: finance
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: ""
+  volumeName: pv-synology-nfs-actual
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: backup-actual-budget-nas
+  namespace: finance
+spec:
+  schedule: "50 3 * * *" # Daily at 03:50 UTC, after the S3 job
+  suspend: false
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 1800 # a hung NFS mount must not block the job forever
+      ttlSecondsAfterFinished: 259200 # 3 days
+      template:
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          affinity:
+            podAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - labelSelector:
+                    matchLabels:
+                      app: actual-budget
+                  topologyKey: kubernetes.io/hostname
+          containers:
+            - name: encrypt-to-nas
+              image: alpine:3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -euo pipefail
+                  case "${AGE_RECIPIENT:-}" in
+                    age1*) ;;
+                    *) echo "ERROR: AGE_RECIPIENT missing or invalid. Refusing to back up." >&2; exit 1 ;;
+                  esac
+
+                  AGE_VERSION=v1.3.2
+                  AGE_SHA256=cbe24006683f8eb669266162894b9a522a1af52f2665fbc63a4bb032ed26ac10
+                  cd /tmp
+                  wget -qO age.tgz "https://github.com/FiloSottile/age/releases/download/${AGE_VERSION}/age-${AGE_VERSION}-linux-amd64.tar.gz"
+                  echo "${AGE_SHA256}  age.tgz" | sha256sum -c -
+                  tar xzf age.tgz
+                  AGE=/tmp/age/age
+                  echo probe | "${AGE}" -r "${AGE_RECIPIENT}" > /dev/null
+
+                  TIMESTAMP=$(date -u +%Y%m%d_%H%M%S)
+                  OUT="/nas/actual_${TIMESTAMP}.tar.gz.age"
+                  echo "Packing and encrypting /data to the NAS..."
+                  # Write under a temporary name and rename at the end, so a half-written
+                  # file never looks like a complete backup.
+                  tar -C /data --exclude=lost+found -cf - . | gzip | "${AGE}" -r "${AGE_RECIPIENT}" -o "${OUT}.partial"
+                  mv "${OUT}.partial" "${OUT}"
+                  ls -l "${OUT}"
+
+                  # Retention: match S3 (35 days). Also clear partials left by failed runs.
+                  find /nas -maxdepth 1 -name 'actual_*.tar.gz.age' -mtime +35 -print -delete
+                  find /nas -maxdepth 1 -name '*.partial' -mmin +60 -print -delete
+                  echo "Actual Budget NAS backup successful."
+              envFrom:
+                - configMapRef:
+                    name: backup-encryption
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+                limits:
+                  cpu: 500m
+                  memory: 256Mi
+              volumeMounts:
+                - name: actual-data
+                  mountPath: /data
+                  readOnly: true
+                - name: nas
+                  mountPath: /nas
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: actual-data
+              persistentVolumeClaim:
+                claimName: actual-budget-data-pvc
+                readOnly: true
+            - name: nas
+              persistentVolumeClaim:
+                claimName: pvc-synology-nfs-actual
             - name: tmp
               emptyDir:
                 sizeLimit: 256Mi

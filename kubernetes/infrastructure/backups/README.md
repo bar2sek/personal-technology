@@ -31,20 +31,27 @@ Daily backups of cluster state and PostgreSQL databases, shipped to AWS S3. The 
 
 ```mermaid
 graph LR
-    subgraph Cluster["Talos Kubernetes: namespace backups"]
-        CM["ConfigMap backup-encryption<br/>age PUBLIC key"]
-        CS["CronJob backup-cluster-state<br/>03:00 UTC"]
-        PG["CronJob backup-postgres-databases<br/>03:30 UTC"]
-        SEC["Secret s3-backup-credentials<br/>write-only IAM key"]
+    subgraph Cluster["Talos Kubernetes"]
+        SCR["ConfigMap backup-scripts<br/>one script per dataset, DEST=s3|nas"]
+        subgraph Offsite["S3 CronJobs (have AWS key, no NAS mount)"]
+            CS["backup-cluster-state 03:00"]
+            PG["backup-postgres-databases 03:30"]
+            AB["finance/backup-actual-budget 03:45"]
+        end
+        subgraph Local["NAS CronJobs (NAS mount, no AWS key)"]
+            CSN["backup-cluster-state-nas 03:10"]
+            PGN["backup-postgres-databases-nas 03:40"]
+            ABN["finance/backup-actual-budget-nas 03:50"]
+        end
     end
-    CM --> CS & PG
-    SEC --> CS & PG
-    CS -->|"tar | age → *.age"| S3
-    PG -->|"pg_dump | gzip | age → *.age"| S3
+    SCR --> CS & PG & CSN & PGN
+    CS & PG & AB -->|"*.age"| S3
+    CSN & PGN & ABN -->|"*.age over NFS"| NAS
     subgraph AWS["AWS S3: s3-aws-backups-prod-use2-001"]
         S3["Versioned · SSE-S3 · Object Lock GOVERNANCE 30d<br/>Bucket policy: TLS only · *.age only · no bypass"]
     end
-    KEY["age PRIVATE identity<br/>passphrase-wrapped, offline<br/>(password manager + USB)"] -.->|"restore only, on admin workstation"| S3
+    NAS["Garage Synology<br/>k8s-backups share · 35-day prune"]
+    KEY["age PRIVATE identity<br/>passphrase-wrapped, offline<br/>(password manager)"] -.->|"restore only, on admin workstation"| S3 & NAS
 ```
 
 ### Ownership across repositories
@@ -62,11 +69,23 @@ One bucket, deliberately split by **who may change it**:
 
 ### Backup tiers
 
-| Tier | Data | Schedule | Destination | Status |
+| Tier | Data | Schedule (UTC) | Destination | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| 1 | Declarative cluster state (CRDs, cluster-scoped resources, namespaced workloads, ConfigMaps, PVCs). **No Secrets.** | 03:00 UTC | `s3://…/cluster-state/*.tar.gz.age` | Active |
-| 2 | PostgreSQL: Authentik (active), TeslaMate (when deployed) | 03:30 UTC | `s3://…/postgres/<app>/*.sql.gz.age` | Active |
-| 3 | Local mirror on the garage Synology NAS | 03:00 / 03:30 UTC | NFS `k8s-backups` share | **Active.** Synology NFS PersistentVolume bound and verified; CronJobs mirror `*.age` encrypted artifacts locally immediately after S3 upload. See [[307-garage-synology-dr-time-machine\|Synology DR]]. |
+| 1 | Declarative cluster state (CRDs, cluster-scoped resources, namespaced workloads, ConfigMaps, PVCs). **No Secrets.** | 03:00 S3 · 03:10 NAS | `cluster-state/*.tar.gz.age` | Active |
+| 2 | PostgreSQL: Authentik (active), TeslaMate (when deployed) | 03:30 S3 · 03:40 NAS | `postgres/<app>/*.sql.gz.age` | Active |
+| 2 | Actual Budget data volume (SQLite), from the `finance` namespace | 03:45 S3 · 03:50 NAS | `apps/actual/*.tar.gz.age` | Active (`kubernetes/apps/finance/actual-budget-backup.yaml`) |
+
+Every dataset goes to **two destinations as two separate CronJobs**: S3 (offsite, 35-day lifecycle, Object Lock) and the garage Synology over NFS (local, pruned after 35 days by the job itself). See [[307-garage-synology-dr-time-machine\|Synology DR]].
+
+> [!IMPORTANT]
+> **Why separate jobs instead of one job that writes to both.** Kubernetes mounts an NFS volume before any container starts. If one pod both uploaded to S3 and mounted the NAS, a NAS outage would keep the pod from starting and silently skip the offsite backup as well. With separate jobs, each destination fails on its own. It also splits credentials: S3 jobs hold the uploader key but never mount the NAS; NAS jobs mount the NAS but have no AWS key.
+>
+> The cluster-state and Postgres jobs share their script through `configmap-backup-scripts.yaml` (`DEST=s3` or `DEST=nas`), so the two variants cannot drift apart.
+
+#### NAS specifics
+- **Write safety:** NAS jobs write `<name>.partial` and rename it when complete, so an interrupted run never leaves a file that looks like a finished backup. Leftover partials older than an hour are removed on the next run.
+- **Permissions:** the DSM NFS rule for `k8s-backups` must use **Squash: Map all users to admin**. With *No mapping*, only root can write (DSM has no user matching the pod's UID), and the `finance` jobs run as UID 1000 under the `restricted` Pod Security level.
+- **Scoping:** `finance` has its own PersistentVolume pointing only at `k8s-backups/apps/actual` and reserved for one claim (`claimRef`), so that namespace cannot see the other backups.
 
 ### Retention timeline
 

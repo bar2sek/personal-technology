@@ -740,6 +740,17 @@ Any AI agent or human operator can review this document to pick up exactly where
 
 ---
 
+## 🎯 Milestone 14: Independent Local Backup Tier (2026-10-17)
+
+- **Problem found**: the first Synology mirror added the NAS volume to the existing S3 backup jobs. Kubernetes mounts NFS before any container starts, so a NAS outage would have stopped the **offsite** backup too.
+- **Fix**: every dataset now runs as two CronJobs, one for S3 and one for the NAS, sharing one script per dataset (`configmap-backup-scripts.yaml`, `DEST=s3|nas`). S3 jobs hold the uploader key and never mount the NAS; NAS jobs mount the NAS and hold no AWS key. NAS writes use a `.partial` name plus rename, and prune copies after 35 days to match S3.
+- **Actual Budget** gained a NAS job in `finance`. Its PersistentVolume points only at `k8s-backups/apps/actual` and is reserved for one claim, so that namespace cannot see the other backups.
+- **NAS setting**: the DSM NFS rule changed from *No mapping* to *Map all users to admin*, which non-root pods need in order to write; access remains limited to the node subnet `10.10.20.0/24`.
+- **Hardening along the way**: the cluster-state and Postgres job images are now pinned by digest; jobs have an `activeDeadlineSeconds` so a hung mount cannot block indefinitely.
+- **Verification**: all six jobs run by hand; the CronJob specs were checked for volume and credential separation; the one NAS artifact encrypted to the retired key was deleted.
+
+---
+
 ## 🎯 Immediate Next Actions & Infrastructure Backlog
 
 1. **GitOps Controller Evaluation (Flux CD)**:

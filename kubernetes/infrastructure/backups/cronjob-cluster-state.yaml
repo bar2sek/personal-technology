@@ -54,14 +54,16 @@ subjects:
   - kind: ServiceAccount
     name: k8s-backup-sa
     namespace: backups
+# Script logic lives in configmap-backup-scripts.yaml (shared by both CronJobs below).
 ---
+# Offsite: cluster state to S3, daily 03:00 UTC. Does not mount the NAS.
 apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: backup-cluster-state
   namespace: backups
 spec:
-  schedule: "0 3 * * *" # Daily at 03:00 UTC (10:00 PM CDT)
+  schedule: "0 3 * * *"
   # Declared explicitly: `kubectl apply` would otherwise preserve a suspend set
   # imperatively (e.g. during an incident), since it is absent from last-applied.
   suspend: false
@@ -70,90 +72,77 @@ spec:
   failedJobsHistoryLimit: 3
   jobTemplate:
     spec:
+      backoffLimit: 3
+      activeDeadlineSeconds: 1800 # a hung NFS mount or upload must not block forever
       template:
         spec:
           serviceAccountName: k8s-backup-sa
           restartPolicy: OnFailure
           containers:
             - name: cluster-backup
-              image: alpine:3.24
-              command:
-                - /bin/sh
-                - -c
-                - |
-                  set -euo pipefail
-                  TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-                  BACKUP_DIR="/tmp/k8s-backup-${TIMESTAMP}"
-                  OBJECT_NAME="k8s-cluster-state-${TIMESTAMP}.tar.gz.age"
-                  ENCRYPTED_FILE="/tmp/${OBJECT_NAME}"
-
-                  # Fail closed: without an age recipient there is no backup at all,
-                  # never an unencrypted one.
-                  case "${AGE_RECIPIENT:-}" in
-                    age1*) ;;
-                    *) echo "ERROR: AGE_RECIPIENT missing or invalid (ConfigMap 'backup-encryption'). Refusing to back up." >&2; exit 1 ;;
-                  esac
-
-                  if [ "${AWS_ACCESS_KEY_ID:-}" = "REPLACE_WITH_AWS_BACKUP_ACCESS_KEY_ID" ] || [ -z "${AWS_ACCESS_KEY_ID:-}" ]; then
-                    echo "ERROR: AWS credentials not configured in secret 's3-backup-credentials'." >&2
-                    exit 1
-                  fi
-
-                  echo "Installing backup dependencies (aws-cli, curl, tar, gzip, jq, age)..."
-                  apk add --no-cache aws-cli curl tar gzip jq age
-
-                  # age parses the recipient strictly; a typo fails here, before any data is read.
-                  echo probe | age -r "${AGE_RECIPIENT}" > /dev/null
-
-                  KUBECTL_VERSION="v1.36.4"
-                  KUBECTL_SHA256="8b8f088da2dab964f853b38464033b1be15ede2839eca751482357c45abdd05a"
-
-                  echo "Installing verified kubectl ${KUBECTL_VERSION} CLI..."
-                  curl -fsSL "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl
-                  echo "${KUBECTL_SHA256}  /usr/local/bin/kubectl" | sha256sum -c -
-                  chmod +x /usr/local/bin/kubectl
-
-                  mkdir -p "${BACKUP_DIR}/cluster-scoped" "${BACKUP_DIR}/namespaces"
-                  STRIP='del(.items[].metadata.resourceVersion, .items[].metadata.uid, .items[].metadata.creationTimestamp, .items[].metadata.generation, .items[].metadata.managedFields, .items[].status)'
-
-                  echo "Dumping Custom Resource Definitions (CRDs)..."
-                  kubectl get crd -o json | jq "${STRIP}" > "${BACKUP_DIR}/cluster-scoped/crds.json"
-
-                  echo "Dumping Cluster-Scoped Resources (StorageClasses, PVs, ClusterRoles)..."
-                  kubectl get storageclass,persistentvolume,clusterroles,clusterrolebindings,ingressclasses -o json | jq "${STRIP}" > "${BACKUP_DIR}/cluster-scoped/cluster-resources.json"
-
-                  # Secrets are intentionally not dumped (see the ClusterRole above).
-                  echo "Dumping Declarative Namespaced Resources across all namespaces..."
-                  TARGET_RESOURCES="deployments,statefulsets,daemonsets,cronjobs,services,configmaps,persistentvolumeclaims,ingresses,networkpolicies"
-                  for ns in $(kubectl get namespaces -o jsonpath='{.items[*].metadata.name}'); do
-                    mkdir -p "${BACKUP_DIR}/namespaces/${ns}"
-                    echo " -> Backing up namespace: ${ns}..."
-                    kubectl get ${TARGET_RESOURCES} -n "${ns}" -o json | jq "${STRIP} | del(.items[].spec.clusterIP, .items[].spec.clusterIPs)" > "${BACKUP_DIR}/namespaces/${ns}/declarative-resources.json"
-                  done
-
-                  echo "Compressing and encrypting cluster state archive (age)..."
-                  tar -czf - -C "${BACKUP_DIR}" . | age -r "${AGE_RECIPIENT}" -o "${ENCRYPTED_FILE}"
-                  rm -rf "${BACKUP_DIR}"
-
-                  echo "Uploading encrypted archive to s3://${S3_BUCKET}/cluster-state/${OBJECT_NAME}..."
-                  aws s3 cp "${ENCRYPTED_FILE}" "s3://${S3_BUCKET}/cluster-state/${OBJECT_NAME}" --storage-class STANDARD --checksum-algorithm CRC32
-
-                  echo "Mirroring encrypted archive to Synology NAS Tier-3 DR (/mnt/synology-dr/cluster-state/)..."
-                  mkdir -p "/mnt/synology-dr/cluster-state"
-                  cp "${ENCRYPTED_FILE}" "/mnt/synology-dr/cluster-state/${OBJECT_NAME}"
-
-                  rm -f "${ENCRYPTED_FILE}"
-                  echo "Encrypted cluster state backup completed: ${OBJECT_NAME}"
-              volumeMounts:
-                - name: synology-dr
-                  mountPath: /mnt/synology-dr
+              image: alpine:3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6
+              command: ["/bin/sh", "/scripts/cluster-state.sh"]
+              env:
+                - name: DEST
+                  value: s3
               envFrom:
                 - secretRef:
                     name: s3-backup-credentials
                 # Required (not optional): a missing ConfigMap blocks the pod from starting.
                 - configMapRef:
                     name: backup-encryption
+              volumeMounts:
+                - name: scripts
+                  mountPath: /scripts
           volumes:
+            - name: scripts
+              configMap:
+                name: backup-scripts
+                defaultMode: 0555
+---
+# Local: cluster state to the garage Synology, daily 03:10 UTC. No AWS credential.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: backup-cluster-state-nas
+  namespace: backups
+spec:
+  schedule: "10 3 * * *"
+  # Declared explicitly: `kubectl apply` would otherwise preserve a suspend set
+  # imperatively (e.g. during an incident), since it is absent from last-applied.
+  suspend: false
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 3
+      activeDeadlineSeconds: 1800 # a hung NFS mount or upload must not block forever
+      template:
+        spec:
+          serviceAccountName: k8s-backup-sa
+          restartPolicy: OnFailure
+          containers:
+            - name: cluster-backup
+              image: alpine:3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6
+              command: ["/bin/sh", "/scripts/cluster-state.sh"]
+              env:
+                - name: DEST
+                  value: nas
+              envFrom:
+                # Required (not optional): a missing ConfigMap blocks the pod from starting.
+                - configMapRef:
+                    name: backup-encryption
+              volumeMounts:
+                - name: scripts
+                  mountPath: /scripts
+                - name: synology-dr
+                  mountPath: /mnt/synology-dr
+          volumes:
+            - name: scripts
+              configMap:
+                name: backup-scripts
+                defaultMode: 0555
             - name: synology-dr
               persistentVolumeClaim:
                 claimName: pvc-synology-nfs-backups

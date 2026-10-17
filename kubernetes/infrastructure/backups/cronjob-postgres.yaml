@@ -31,17 +31,16 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
   name: authentik-db-backup-reader
+# Script logic lives in configmap-backup-scripts.yaml (shared by both CronJobs below).
 ---
-# ==============================================================================
-# CronJob: Automated PostgreSQL S3 Backup Pipeline
-# ==============================================================================
+# Offsite: PostgreSQL dumps to S3, daily 03:30 UTC. Does not mount the NAS.
 apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: backup-postgres-databases
   namespace: backups
 spec:
-  schedule: "30 3 * * *" # Daily at 03:30 UTC (10:30 PM CDT)
+  schedule: "30 3 * * *"
   # Declared explicitly: `kubectl apply` would otherwise preserve a suspend set
   # imperatively (e.g. during an incident), since it is absent from last-applied.
   suspend: false
@@ -50,139 +49,77 @@ spec:
   failedJobsHistoryLimit: 3
   jobTemplate:
     spec:
+      backoffLimit: 3
+      activeDeadlineSeconds: 1800 # a hung NFS mount or upload must not block forever
       template:
         spec:
           serviceAccountName: postgres-backup-sa
           restartPolicy: OnFailure
           containers:
             - name: postgres-backup
-              image: postgres:16-alpine
-              command:
-                - /bin/sh
-                - -c
-                - |
-                  set -euo pipefail
-                  TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-
-                  # Fail closed: without an age recipient there is no backup at all,
-                  # never an unencrypted one.
-                  case "${AGE_RECIPIENT:-}" in
-                    age1*) ;;
-                    *) echo "ERROR: AGE_RECIPIENT missing or invalid (ConfigMap 'backup-encryption'). Refusing to back up." >&2; exit 1 ;;
-                  esac
-
-                  if [ "${AWS_ACCESS_KEY_ID:-}" = "REPLACE_WITH_AWS_BACKUP_ACCESS_KEY_ID" ] || [ -z "${AWS_ACCESS_KEY_ID:-}" ]; then
-                    echo "ERROR: AWS credentials not configured in secret 's3-backup-credentials'. See README.md." >&2
-                    exit 1
-                  fi
-
-                  echo "Installing runtime dependencies (aws-cli, curl, jq, gzip, age)..."
-                  apk add --no-cache aws-cli curl jq gzip age
-
-                  # age parses the recipient strictly; a typo fails here, before any data is read.
-                  echo probe | age -r "${AGE_RECIPIENT}" > /dev/null
-
-                  APISERVER="https://kubernetes.default.svc"
-                  SERVICEACCOUNT="/var/run/secrets/kubernetes.io/serviceaccount"
-                  TOKEN=$(cat "${SERVICEACCOUNT}/token")
-                  CACERT="${SERVICEACCOUNT}/ca.crt"
-
-                  fetch_secret_key() {
-                    local ns="$1"
-                    local secret="$2"
-                    local key="$3"
-                    local resp
-
-                    resp=$(curl -fsS --cacert "${CACERT}" -H "Authorization: Bearer ${TOKEN}" \
-                      "${APISERVER}/api/v1/namespaces/${ns}/secrets/${secret}") || {
-                        echo "ERROR: Failed to retrieve secret '${secret}' from namespace '${ns}' via Kubernetes API." >&2
-                        return 1
-                    }
-
-                    local val
-                    val=$(echo "${resp}" | jq -er --arg k "${key}" '.data[$k] // empty' | base64 -d) || {
-                        echo "ERROR: Key '${key}' not found or empty in secret '${secret}' (namespace '${ns}')." >&2
-                        return 1
-                    }
-                    echo "${val}"
-                  }
-
-                  # -------------------------------------------------------------
-                  # Authentik PostgreSQL Database Dump (Active Production)
-                  # -------------------------------------------------------------
-                  echo "===> Starting backup for Authentik PostgreSQL database..."
-                  AUTHENTIK_HOST="authentik-db.identity.svc.cluster.local"
-                  AUTHENTIK_PORT="5432"
-                  AUTHENTIK_USER="authentik"
-                  AUTHENTIK_DB="authentik"
-
-                  if ! nc -z -w 5 "${AUTHENTIK_HOST}" "${AUTHENTIK_PORT}" 2>/dev/null; then
-                    echo "ERROR: Cannot reach Authentik PostgreSQL service at ${AUTHENTIK_HOST}:${AUTHENTIK_PORT}." >&2
-                    exit 1
-                  fi
-
-                  AUTHENTIK_DB_PASSWORD=$(fetch_secret_key "identity" "authentik-secrets" "db-password")
-                  if [ -z "${AUTHENTIK_DB_PASSWORD}" ]; then
-                    echo "ERROR: Retrieved empty database password for Authentik." >&2
-                    exit 1
-                  fi
-
-                  echo "Dumping and encrypting Authentik database (${AUTHENTIK_DB})..."
-                  PGPASSWORD="${AUTHENTIK_DB_PASSWORD}" pg_dump -h "${AUTHENTIK_HOST}" -p "${AUTHENTIK_PORT}" -U "${AUTHENTIK_USER}" -d "${AUTHENTIK_DB}" | gzip | age -r "${AGE_RECIPIENT}" -o "/tmp/authentik_${TIMESTAMP}.sql.gz.age"
-
-                  echo "Uploading encrypted Authentik backup to S3 (s3://${S3_BUCKET}/postgres/authentik/)..."
-                  aws s3 cp "/tmp/authentik_${TIMESTAMP}.sql.gz.age" "s3://${S3_BUCKET}/postgres/authentik/authentik_${TIMESTAMP}.sql.gz.age" --storage-class STANDARD --checksum-algorithm CRC32
-
-                  echo "Mirroring encrypted Authentik backup to Synology NAS Tier-3 DR (/mnt/synology-dr/postgres/authentik/)..."
-                  mkdir -p "/mnt/synology-dr/postgres/authentik"
-                  cp "/tmp/authentik_${TIMESTAMP}.sql.gz.age" "/mnt/synology-dr/postgres/authentik/authentik_${TIMESTAMP}.sql.gz.age"
-
-                  rm -f "/tmp/authentik_${TIMESTAMP}.sql.gz.age"
-                  echo "Authentik PostgreSQL database backup successful."
-
-                  # -------------------------------------------------------------
-                  # TeslaMate PostgreSQL Database Dump (Conditional when deployed)
-                  # -------------------------------------------------------------
-                  TESLAMATE_HOST="teslamate-db.teslamate.svc.cluster.local"
-                  TESLAMATE_PORT="5432"
-                  TESLAMATE_USER="teslamate"
-                  TESLAMATE_DB="teslamate"
-
-                  if nc -z -w 3 "${TESLAMATE_HOST}" "${TESLAMATE_PORT}" 2>/dev/null; then
-                    echo "===> Starting backup for TeslaMate PostgreSQL database..."
-                    TESLAMATE_DB_PASSWORD=$(fetch_secret_key "teslamate" "teslamate-secrets" "db-password")
-                    if [ -z "${TESLAMATE_DB_PASSWORD}" ]; then
-                      echo "ERROR: Retrieved empty database password for TeslaMate." >&2
-                      exit 1
-                    fi
-
-                    echo "Dumping and encrypting TeslaMate database (${TESLAMATE_DB})..."
-                    PGPASSWORD="${TESLAMATE_DB_PASSWORD}" pg_dump -h "${TESLAMATE_HOST}" -p "${TESLAMATE_PORT}" -U "${TESLAMATE_USER}" -d "${TESLAMATE_DB}" | gzip | age -r "${AGE_RECIPIENT}" -o "/tmp/teslamate_${TIMESTAMP}.sql.gz.age"
-
-                    echo "Uploading encrypted TeslaMate backup to S3 (s3://${S3_BUCKET}/postgres/teslamate/)..."
-                    aws s3 cp "/tmp/teslamate_${TIMESTAMP}.sql.gz.age" "s3://${S3_BUCKET}/postgres/teslamate/teslamate_${TIMESTAMP}.sql.gz.age" --storage-class STANDARD --checksum-algorithm CRC32
-
-                    echo "Mirroring encrypted TeslaMate backup to Synology NAS Tier-3 DR (/mnt/synology-dr/postgres/teslamate/)..."
-                    mkdir -p "/mnt/synology-dr/postgres/teslamate"
-                    cp "/tmp/teslamate_${TIMESTAMP}.sql.gz.age" "/mnt/synology-dr/postgres/teslamate/teslamate_${TIMESTAMP}.sql.gz.age"
-
-                    rm -f "/tmp/teslamate_${TIMESTAMP}.sql.gz.age"
-                    echo "TeslaMate PostgreSQL database backup successful."
-                  else
-                    echo "TeslaMate database service not reachable (app uninstalled or not deployed yet); skipping."
-                  fi
-
-                  echo "===> All PostgreSQL backups completed successfully at $(date)."
-              volumeMounts:
-                - name: synology-dr
-                  mountPath: /mnt/synology-dr
+              image: postgres:16-alpine@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
+              command: ["/bin/sh", "/scripts/postgres.sh"]
+              env:
+                - name: DEST
+                  value: s3
               envFrom:
                 - secretRef:
                     name: s3-backup-credentials
                 # Required (not optional): a missing ConfigMap blocks the pod from starting.
                 - configMapRef:
                     name: backup-encryption
+              volumeMounts:
+                - name: scripts
+                  mountPath: /scripts
           volumes:
+            - name: scripts
+              configMap:
+                name: backup-scripts
+                defaultMode: 0555
+---
+# Local: PostgreSQL dumps to the garage Synology, daily 03:40 UTC. No AWS credential.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: backup-postgres-databases-nas
+  namespace: backups
+spec:
+  schedule: "40 3 * * *"
+  # Declared explicitly: `kubectl apply` would otherwise preserve a suspend set
+  # imperatively (e.g. during an incident), since it is absent from last-applied.
+  suspend: false
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 3
+      activeDeadlineSeconds: 1800 # a hung NFS mount or upload must not block forever
+      template:
+        spec:
+          serviceAccountName: postgres-backup-sa
+          restartPolicy: OnFailure
+          containers:
+            - name: postgres-backup
+              image: postgres:16-alpine@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
+              command: ["/bin/sh", "/scripts/postgres.sh"]
+              env:
+                - name: DEST
+                  value: nas
+              envFrom:
+                # Required (not optional): a missing ConfigMap blocks the pod from starting.
+                - configMapRef:
+                    name: backup-encryption
+              volumeMounts:
+                - name: scripts
+                  mountPath: /scripts
+                - name: synology-dr
+                  mountPath: /mnt/synology-dr
+          volumes:
+            - name: scripts
+              configMap:
+                name: backup-scripts
+                defaultMode: 0555
             - name: synology-dr
               persistentVolumeClaim:
                 claimName: pvc-synology-nfs-backups

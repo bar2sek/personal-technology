@@ -102,9 +102,9 @@ To prevent Apple Time Machine from expanding indefinitely and filling the entire
 3. **Recycle Bin**: Uncheck.
 4. **Quota**: Set to **400 GB**.
 5. Switch to the **NFS Permissions** tab and click **Create**:
-   - **Hostname or IP**: `10.10.20.0/24` *(Kubernetes node CIDR)* and/or `10.0.0.0/16` *(Homelab subnet)*.
+   - **Hostname or IP**: `10.10.20.0/24` *(Kubernetes node CIDR only; no other clients need access)*.
    - **Privilege**: `Read/Write`.
-   - **Squash**: `No mapping` (or `Map root to admin`).
+   - **Squash**: `Map all users to admin`. *(Required: with `No mapping`, non-root pods such as the `finance` backup jobs are denied, because DSM has no user with their UID.)*
    - **Security**: `sys`.
    - **Enable asynchronous**: Checked.
    - **Allow connections from non-privileged ports (>1024)**: **Checked** (*Required for Kubernetes NFS client mounts*).
@@ -202,8 +202,8 @@ The NFS PersistentVolume and Claim are codified in `kubernetes/infrastructure/ba
    kubectl apply -f kubernetes/infrastructure/backups/pvc-synology-nfs.yaml
    kubectl get pvc -n backups pvc-synology-nfs-backups
    ```
-3. **CronJob Mirroring Integrated:** Daily automated CronJobs (`cronjob-cluster-state.yaml` and `cronjob-postgres.yaml`) mount `pvc-synology-nfs-backups` at `/mnt/synology-dr` and replicate the **already-encrypted** `*.age` artifacts immediately following the S3 upload. The NAS stores only encrypted ciphertext.
-4. **Verified:** Successfully tested end-to-end; test backups write to `/volume1/k8s-backups/cluster-state/*.tar.gz.age`.
+3. **Separate NAS CronJobs:** each dataset has its own NAS CronJob (`backup-cluster-state-nas`, `backup-postgres-databases-nas`, `finance/backup-actual-budget-nas`) that writes the **already-encrypted** `*.age` artifact to the share and prunes copies older than 35 days. They run separately from the S3 jobs, so a NAS outage cannot block the offsite backup, and they hold no AWS credential. The NAS stores only encrypted ciphertext. Details: backups README, *Backup tiers*.
+4. **Verified (2026-10-17):** all three NAS jobs and all three S3 jobs run by hand; files land under `/volume1/k8s-backups/{cluster-state,postgres/authentik,apps/actual}/`.
 
 ---
 
