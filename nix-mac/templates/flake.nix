@@ -180,6 +180,9 @@
           "obsidian"
           "appcleaner"
 
+          # Media & Entertainment
+          "spotify"
+
           # 3D Printing & Digital Fabrication
           "bambu-studio"
 
@@ -226,7 +229,7 @@
             "/Applications/Microsoft Edge.app"
             "/Applications/Brave Browser.app"
 
-            # 2. Apple Core Productivity, Google Photos & OneNote (Middle)
+            # 2. Apple Core Productivity, Google Photos, OneNote & Music (Middle)
             "/System/Applications/Messages.app"
             "/System/Applications/Mail.app"
             "/System/Applications/Maps.app"
@@ -237,6 +240,7 @@
             "/System/Applications/Reminders.app"
             "/System/Applications/Notes.app"
             "/Applications/Microsoft OneNote.app"
+            "/Applications/Spotify.app"
 
             # 3. 3D Fabrication, AI & Developer Tools (Farthest Right)
             "/Applications/BambuStudio.app"
