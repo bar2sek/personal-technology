@@ -18,4 +18,4 @@ metadata:
   name: backup-encryption
   namespace: backups
 data:
-  AGE_RECIPIENT: "age1ggkknhaz68ups8ysvnxpdcly29jpntkhekmvyhyq8qxthajupugq7lvgch"
+  AGE_RECIPIENT: "age1evkgm564me3rdnlaue0wsvth7949gptvw3g2l8rjamlzvwqz9u6qlacewg"

@@ -21,7 +21,7 @@ metadata:
   namespace: finance
 data:
   # Public age key (same recipient as the cluster backups). Safe to commit.
-  AGE_RECIPIENT: "age1ggkknhaz68ups8ysvnxpdcly29jpntkhekmvyhyq8qxthajupugq7lvgch"
+  AGE_RECIPIENT: "age1evkgm564me3rdnlaue0wsvth7949gptvw3g2l8rjamlzvwqz9u6qlacewg"
 ---
 apiVersion: batch/v1
 kind: CronJob

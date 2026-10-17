@@ -730,6 +730,16 @@ Any AI agent or human operator can review this document to pick up exactly where
 
 ---
 
+## 🎯 Milestone 13: Backup Encryption Key Rotation (2026-10-17)
+
+- **Trigger**: the passphrase for the 2026-10-04 age identity was lost, which made every existing backup (S3 and Synology mirror) undecryptable. Nothing was lost from the live cluster.
+- **Rotation**: a new passphrase-wrapped identity was generated on the admin workstation. The passphrase was saved in the password manager first and then tested with an encrypt/decrypt round trip before the key was used. The new public key was rolled into both `backup-encryption` ConfigMaps (`backups`, `finance`).
+- **Custody is now documented**: see *Key custody* in the backups README.
+- **Verification**: manual runs of all three jobs, then a restore test from S3 on the workstation. The Actual archive listed `server-files/account.sqlite`, the Authentik dump decrypted to a valid `pg_dump`, and the cluster-state archive listed `cluster-scoped/` and `namespaces/`.
+- **Clean-up pending**: undecryptable pre-rotation objects expire from S3 by 2026-11-21; the Synology copies need manual deletion.
+
+---
+
 ## 🎯 Immediate Next Actions & Infrastructure Backlog
 
 1. **GitOps Controller Evaluation (Flux CD)**:

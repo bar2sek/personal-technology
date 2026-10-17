@@ -141,7 +141,26 @@ PUB=$(age -d homelab-backups.identity.age | age-keygen -y)
 echo "$PUB"
 ```
 
-Put `$PUB` into [`configmap-backup-encryption.yaml`](configmap-backup-encryption.yaml). Store `homelab-backups.identity.age` in the password manager **and** on an offline USB stick. Store the passphrase as a **separate** password-manager entry, plus on paper. Then delete the copy in `~`.
+Put `$PUB` into [`configmap-backup-encryption.yaml`](configmap-backup-encryption.yaml) **and** the copy in `kubernetes/apps/finance/actual-budget-backup.yaml` (every namespace that runs a backup job carries its own `backup-encryption` ConfigMap).
+
+**Test the passphrase before relying on it.** This must print `it works`:
+
+```bash
+echo "it works" | age -r "$PUB" | age -d -i homelab-backups.identity.age
+```
+
+#### Key custody (where the identity lives)
+
+| What | Where |
+|---|---|
+| Passphrase | Apple Passwords, entry **"Homelab backup age identity"**, *Password* field |
+| Identity file (armored text, passphrase-wrapped) | Same entry, *Notes* field: the whole `-----BEGIN AGE ENCRYPTED FILE-----` block. Apple Passwords has no file attachments, which is why the identity is generated with `-a` (text). |
+| Identity file (copy) | `~/homelab-backups.identity.age` on the admin workstation, also captured by Time Machine on the Synology |
+
+To restore from the password manager alone, paste the *Notes* block into a file and pass it to `age -d -i <file>`. age reads the armored form directly.
+
+> [!NOTE]
+> The current identity was created on 2026-10-17, replacing the 2026-10-04 identity, whose passphrase was lost. Backups made before 2026-10-17 cannot be decrypted. They expire from S3 by 2026-11-21 (35-day lifecycle); the Synology copies must be deleted by hand.
 
 > [!WARNING]
 > The identity file **and** its passphrase are both required to restore. Losing either makes every backup permanently unreadable.
@@ -272,9 +291,10 @@ kubectl delete namespace restore-drill
 3. Delete the old key: `aws iam delete-access-key --user-name svc-aws-backup-uploader-prod-001 --access-key-id <old>`.
 
 **Encryption key:**
-1. Generate a new identity (Setup §2).
-2. Update the ConfigMap and apply it.
-3. **Keep the old identity for at least 36 days.** Backups encrypted to it stay in the bucket until lifecycle removes them.
+1. Generate a new identity (Setup §2), store it per *Key custody*, and run the `it works` test.
+2. Update **every** `backup-encryption` ConfigMap (`backups`, `finance`) and apply them.
+3. Run each backup job by hand and do a restore test with the new identity.
+4. **Keep the old identity for at least 36 days.** Backups encrypted to it stay in the bucket until lifecycle removes them.
 
 ---
 
