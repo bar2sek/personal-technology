@@ -554,7 +554,6 @@ EOF
               "amazonwebservices.aws-toolkit-vscode" \
               "dbaeumer.vscode-eslint" \
               "esbenp.prettier-vscode" \
-              "ms-vscode.azure-account" \
               "ms-azuretools.vscode-azureresourcegroups" \
               "ms-azuretools.vscode-docker" \
               "ms-kubernetes-tools.vscode-kubernetes-tools" \

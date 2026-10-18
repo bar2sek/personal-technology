@@ -15,15 +15,16 @@ aliases: []
 
 **Antigravity IDE** is your primary development environment on macOS—combining the familiarity and extension ecosystem of Code OSS with Google's native agentic architecture and **Roo Code** as a multi-model backup switcher.
 
-* **Unified Agent Canvas:** Seamlessly integrates native Antigravity agent workflows (Gemini Flash/Pro) directly alongside the editor canvas, visual diffs, and terminal.
-* **Multi-Model Switcher (Roo Code):** Provides an instant toggle between **Claude Sonnet 5** and **Claude Opus 5** (Anthropic API) whenever AGY tokens are exhausted or a second opinion is wanted.
-* **Zero Bloat:** Replaces standalone VS Code entirely, and runs no local inference — the unified memory stays available for builds and containers.
+- **Unified Agent Canvas:** Seamlessly integrates native Antigravity agent workflows (Gemini Flash/Pro) directly alongside the editor canvas, visual diffs, and terminal.
+- **Multi-Model Switcher (Roo Code):** Provides an instant toggle between **Claude Sonnet 5** and **Claude Opus 5** (Anthropic API) whenever AGY tokens are exhausted or a second opinion is wanted.
+- **Zero Bloat:** Replaces standalone VS Code entirely, and runs no local inference — the unified memory stays available for builds and containers.
 
 ---
 
 ## 🛠️ Step 1: Install Antigravity IDE via `nix-darwin`
 
 Antigravity IDE is declared directly in your `templates/flake.nix` under `homebrew.casks`:
+
 ```nix
 homebrew.casks = [
   "antigravity-ide"
@@ -56,7 +57,6 @@ agy-ide --install-extension enkia.tokyo-night
 agy-ide --install-extension bbenoist.Nix
 agy-ide --install-extension hashicorp.terraform
 agy-ide --install-extension amazonwebservices.aws-toolkit-vscode
-agy-ide --install-extension ms-vscode.azure-account
 agy-ide --install-extension ms-azuretools.vscode-azureresourcegroups
 agy-ide --install-extension ms-azuretools.vscode-docker
 agy-ide --install-extension ms-kubernetes-tools.vscode-kubernetes-tools
@@ -74,25 +74,28 @@ agy-ide --install-extension ms-kubernetes-tools.vscode-kubernetes-tools
 Roo Code profiles are managed **declaratively** via `~/.config/roo-code/settings.json` and automatically imported into Antigravity IDE on startup via `"roo-cline.autoImportSettingsPath"`.
 
 ### Profile 1: Grok (xAI Real-Time & Velocity)
-* **Provider:** `xAI`
-* **API Key:** Read from the environment (`XAI_API_KEY`)
-* **Model ID:** `grok-2`
-* **Use Case:** High-speed code generation, live web-grounded queries, and an alternative reasoning perspective.
+
+- **Provider:** `xAI`
+- **API Key:** Read from the environment (`XAI_API_KEY`)
+- **Model ID:** `grok-2`
+- **Use Case:** High-speed code generation, live web-grounded queries, and an alternative reasoning perspective.
 
 ### Profile 2: Local MLX (Qwen 2.5 Coder 32B Playground)
-* **Provider:** `OpenAI-Compatible`
-* **Base URL:** `http://localhost:8080/v1`
-* **API Key:** `local`
-* **Model ID:** `mlx-community/Qwen2.5-Coder-32B-Instruct-4bit`
-* **Lifecycle:** Start on-demand via `just serve-qwen-32b` (see [[Local LLMs with MLX]])
-* **Use Case:** Offline coding, zero-cost experimentation, open-weights testing without internet or quotas.
+
+- **Provider:** `OpenAI-Compatible`
+- **Base URL:** `http://localhost:8080/v1`
+- **API Key:** `local`
+- **Model ID:** `mlx-community/Qwen2.5-Coder-32B-Instruct-4bit`
+- **Lifecycle:** Start on-demand via `just serve-qwen-32b` (see [[Local LLMs with MLX]])
+- **Use Case:** Offline coding, zero-cost experimentation, open-weights testing without internet or quotas.
 
 ### Profile 3: AWS Bedrock (Enterprise Cloud Inference)
-* **Provider:** `Bedrock`
-* **Authentication:** AWS Profile (`default` or homelab profile) or AWS environment variables
-* **Region:** `us-east-2`
-* **Model ID:** Configured foundation model or private deployed model ARN (with plans to host OpenAI models on AWS Bedrock)
-* **Use Case:** Enterprise VPC isolation, corporate accounts, private cloud quota, and eventually routing to OpenAI models hosted directly inside AWS Bedrock.
+
+- **Provider:** `Bedrock`
+- **Authentication:** AWS Profile (`default` or homelab profile) or AWS environment variables
+- **Region:** `us-east-2`
+- **Model ID:** Configured foundation model or private deployed model ARN (with plans to host OpenAI models on AWS Bedrock)
+- **Use Case:** Enterprise VPC isolation, corporate accounts, private cloud quota, and eventually routing to OpenAI models hosted directly inside AWS Bedrock.
 
 > [!TIP] Native Antigravity Tab Autocomplete
 > In-editor inline code completion as you type is handled seamlessly by **Antigravity Tab** (Google's native speculative decoding). Roo Code operates as an autonomous agent canvas, so local MLX is preserved purely for conversational reasoning, tests, and refactors.
@@ -158,7 +161,8 @@ Configure your user settings (`~/Library/Application Support/Antigravity/User/se
 ---
 
 ## Related Notes
-* [[Dual-Tier AI Workflow]]
-* [[Cloud AI Providers & Models]]
-* [[Nix-Darwin Guide]]
-* [[Setup Checklist]]
+
+- [[Dual-Tier AI Workflow]]
+- [[Cloud AI Providers & Models]]
+- [[Nix-Darwin Guide]]
+- [[Setup Checklist]]

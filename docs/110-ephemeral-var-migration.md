@@ -132,6 +132,8 @@ graph TD
 
 Waves 6–7 are independent of the hardware waves and can run before or after them.
 
+**Physical steps** (drive register with serials, bay identification, what to bring): [[111-storage-reshuffle-hardware-checklist|Hardware checklist]].
+
 ---
 
 ## 🛠️ Per-node procedure (sm-node-02 shown; differences below)

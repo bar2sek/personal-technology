@@ -125,17 +125,11 @@ spec:
 
       # Tier 2 (SATA SSD) on Supermicro Node 03
       # (Boot drives /dev/sde & /dev/sdf SuperDOMs are strictly excluded)
+      # Storage reshuffle (docs/110, docs/111): MX500s 2137E5D2DE1D, 2137E5D2DE26
+      # and 2253E698684D removed 2026-10-18; they move to pc-node-04 (Wave 2).
+      # The 4 TB IronWolfs from pc-node-04 are added here in Wave 4.
       - name: sm-node-03
         devices:
-          - name: "/dev/disk/by-id/ata-CT2000MX500SSD1_2137E5D2DE1D"
-            config:
-              deviceType: ssd
-          - name: "/dev/disk/by-id/ata-CT2000MX500SSD1_2137E5D2DE26"
-            config:
-              deviceType: ssd
-          - name: "/dev/disk/by-id/ata-CT2000MX500SSD1_2253E698684D"
-            config:
-              deviceType: ssd
           - name: "/dev/disk/by-id/ata-CT2000MX500SSD1_2253E6986843"
             config:
               deviceType: ssd
@@ -143,23 +137,14 @@ spec:
       # Tier 1 (NVMe) & Tier 3 (Bulk HDD Array) on Storage PC Node 04
       # (Boot drive /dev/sdc Intel SSD is strictly excluded;
       #  Scratch drives /dev/sdf, /dev/sdg, /dev/sdm are strictly excluded)
+      # Storage reshuffle (docs/110, docs/111): the four IronWolf ST4000VN008
+      # (to sm-node-03 and pc-node-05) and the failing WD15EADS (retired)
+      # removed 2026-10-18. Three MX500 2 TB from sm-node-03 are added in Wave 2.
       - name: pc-node-04
         devices:
           - name: "/dev/disk/by-id/nvme-CT1000P3PSSD8_24024637AFE2"
             config:
               deviceType: nvme
-          - name: "/dev/disk/by-id/ata-ST4000VN008-2DR166_ZGY91H5S"
-            config:
-              deviceType: hdd
-          - name: "/dev/disk/by-id/ata-ST4000VN008-2DR166_ZDH9HRSJ"
-            config:
-              deviceType: hdd
-          - name: "/dev/disk/by-id/ata-ST4000VN008-2DR166_ZGY9165H"
-            config:
-              deviceType: hdd
-          - name: "/dev/disk/by-id/ata-ST4000VN008-2DR166_ZGY91889"
-            config:
-              deviceType: hdd
           - name: "/dev/disk/by-id/ata-ST2000NM0033-9ZM175_Z1X6R0DV"
             config:
               deviceType: hdd
@@ -167,9 +152,6 @@ spec:
             config:
               deviceType: hdd
           - name: "/dev/disk/by-id/ata-ST31000524AS_5VP8SHWD"
-            config:
-              deviceType: hdd
-          - name: "/dev/disk/by-id/ata-WDC_WD15EADS-00R6B0_WD-WCAVY1095334"
             config:
               deviceType: hdd
           - name: "/dev/disk/by-id/ata-ST3000DM007-1WY10G_ZFQ02CAN"
