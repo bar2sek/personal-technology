@@ -781,6 +781,17 @@ Any AI agent or human operator can review this document to pick up exactly where
 
 ---
 
+## 🎯 Milestone 18: NVMe Tier Reclaimed & PG Autoscaler Working (2026-10-18)
+
+- **Old gaming disk deleted:** `vms/windows-gaming-nvme-pvc` was removed after switching its PV from `Retain` to `Delete`. The nvme device class went from **1.7 TiB raw used to 5.8 GiB**.
+- **Monitor off sm-node-03:** mon.g failed over to mon.h on pc-node-05. Monitors are d (sm-node-02), f (pc-node-04), h (pc-node-05); `MON_DISK_LOW` cleared.
+- **PG autoscaler fixed:** every pool was stuck at 1 PG because `.mgr`'s default CRUSH rule overlapped the device-class rules, so the autoscaler skipped all pools. `.mgr` is now pinned to ssd (a `builtin-mgr` CephBlockPool plus a one-time `crush_rule` change, because Rook does not change rules on existing pools), and the NVMe pool is `bulk`. PG counts went from 6 in total to 241, and all four NVMe OSDs now hold PGs (82/91/130/129, in proportion to size).
+- **Storage policy:** SSD (default StorageClass) and NVMe first; the HDD pool is scratch and overflow only; the garage Synology holds off-cluster copies.
+- **Dashboard:** a new *Storage* row on Homelab Overview with % dials for Ceph total, NVMe, SSD and HDD, plus Used / Total amounts ([[106-observability-prometheus-grafana|Observability]]).
+- Details: [[104-phase2-rook-ceph-storage|Rook-Ceph Storage]], *Placement Groups & the PG Autoscaler*.
+
+---
+
 ## 🎯 Immediate Next Actions & Infrastructure Backlog
 
 1. **GitOps Controller Evaluation (Flux CD)**:

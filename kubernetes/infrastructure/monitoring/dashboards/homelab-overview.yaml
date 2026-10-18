@@ -739,7 +739,7 @@ data:
           "gridPos": {
             "x": 0,
             "y": 14,
-            "w": 12,
+            "w": 24,
             "h": 7
           },
           "targets": [
@@ -796,19 +796,32 @@ data:
           }
         },
         {
-          "id": 14,
-          "type": "bargauge",
-          "title": "Ceph capacity used",
-          "description": "How full the Ceph storage cluster is. Ceph slows down and eventually refuses writes as it approaches full, so plan more disks before 75%.",
+          "id": 23,
+          "type": "row",
+          "title": "Storage",
+          "collapsed": false,
+          "gridPos": {
+            "x": 0,
+            "y": 21,
+            "w": 24,
+            "h": 1
+          },
+          "panels": []
+        },
+        {
+          "id": 24,
+          "type": "gauge",
+          "title": "Ceph total",
+          "description": "Raw space used across every Ceph disk (NVMe + SSD + HDD), all replicas included. Ceph slows down and eventually refuses writes as disks fill, so plan more disks before 70%.",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
           "gridPos": {
-            "x": 12,
-            "y": 14,
-            "w": 6,
-            "h": 7
+            "x": 0,
+            "y": 22,
+            "w": 4,
+            "h": 6
           },
           "targets": [
             {
@@ -817,7 +830,7 @@ data:
                 "uid": "prometheus"
               },
               "expr": "100 * ceph_cluster_total_used_bytes / ceph_cluster_total_bytes",
-              "legendFormat": "Ceph",
+              "legendFormat": "Ceph total",
               "instant": true,
               "range": false,
               "refId": "A"
@@ -826,6 +839,7 @@ data:
           "fieldConfig": {
             "defaults": {
               "unit": "percent",
+              "decimals": 1,
               "min": 0,
               "max": 100,
               "color": {
@@ -852,12 +866,495 @@ data:
             "overrides": []
           },
           "options": {
-            "orientation": "horizontal",
-            "displayMode": "gradient",
-            "showUnfilled": true,
-            "valueMode": "color",
-            "namePlacement": "left",
+            "showThresholdMarkers": true,
+            "showThresholdLabels": false,
             "sizing": "auto",
+            "minVizWidth": 75,
+            "minVizHeight": 75,
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            }
+          }
+        },
+        {
+          "id": 28,
+          "type": "stat",
+          "title": "",
+          "description": "Raw bytes used and raw capacity of the disks in the dial above, all replicas included.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 28,
+            "w": 4,
+            "h": 3
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "ceph_cluster_total_used_bytes",
+              "legendFormat": "Used",
+              "instant": true,
+              "range": false,
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "ceph_cluster_total_bytes",
+              "legendFormat": "Total",
+              "instant": true,
+              "range": false,
+              "refId": "B"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "decimals": 1,
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "text"
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "textMode": "value_and_name",
+            "colorMode": "none",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "horizontal",
+            "wideLayout": true,
+            "showPercentChange": false,
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            }
+          }
+        },
+        {
+          "id": 25,
+          "type": "gauge",
+          "title": "NVMe",
+          "description": "Raw space used on the NVMe OSDs, all replicas included (rook-ceph-block-nvme and CephFS metadata; 3 copies). This averages the tier: Ceph's nearfull (85%) and full (95%) limits apply per disk, so one disk can fill first; check `ceph osd df` if this is orange.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "x": 4,
+            "y": 22,
+            "w": 4,
+            "h": 6
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "100 * sum(max by (ceph_daemon) (ceph_osd_stat_bytes_used) * on (ceph_daemon) group_left () max by (ceph_daemon) (ceph_osd_metadata{device_class=\"nvme\"})) / sum(max by (ceph_daemon) (ceph_osd_stat_bytes) * on (ceph_daemon) group_left () max by (ceph_daemon) (ceph_osd_metadata{device_class=\"nvme\"}))",
+              "legendFormat": "NVMe",
+              "instant": true,
+              "range": false,
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "decimals": 1,
+              "min": 0,
+              "max": 100,
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "orange",
+                    "value": 70
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "showThresholdMarkers": true,
+            "showThresholdLabels": false,
+            "sizing": "auto",
+            "minVizWidth": 75,
+            "minVizHeight": 75,
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            }
+          }
+        },
+        {
+          "id": 29,
+          "type": "stat",
+          "title": "",
+          "description": "Raw bytes used and raw capacity of the disks in the dial above, all replicas included.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "x": 4,
+            "y": 28,
+            "w": 4,
+            "h": 3
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum(max by (ceph_daemon) (ceph_osd_stat_bytes_used) * on (ceph_daemon) group_left () max by (ceph_daemon) (ceph_osd_metadata{device_class=\"nvme\"}))",
+              "legendFormat": "Used",
+              "instant": true,
+              "range": false,
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum(max by (ceph_daemon) (ceph_osd_stat_bytes) * on (ceph_daemon) group_left () max by (ceph_daemon) (ceph_osd_metadata{device_class=\"nvme\"}))",
+              "legendFormat": "Total",
+              "instant": true,
+              "range": false,
+              "refId": "B"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "decimals": 1,
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "text"
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "textMode": "value_and_name",
+            "colorMode": "none",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "horizontal",
+            "wideLayout": true,
+            "showPercentChange": false,
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            }
+          }
+        },
+        {
+          "id": 26,
+          "type": "gauge",
+          "title": "SSD",
+          "description": "Raw space used on the SATA SSD OSDs, all replicas included (rook-ceph-block, the default StorageClass, and CephFS data; 3 copies). This averages the tier: Ceph's nearfull (85%) and full (95%) limits apply per disk, so one disk can fill first; check `ceph osd df` if this is orange.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "x": 8,
+            "y": 22,
+            "w": 4,
+            "h": 6
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "100 * sum(max by (ceph_daemon) (ceph_osd_stat_bytes_used) * on (ceph_daemon) group_left () max by (ceph_daemon) (ceph_osd_metadata{device_class=\"ssd\"})) / sum(max by (ceph_daemon) (ceph_osd_stat_bytes) * on (ceph_daemon) group_left () max by (ceph_daemon) (ceph_osd_metadata{device_class=\"ssd\"}))",
+              "legendFormat": "SSD",
+              "instant": true,
+              "range": false,
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "decimals": 1,
+              "min": 0,
+              "max": 100,
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "orange",
+                    "value": 70
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "showThresholdMarkers": true,
+            "showThresholdLabels": false,
+            "sizing": "auto",
+            "minVizWidth": 75,
+            "minVizHeight": 75,
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            }
+          }
+        },
+        {
+          "id": 30,
+          "type": "stat",
+          "title": "",
+          "description": "Raw bytes used and raw capacity of the disks in the dial above, all replicas included.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "x": 8,
+            "y": 28,
+            "w": 4,
+            "h": 3
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum(max by (ceph_daemon) (ceph_osd_stat_bytes_used) * on (ceph_daemon) group_left () max by (ceph_daemon) (ceph_osd_metadata{device_class=\"ssd\"}))",
+              "legendFormat": "Used",
+              "instant": true,
+              "range": false,
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum(max by (ceph_daemon) (ceph_osd_stat_bytes) * on (ceph_daemon) group_left () max by (ceph_daemon) (ceph_osd_metadata{device_class=\"ssd\"}))",
+              "legendFormat": "Total",
+              "instant": true,
+              "range": false,
+              "refId": "B"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "decimals": 1,
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "text"
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "textMode": "value_and_name",
+            "colorMode": "none",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "horizontal",
+            "wideLayout": true,
+            "showPercentChange": false,
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            }
+          }
+        },
+        {
+          "id": 27,
+          "type": "gauge",
+          "title": "HDD",
+          "description": "Raw space used on the HDD OSDs, all replicas included (rook-ceph-hdd-bulk, scratch only; 2 copies, both on pc-node-04). This averages the tier: Ceph's nearfull (85%) and full (95%) limits apply per disk, so one disk can fill first; check `ceph osd df` if this is orange.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "x": 12,
+            "y": 22,
+            "w": 4,
+            "h": 6
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "100 * sum(max by (ceph_daemon) (ceph_osd_stat_bytes_used) * on (ceph_daemon) group_left () max by (ceph_daemon) (ceph_osd_metadata{device_class=\"hdd\"})) / sum(max by (ceph_daemon) (ceph_osd_stat_bytes) * on (ceph_daemon) group_left () max by (ceph_daemon) (ceph_osd_metadata{device_class=\"hdd\"}))",
+              "legendFormat": "HDD",
+              "instant": true,
+              "range": false,
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "decimals": 1,
+              "min": 0,
+              "max": 100,
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "orange",
+                    "value": 70
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "showThresholdMarkers": true,
+            "showThresholdLabels": false,
+            "sizing": "auto",
+            "minVizWidth": 75,
+            "minVizHeight": 75,
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            }
+          }
+        },
+        {
+          "id": 31,
+          "type": "stat",
+          "title": "",
+          "description": "Raw bytes used and raw capacity of the disks in the dial above, all replicas included.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "x": 12,
+            "y": 28,
+            "w": 4,
+            "h": 3
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum(max by (ceph_daemon) (ceph_osd_stat_bytes_used) * on (ceph_daemon) group_left () max by (ceph_daemon) (ceph_osd_metadata{device_class=\"hdd\"}))",
+              "legendFormat": "Used",
+              "instant": true,
+              "range": false,
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum(max by (ceph_daemon) (ceph_osd_stat_bytes) * on (ceph_daemon) group_left () max by (ceph_daemon) (ceph_osd_metadata{device_class=\"hdd\"}))",
+              "legendFormat": "Total",
+              "instant": true,
+              "range": false,
+              "refId": "B"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "decimals": 1,
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "text"
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "textMode": "value_and_name",
+            "colorMode": "none",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "horizontal",
+            "wideLayout": true,
+            "showPercentChange": false,
             "reduceOptions": {
               "calcs": [
                 "lastNotNull"
@@ -877,10 +1374,10 @@ data:
             "uid": "prometheus"
           },
           "gridPos": {
-            "x": 18,
-            "y": 14,
-            "w": 6,
-            "h": 7
+            "x": 16,
+            "y": 22,
+            "w": 8,
+            "h": 9
           },
           "targets": [
             {
@@ -935,7 +1432,7 @@ data:
           "collapsed": false,
           "gridPos": {
             "x": 0,
-            "y": 21,
+            "y": 31,
             "w": 24,
             "h": 1
           },
@@ -952,7 +1449,7 @@ data:
           },
           "gridPos": {
             "x": 0,
-            "y": 22,
+            "y": 32,
             "w": 4,
             "h": 4
           },
@@ -1024,7 +1521,7 @@ data:
           },
           "gridPos": {
             "x": 4,
-            "y": 22,
+            "y": 32,
             "w": 4,
             "h": 4
           },
@@ -1097,7 +1594,7 @@ data:
           },
           "gridPos": {
             "x": 8,
-            "y": 22,
+            "y": 32,
             "w": 4,
             "h": 4
           },
@@ -1169,7 +1666,7 @@ data:
           },
           "gridPos": {
             "x": 12,
-            "y": 22,
+            "y": 32,
             "w": 12,
             "h": 4
           },
@@ -1233,7 +1730,7 @@ data:
           "collapsed": false,
           "gridPos": {
             "x": 0,
-            "y": 26,
+            "y": 36,
             "w": 24,
             "h": 1
           },
@@ -1250,7 +1747,7 @@ data:
           },
           "gridPos": {
             "x": 0,
-            "y": 27,
+            "y": 37,
             "w": 24,
             "h": 8
           },

@@ -1,3 +1,21 @@
+# Pins Ceph's built-in .mgr pool to the ssd class. Left on the default
+# replicated_rule it spans every device class, which overlaps the class-specific
+# rules below and makes the PG autoscaler skip ALL pools (each stuck at 1 PG).
+apiVersion: ceph.rook.io/v1
+kind: CephBlockPool
+metadata:
+  name: builtin-mgr
+  namespace: rook-ceph
+spec:
+  name: .mgr
+  failureDomain: host
+  replicated:
+    size: 3
+    requireSafeReplicaSize: true
+  deviceClass: ssd
+  parameters:
+    compression_mode: none
+---
 apiVersion: ceph.rook.io/v1
 kind: CephBlockPool
 metadata:
@@ -41,6 +59,10 @@ spec:
   replicated:
     size: 3
   deviceClass: nvme
+  # bulk: autoscaler allocates the full PG share up front instead of growing
+  # from 1 as data arrives, so I/O spreads across every NVMe OSD from day one.
+  parameters:
+    bulk: "true"
 ---
 apiVersion: storage.k8s.io/v1
 kind: StorageClass

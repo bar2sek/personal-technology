@@ -25,7 +25,7 @@ graph TD
     subgraph Host ["pc-node-05 (Talos Linux Bare-Metal)"]
         Kernel["Talos Linux Kernel 6.18+ (amd_iommu=on, vfio-pci)"]
         GPU_HW["NVIDIA GeForce RTX 4070 (12GB VRAM, Ada Lovelace)"]
-        NVMe_HW["1TB Crucial P3 Plus NVMe (Ceph Block OSD)"]
+        NVMe_HW["1TB Sabrent Rocket NVMe (Talos system + gaming-vm directory volume)"]
         KubeVirt["KubeVirt v1.9.0 Operator & virt-handler"]
     end
 
@@ -37,8 +37,8 @@ graph TD
         Steam["Steam + ProtonPlus + Flatpaks"]
     end
 
-    subgraph Storage ["Rook-Ceph Distributed Storage"]
-        CephNVMe["1000Gi (1 TiB) Ceph NVMe Block PVC (rook-ceph-block-nvme)"]
+    subgraph Storage ["Local Storage (pc-node-05)"]
+        CephNVMe["750Gi local PV gaming-vm-local-pv (PVC bazzite-local-rootdisk)"]
     end
 
     subgraph Networking ["Homelab Network Fabric"]
@@ -48,7 +48,8 @@ graph TD
     end
 
     GPU_HW -->|VFIO PCIe Passthrough| NvidiaDriver
-    CephNVMe -->|VirtIO Block SCSI| OSTree
+    NVMe_HW --> CephNVMe
+    CephNVMe -->|VirtIO disk.img| OSTree
     NvidiaDriver -->|NVENC 4K AV1/HEVC| Sunshine
     Sunshine -->|LoadBalancer Service| MetalLB
     MetalLB -->|2.5GbE / 10GbE LAN| Client
@@ -328,6 +329,18 @@ To play Blizzard titles (Diablo IV, World of Warcraft, Overwatch 2) directly ins
 ### Why local storage
 The VM can only run on pc-node-05 (GPU passthrough), and game files do not need replication. Its old disk was a 1000 GiB RBD image in the 3x-replicated Ceph NVMe pool (576 GiB used, about 1.7 TB raw). It now lives on pc-node-05's own Sabrent NVMe: lower latency, and the Ceph capacity comes back. If that drive dies, reinstall and re-download; there are no backups by design.
 
+### Retiring the old Ceph disk (done 2026-10-18)
+The old claim `vms/windows-gaming-nvme-pvc` was deleted once the VM was running from the local disk. The `bazzite-nvidia-iso` claim stays, because the install patch uses it.
+
+> [!IMPORTANT]
+> The Ceph StorageClasses use `reclaimPolicy: Retain`. Deleting only the PVC leaves the PV `Released` and the RBD image (and its replicated space) in Ceph. Switch the PV to `Delete` first so Ceph-CSI removes the image:
+> ```bash
+> kubectl patch pv <pv-name> -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
+> kubectl delete pvc -n vms <pvc-name>
+> ```
+
+Ceph-CSI moves the image to the RBD trash, and the manager then purges it in the background (about 7 minutes for 570 GiB). Check progress with `rbd trash ls -p nvme-high-iops-pool` and `ceph df` in the toolbox. Result: the nvme device class went from 1.7 TiB raw used to 5.8 GiB.
+
 ### Storage layout
 | Piece | Where |
 |---|---|
@@ -399,7 +412,7 @@ The VM can only run on pc-node-05 (GPU passthrough), and game files do not need 
      ```bash
      kubectl delete vmi bazzite-gaming-vm -n vms
      ```
-     KubeVirt will automatically terminate the stale launcher pod and start a clean pod with the Ceph NVMe block PVC and RTX 4070 GPU passthrough re-attached.
+     KubeVirt will automatically terminate the stale launcher pod and start a clean pod with the local root disk PVC and RTX 4070 GPU passthrough re-attached.
   3. **Out-of-Band SSH & Serial Console**:
      ```bash
      # Direct SSH tunnel over Kubernetes API (bypasses LAN/LoadBalancer):

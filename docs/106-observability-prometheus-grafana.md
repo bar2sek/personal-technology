@@ -134,11 +134,15 @@ Enabling native Ceph monitoring in `CephCluster` (`spec.monitoring.enabled: true
 |---|---|---|
 | Is everything OK? | Nodes ready, Ceph health, Disks down, Alerts firing, Power, Oldest backup | kube-state-metrics, Ceph mgr, NUT exporter, `ALERTS` |
 | Nodes | `/var` used, memory, CPU per node | node-exporter joined to `node_uname_info` for node names |
-| Backups | Hours since last success per CronJob, Ceph capacity, active Ceph health checks | `kube_cronjob_status_last_successful_time`, `ceph_health_detail` |
+| Backups | Hours since last success per CronJob | `kube_cronjob_status_last_successful_time` |
+| Storage | % used dials for Ceph total, NVMe, SSD and HDD, each with a Used / Total strip underneath; active Ceph health checks | `ceph_cluster_total_*`; per class, `ceph_osd_stat_bytes(_used)` joined `on (ceph_daemon)` to `ceph_osd_metadata{device_class=…}`; `ceph_health_detail` |
 | Power and apps | UPS charge, runtime, load; ready replicas of key services | `network_ups_tools_*`, `kube_deployment_status_replicas_available` |
 | Active alerts | Every firing alert and how long it has fired | `ALERTS_FOR_STATE` |
 
 Every panel has a description (the (i) icon) saying what it measures and what to do when it is not green.
+
+> [!NOTE]
+> **Storage figures are raw, replicas included.** 1 GiB stored on NVMe or SSD counts 3 GiB (2 GiB on HDD), so *Total* is raw capacity, not usable space. The per-class dials average the tier, while Ceph's nearfull/full limits apply per disk; `ceph osd df` shows the fullest disk. Ceph does not export per-class usage directly, so the query wraps both sides in `max by (ceph_daemon)` before the join, which stops a mgr failover's briefly duplicated series from breaking it.
 
 > [!WARNING]
 > **A completely failed Ceph disk disappears from Ceph's metrics.** The mgr exporter stops publishing `ceph_osd_up`/`ceph_osd_metadata` for an OSD that has not booted since the mgr restarted, so `ceph_osd_up == 0` misses it. The *Disks down* tile therefore takes the larger of Ceph's own count and the number of Rook `rook-ceph-osd-*` Deployments with unavailable replicas. Found when osd.5 had been down for two weeks while the first version of the tile read 0.
