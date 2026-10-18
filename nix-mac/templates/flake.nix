@@ -193,6 +193,7 @@
           "orbstack"
           "tailscale-app"
           "moonlight"
+          "tigervnc" # KubeVirt VM consoles (virtctl vnc); macOS Screen Sharing rejects passwordless VNC
         ];
 
         # Mac App Store Applications (Optional, requires numeric App ID)

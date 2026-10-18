@@ -214,3 +214,11 @@ Two changes:
 
 Apply Omni template changes with a diff first: `omnictl cluster template diff -f talos/cluster-template.yaml`, then `omnictl cluster template sync -f …`. The kubelet restarts; nodes do not reboot.
 
+---
+
+## ⚖️ Accepted Trade-offs
+
+- **HDD bulk pool on a single host.** `hdd-bulk-pool` keeps 2 copies with an OSD-level failure domain, and all HDDs sit in pc-node-04, the only chassis that takes 3.5" drives. It survives a disk failure but not the loss of pc-node-04. Accepted deliberately; revisit if another node gains drive bays.
+- **Gaming VM disk outside Ceph.** The Bazzite VM's disk is local NVMe on pc-node-05 (no replication, no backups): it can only run on that node anyway, and its contents are re-downloadable. See [[303-kubevirt-bazzite-gpu-vm|Bazzite Gaming VM]].
+- **pc-node-05 system disk.** Talos's EPHEMERAL fills the 1 TB Sabrent. Shrinking it means wiping EPHEMERAL, and Omni rejects `talosctl reset` through its proxy (`PermissionDenied`), so the spare space is used via a Talos *directory* user volume on EPHEMERAL instead of a separate partition.
+

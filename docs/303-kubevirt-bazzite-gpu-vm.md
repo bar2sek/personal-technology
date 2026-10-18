@@ -132,7 +132,10 @@ spec:
 
 ## 🎮 Step 4: Production Bazzite VirtualMachine Manifest
 
-The production manifest is defined in `kubernetes/infrastructure/kubevirt/bazzite-vm.yaml`. Once the OS is installed, installation media is removed and only the Ceph NVMe block PVC remains attached:
+The production manifest is defined in `kubernetes/infrastructure/kubevirt/bazzite-vm.yaml`. Once the OS is installed, installation media is removed and only the root disk remains attached.
+
+> [!NOTE]
+> **Since 2026-10-18 the root disk is local NVMe, not Ceph.** It is a 750 GiB claim (`bazzite-local-rootdisk`) on a static local PersistentVolume at `/var/mnt/gaming-vm` on pc-node-05 (see *Local Disk & Rebuild Runbook* below). The excerpt below predates that change; the repo file is the source of truth.
 
 ```yaml
 apiVersion: kubevirt.io/v1
@@ -317,6 +320,49 @@ To play Blizzard titles (Diablo IV, World of Warcraft, Overwatch 2) directly ins
      * Symlinks each game's `compatdata/<appid>` to the primary Battle.net prefix (`3234450451`) to share DirectX shaders, settings, and credentials without duplicating storage.
      * Tunes `Battle.net.config` with `"GameLaunchWindowBehavior": "2"` (exits Battle.net completely once the game starts) and `"HardwareAcceleration": "false"` (prevents CEF interface deadlocks).
 
+
+---
+
+## 💾 Local Disk & Rebuild Runbook (2026-10-18)
+
+### Why local storage
+The VM can only run on pc-node-05 (GPU passthrough), and game files do not need replication. Its old disk was a 1000 GiB RBD image in the 3x-replicated Ceph NVMe pool (576 GiB used, about 1.7 TB raw). It now lives on pc-node-05's own Sabrent NVMe: lower latency, and the Ceph capacity comes back. If that drive dies, reinstall and re-download; there are no backups by design.
+
+### Storage layout
+| Piece | Where |
+|---|---|
+| Talos directory user volume `gaming-vm` → `/var/mnt/gaming-vm` | Omni patch `gpu-worker-volumes` (`talos/cluster-template.yaml`, pc-node-05 only) |
+| StorageClass `local-gaming-vm`, PV `gaming-vm-local-pv` (750Gi, `claimRef`, node affinity), PVC `vms/bazzite-local-rootdisk` | `kubernetes/infrastructure/kubevirt/gaming-vm-local-storage.yaml` |
+| VM disk image | KubeVirt creates a sparse `disk.img` sized to the claim on first boot |
+
+> [!WARNING]
+> **A directory volume has no hard size limit.** It shares pc-node-05's ~930 GiB `/var` with container images and logs. The 750 GiB disk image leaves about 150 GiB of headroom. A separate partition is not possible without wiping EPHEMERAL, and Omni rejects `talosctl reset` (`PermissionDenied`). Watch pc-node-05 on the Homelab Overview *System disk used* panel.
+
+> [!NOTE]
+> Changing an existing user volume from `partition` to `directory` left Talos reporting the old type. Removing the patch, syncing, and re-adding it cleared the state.
+
+### Rebuild procedure
+1. **Install mode** (adds the ISO as a CD-ROM and a VNC display, and **detaches the GPU**, because with the GPU attached the NVIDIA installer opens its UI on the 4070's monitor output instead of VNC):
+   ```bash
+   virtctl stop bazzite-gaming-vm -n vms
+   kubectl patch vm bazzite-gaming-vm -n vms --type json --patch-file kubernetes/infrastructure/kubevirt/bazzite-vm-install-patch.yaml
+   virtctl start bazzite-gaming-vm -n vms
+   virtctl vnc bazzite-gaming-vm -n vms --proxy-only --port 5900
+   ```
+   Connect **TigerVNC Viewer** to `localhost:5900` (in the nix-darwin flake). macOS Screen Sharing refuses VNC servers without a password, and KubeVirt's VNC has none. There is no clipboard sharing.
+2. **Install:** the ~805 GB virtio disk, automatic partitioning, **no disk encryption** (production mode has no screen to type a passphrase), user `bazzite` as administrator.
+3. **Bootstrap SSH** (the only typing in the VM): `sudo systemctl enable --now sshd`. Then install the key through the Kubernetes API (see the playbook header), and refresh `known_hosts` (`ssh-keygen -R 10.10.20.52`).
+4. **Production mode:** `kubectl apply -f kubernetes/infrastructure/kubevirt/bazzite-vm.yaml` (GPU attached, no ISO or VNC), then `virtctl restart`.
+5. **Configure:** `just bazzite-setup` (prompts for the sudo password). It updates the image and reboots, sets up autologin, Sunshine, gamepads and Proton, and is idempotent.
+6. **Manual by design:** Sunshine admin credentials and Moonlight PIN pairing (`https://10.10.20.52:47990`), Steam and Battle.net logins.
+
+### Gotchas from the 2026-10-18 rebuild
+- **UDM IPS blocks SSH after a reinstall.** Host-key mismatches plus retries look like an SSH scan; the UDM blocks the Mac's SSH to `10.10.20.52` silently (timeouts, nothing in the VM's sshd log). Fixed with *Suppress Signature for Source IP* for the Mac (`10.0.1.108`, which should have a DHCP reservation). The Kubernetes API path (`virtctl ssh`) is not affected.
+- **Ansible `become` times out on Bazzite with a TTY.** The shell startup sends terminal queries (OSC 10/11, cursor position) and waits for replies, so sudo's prompt never appears. `ansible.cfg` sets `usetty = False`.
+- **The OS update changes Python.** Bazzite 42 had python3.13 and 44 has python3.14, so the inventory pins `ansible_python_interpreter=/usr/bin/python3`.
+- **Bazzite's own updater (`uupd`) may stage the update first.** The playbook reboots whenever a staged deployment is not the booted one.
+- **Sunshine packaging differs by version.** Bazzite 42 ships an RPM (`sunshine.service`); 44+ uses the Flatpak (`app-dev.lizardbyte.app.Sunshine`). The Flatpak's `additional-install.sh` uses `pkexec` prompts, so the playbook performs those steps itself from the Flatpak's shipped files.
+- **`externalTrafficPolicy` stays `Cluster`.** `Local` was tried on 2026-10-18 and reverted; the connection failures at the time turned out to be the IPS block above, so `Local` itself is untested.
 
 ---
 

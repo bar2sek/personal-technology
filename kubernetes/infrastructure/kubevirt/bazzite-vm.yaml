@@ -62,7 +62,8 @@ spec:
         # NVMe 1000Gi PVC on Ceph NVMe pool
         - name: rootdisk
           persistentVolumeClaim:
-            claimName: windows-gaming-nvme-pvc
+            # Local NVMe on pc-node-05 (gaming-vm-local-storage.yaml)
+            claimName: bazzite-local-rootdisk
 ---
 # Dedicated MetalLB LAN VIP for Sunshine Game Streaming & SSH
 apiVersion: v1
@@ -74,6 +75,9 @@ metadata:
     metallb.universe.tf/loadBalancerIPs: 10.10.20.52
 spec:
   type: LoadBalancer
+  # Cluster (the default). Local was tried on 2026-10-18 and reverted; the
+  # connection failures at the time were the UDM IPS block (see docs/303).
+  externalTrafficPolicy: Cluster
   selector:
     kubevirt.io/domain: bazzite-gaming-vm
   ports:

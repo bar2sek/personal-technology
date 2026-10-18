@@ -1,0 +1,36 @@
+# ==============================================================================
+# Install mode for bazzite-gaming-vm (JSON patch, applied temporarily)
+# ==============================================================================
+# Adds the Bazzite ISO as a CD-ROM and a VNC display for the installer, and
+# detaches the RTX 4070: with the GPU present, the NVIDIA installer opens its
+# graphical UI on the GPU's output (no monitor) and VNC only shows the boot log.
+# The empty local root disk (bootOrder 1) falls through to the ISO (bootOrder 2).
+#
+#   virtctl stop bazzite-gaming-vm -n vms
+#   kubectl patch vm bazzite-gaming-vm -n vms --type json \
+#     --patch-file kubernetes/infrastructure/kubevirt/bazzite-vm-install-patch.yaml
+#   virtctl start bazzite-gaming-vm -n vms
+#   virtctl vnc bazzite-gaming-vm -n vms --proxy-only --port 5900   # then TigerVNC Viewer -> localhost:5900
+#
+# After installing, return to the production spec (no ISO, no VNC, GPU attached):
+#   kubectl apply -f kubernetes/infrastructure/kubevirt/bazzite-vm.yaml
+# (CRDs use JSON merge patch, so the disks/volumes lists are replaced
+# wholesale and the installer entries disappear.)
+- op: replace
+  path: /spec/template/spec/domain/devices/autoattachGraphicsDevice
+  value: true
+- op: add
+  path: /spec/template/spec/domain/devices/disks/-
+  value:
+    name: installer
+    bootOrder: 2
+    cdrom:
+      bus: sata
+- op: add
+  path: /spec/template/spec/volumes/-
+  value:
+    name: installer
+    persistentVolumeClaim:
+      claimName: bazzite-nvidia-iso
+- op: remove
+  path: /spec/template/spec/domain/devices/gpus

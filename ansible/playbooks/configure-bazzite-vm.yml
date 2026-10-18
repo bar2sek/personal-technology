@@ -1,8 +1,51 @@
+# ==============================================================================
+# Bazzite gaming VM: post-install configuration (run: `just bazzite-setup`)
+# ==============================================================================
+# Takes a fresh Bazzite-NVIDIA install to a working Moonlight/Sunshine host.
+# Safe to re-run: every task is idempotent.
+#
+# One-time bootstrap after installing (Ansible needs SSH first):
+#   1. In the VM's desktop (VNC during install mode, or the 4070's monitor):
+#        sudo systemctl enable --now sshd
+#   2. On the Mac, install the SSH key through the Kubernetes API (bypasses the
+#      LAN, so sshd's PerSourcePenalties cannot block it):
+#        cat ~/.ssh/id_ed25519.pub | virtctl ssh bazzite@vmi/bazzite-gaming-vm -n vms \
+#          -c 'umask 077; mkdir -p ~/.ssh; cat >> ~/.ssh/authorized_keys'
+#   3. After a reinstall the VM has new host keys: confirm the fingerprint, then
+#        ssh-keygen -R 10.10.20.52 && ssh bazzite@10.10.20.52 true
+#
+# Manual by design (interactive or secret): Sunshine admin credentials and
+# Moonlight PIN pairing (https://10.10.20.52:47990), Steam login, Battle.net login.
 ---
 - name: Configure Bazzite Linux Gaming VM
   hosts: gaming_vms
   gather_facts: true
+  vars:
+    ge_proton_version: GE-Proton10-34
+    sunshine_files: /var/lib/flatpak/app/dev.lizardbyte.app.Sunshine/current/active/files
   tasks:
+    # The install ISO can be months old. Bazzite also auto-updates, but bring a
+    # fresh install current before configuring it.
+    - name: Update the OS image to the latest bazzite-nvidia:stable
+      become: true
+      ansible.builtin.command: rpm-ostree upgrade
+      register: os_upgrade
+      changed_when: "'No upgrade available' not in os_upgrade.stdout"
+
+    # Bazzite's own updater (uupd) may already have staged a newer image, in
+    # which case `rpm-ostree upgrade` reports nothing to do. Reboot whenever the
+    # first deployment is not the booted one, whoever staged it.
+    - name: Check for a staged deployment that is not booted yet
+      ansible.builtin.command: rpm-ostree status --json
+      register: ostree_status
+      changed_when: false
+
+    - name: Reboot into the updated image
+      become: true
+      ansible.builtin.reboot:
+        reboot_timeout: 900
+      when: os_upgrade is changed or not (ostree_status.stdout | from_json).deployments[0].booted
+
     - name: Verify NVIDIA GPU driver and hardware acceleration
       ansible.builtin.command: nvidia-smi
       register: nvidia_smi
@@ -17,6 +60,20 @@
       become: true
       args:
         creates: /var/lib/systemd/linger/bazzite
+
+    # Older images use SDDM, Fedora 44+ images use Plasma Login. Configure both
+    # so autologin survives an image update that switches display manager.
+    - name: Ensure display manager config directories exist
+      become: true
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+      loop:
+        - /etc/sddm.conf.d
+        - /etc/plasmalogin.conf.d
 
     - name: Configure SDDM and Plasmalogin autologin for bazzite user
       become: true
@@ -50,11 +107,19 @@
         group: root
         mode: '0644'
 
-    - name: Ensure DXVK_NVAPI_DRIVER_VERSION is configured for Proton games
+    - name: Read the installed NVIDIA driver version
+      ansible.builtin.command: nvidia-smi --query-gpu=driver_version --format=csv,noheader
+      register: nvidia_driver
+      changed_when: false
+
+    # Blizzard games warn "graphics drivers out of date" under Proton unless
+    # DXVK-NVAPI reports a driver version. Encoded as major+minor digits
+    # (580.95.05 -> 58095), derived from the real driver so it never goes stale.
+    - name: Ensure DXVK_NVAPI_DRIVER_VERSION matches the installed driver
       become: true
       ansible.builtin.lineinfile:
         path: /etc/environment
-        line: "DXVK_NVAPI_DRIVER_VERSION=59571"
+        line: "DXVK_NVAPI_DRIVER_VERSION={{ nvidia_driver.stdout.split('.')[0] }}{{ nvidia_driver.stdout.split('.')[1] }}"
         regexp: "^DXVK_NVAPI_DRIVER_VERSION="
         state: present
 
@@ -65,13 +130,65 @@
         groups: video,input,render
         append: true
 
-    - name: Ensure Sunshine service is enabled and running
-      ansible.builtin.systemd:
+    # Sunshine (Bazzite 44+): a system Flatpak, as `ujust setup-sunshine
+    # enable-flatpak` installs it. (Bazzite 42 shipped an RPM with a plain
+    # sunshine.service instead.) The Flatpak's own additional-install.sh uses
+    # pkexec prompts, which would hang Ansible, so its three host-side steps are
+    # done here directly, from the files shipped inside the Flatpak.
+    - name: Install the Sunshine Flatpak (system-wide)
+      become: true
+      community.general.flatpak:
+        name: dev.lizardbyte.app.Sunshine
+        method: system
+        state: present
+
+    - name: Ensure the user systemd unit directory exists
+      ansible.builtin.file:
+        path: /home/bazzite/.config/systemd/user
+        state: directory
+        mode: '0755'
+
+    - name: Install the Sunshine user service shipped in the Flatpak
+      ansible.builtin.copy:
+        src: "{{ sunshine_files }}/share/sunshine/systemd/user/app-dev.lizardbyte.app.Sunshine.service"
+        dest: /home/bazzite/.config/systemd/user/app-dev.lizardbyte.app.Sunshine.service
+        remote_src: true
+        mode: '0644'
+
+    - name: Load uhid now for gamepad emulation (persisted via modules-load.d above)
+      become: true
+      community.general.modprobe:
+        name: uhid
+        state: present
+
+    - name: Install Sunshine's udev rule for virtual input devices
+      become: true
+      ansible.builtin.copy:
+        src: "{{ sunshine_files }}/share/sunshine/udev/rules.d/60-sunshine.rules"
+        dest: /etc/udev/rules.d/60-sunshine.rules
+        remote_src: true
+        owner: root
+        group: root
+        mode: '0644'
+      register: sunshine_udev
+
+    - name: Apply the udev rule to existing input devices
+      become: true
+      ansible.builtin.shell: |
+        udevadm control --reload-rules
+        udevadm trigger --property-match=DEVNAME=/dev/uinput
+        udevadm trigger --property-match=DEVNAME=/dev/uhid
+        udevadm trigger --subsystem-match=hidraw
+        udevadm trigger --subsystem-match=input
+      when: sunshine_udev is changed
+
+    - name: Ensure Sunshine is enabled and running for the bazzite user
+      ansible.builtin.systemd_service:
         name: app-dev.lizardbyte.app.Sunshine.service
         scope: user
+        daemon_reload: true
         enabled: true
         state: started
-      ignore_errors: true
 
     - name: Check Steam and Flatpak gaming status
       ansible.builtin.command: flatpak list
@@ -108,10 +225,10 @@
 
     - name: Download and install latest stable GE-Proton compatibility runner
       ansible.builtin.unarchive:
-        src: "https://github.com/GloriousEggroll/proton-ge-custom/releases/download/GE-Proton10-34/GE-Proton10-34.tar.gz"
+        src: "https://github.com/GloriousEggroll/proton-ge-custom/releases/download/{{ ge_proton_version }}/{{ ge_proton_version }}.tar.gz"
         dest: /home/bazzite/.local/share/Steam/compatibilitytools.d/
         remote_src: true
-        creates: /home/bazzite/.local/share/Steam/compatibilitytools.d/GE-Proton10-34
+        creates: /home/bazzite/.local/share/Steam/compatibilitytools.d/{{ ge_proton_version }}
         owner: bazzite
         group: bazzite
 

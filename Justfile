@@ -212,7 +212,7 @@ unifi-diagram:
 
 # Run automated Bazzite Gaming VM post-install configuration (NVIDIA, Sunshine, Flatpaks)
 bazzite-setup:
-    cd ansible && ansible-playbook -i inventory/hosts.ini playbooks/configure-bazzite-vm.yml
+    cd ansible && ansible-playbook -i inventory/hosts.ini playbooks/configure-bazzite-vm.yml --ask-become-pass
 
 # Ping Bazzite Gaming VM over SSH
 bazzite-ping:

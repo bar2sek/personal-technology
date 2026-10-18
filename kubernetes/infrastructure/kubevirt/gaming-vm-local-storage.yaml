@@ -1,0 +1,62 @@
+# ==============================================================================
+# Local NVMe storage for the Bazzite gaming VM (pc-node-05)
+# ==============================================================================
+# The VM is pinned to pc-node-05 by GPU passthrough, and game files do not need
+# replication, so its disk lives on the node's own NVMe instead of the 3x
+# replicated Ceph NVMe pool: lower latency, and ~1.7 TB of Ceph capacity back.
+#
+# /var/mnt/gaming-vm is a Talos directory user volume on pc-node-05's EPHEMERAL
+# partition (Omni patch `gpu-worker-volumes` in talos/cluster-template.yaml).
+# A directory volume has no hard size limit: the 750Gi below is what KubeVirt
+# sizes the VM disk image to, leaving ~150 GiB of the ~930 GiB /var for images
+# and logs. Watch pc-node-05 on the Homelab Overview "System disk used" panel.
+#
+# No backups: if the Sabrent NVMe fails, reinstall Bazzite and re-download games.
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: local-gaming-vm
+provisioner: kubernetes.io/no-provisioner # static volume, nothing to provision
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Retain
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: gaming-vm-local-pv
+spec:
+  capacity:
+    storage: 750Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: local-gaming-vm
+  # Reserve this PV for exactly the VM's claim
+  claimRef:
+    namespace: vms
+    name: bazzite-local-rootdisk
+  local:
+    path: /var/mnt/gaming-vm
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values: ["pc-node-05"]
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: bazzite-local-rootdisk
+  namespace: vms
+spec:
+  accessModes:
+    - ReadWriteOnce
+  volumeMode: Filesystem
+  storageClassName: local-gaming-vm
+  volumeName: gaming-vm-local-pv
+  resources:
+    requests:
+      storage: 750Gi

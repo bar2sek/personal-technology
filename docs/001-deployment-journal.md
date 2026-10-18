@@ -770,6 +770,17 @@ Any AI agent or human operator can review this document to pick up exactly where
 
 ---
 
+## 🎯 Milestone 17: Gaming VM on Local NVMe & Repeatable Bazzite Rebuild (2026-10-18)
+
+- **Local disk:** the Bazzite VM's root disk moved from a 1000 GiB, 3x-replicated Ceph RBD image to a 750 GiB local volume on pc-node-05's system NVMe (Talos directory user volume `gaming-vm`, static local PV). It is faster, and the old Ceph image is due for deletion (~1.7 TB raw NVMe).
+- **Fresh install** of Bazzite 42 → updated to 44.20261012.1 (Fedora 44). Install mode is now a reusable JSON patch (`bazzite-vm-install-patch.yaml`: ISO, VNC, GPU detached).
+- **Ansible made it repeatable:** the playbook now handles OS update and reboot (including updates staged by `uupd`), display-manager-agnostic autologin, Sunshine as a Flatpak with its udev, uhid and user-service setup done declaratively, and a DXVK driver version derived from the real driver. Fixes: SSH host-key checking re-enabled, `usetty = False` (Bazzite shell terminal queries hung sudo), interpreter pinned to `/usr/bin/python3`. Final run: `ok=32 changed=13 failed=0`.
+- **Network lesson:** the UDM's IPS blocked the Mac's SSH to the VM after the reinstall's host-key churn; resolved with a source-scoped signature suppression.
+- TigerVNC added to the nix-darwin casks for KubeVirt VNC consoles.
+- Runbook: [[303-kubevirt-bazzite-gpu-vm|Bazzite Gaming VM]], *Local Disk & Rebuild Runbook*.
+
+---
+
 ## 🎯 Immediate Next Actions & Infrastructure Backlog
 
 1. **GitOps Controller Evaluation (Flux CD)**:

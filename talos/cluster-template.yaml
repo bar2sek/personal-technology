@@ -270,4 +270,16 @@ patches:
         nodeLabels:
           node.kubernetes.io/role: gpu-worker
           nvidia.com/gpu.present: "true"
+  # Local storage for the gaming VM's disk (/var/mnt/gaming-vm). The VM is
+  # pinned here by GPU passthrough anyway, and its disk does not need Ceph
+  # replication. A directory volume on EPHEMERAL, not a separate partition:
+  # EPHEMERAL already fills the Sabrent NVMe and can only be shrunk by wiping
+  # it, which Omni does not allow through talosctl. No hard size limit, so the
+  # VM disk has a fixed size that leaves headroom for /var. See docs/104.
+  - name: gpu-worker-volumes
+    inline: |-
+      apiVersion: v1alpha1
+      kind: UserVolumeConfig
+      name: gaming-vm
+      volumeType: directory
 
