@@ -207,8 +207,8 @@
       system.defaults = {
         # Dock settings matching your exact preferences from screenshot
         dock = {
-          # Size & Magnification (20% larger default size + max magnification on hover)
-          tilesize = 44;
+          # Size & Magnification (compact 36px icon size + max magnification on hover)
+          tilesize = 36;
           magnification = true;
           largesize = 128;
 
