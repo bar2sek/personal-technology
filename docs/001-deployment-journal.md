@@ -813,6 +813,8 @@ Any AI agent or human operator can review this document to pick up exactly where
 - **Dead man's switch:** Watchdog pings healthchecks.io about once a minute; if it stops, healthchecks.io notifies by email and a public ntfy.sh topic.
 - **Found:** the AAAA DNS leak also affects Tailscale clients. `grafana.bar2sek.com` is a Cloudflare-tunnel record; only the UDM's local IPv4 override points it at `10.10.20.50`, so IPv6 still goes to Cloudflare. Fixing that is still on the backlog.
 - Details: [[106-observability-prometheus-grafana|Observability]], *Phone alerts*.
+- **First real test exposed a gap:** a planned shutdown of sm-node-02 produced no Ceph alerts, because Rook's PrometheusRule was never installed (it ships only with the `rook-ceph-cluster` chart). Added Rook's 89 standard rules; the still-running outage then fired `CephOSDDownHigh` to the phone within a minute. Kubernetes node alerts were pending as designed (15-minute `for:`). The node-offline runbook now starts with an Alertmanager silence.
+- **Hardware findings for the `/var` migration:** the E300s are full, pc-node-04 has three unused SSDs, and sm-node-03's bays take 3.5" HDDs. The plan became a combined disk swap: pc-node-04 becomes a fourth SSD host and sm-node-03 a second HDD host ([[110-ephemeral-var-migration|/var migration]]).
 - Details: [[104-phase2-rook-ceph-storage|Rook-Ceph Storage]], *Placement Groups & the PG Autoscaler*.
 
 ---

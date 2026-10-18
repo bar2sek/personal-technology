@@ -181,6 +181,8 @@ graph LR
 | Routing | `alertmanager.config` in `values.yaml` | critical → priority 5, repeat 4 h; warning → priority 2, repeat 24 h, muted 22:00–07:00 America/Chicago; ntfy's built-in `?template=alertmanager` formats the message |
 | Dead man's switch | Watchdog → healthchecks.io check `homelab-alertmanager` (period 5 min, grace 10 min) | Ping URL in Secret `monitoring/healthchecks-ping-url` (`url_file`), never committed |
 
+**Ceph alerts** come from `kubernetes/infrastructure/rook-ceph/prometheus-ceph-rules.yaml`, Rook's standard rule set (89 rules) copied for the operator's version. The `rook-ceph-cluster` Helm chart would install them, but this cluster's CephCluster is a plain manifest, so until 2026-10-18 **Prometheus had no Ceph alerts at all**: a planned shutdown of sm-node-02 (3 OSDs down, `HEALTH_WARN`) produced nothing. Verified the same day with that outage: `CephOSDDownHigh` (critical, ≥10% of OSDs down) reached the phone within a minute. Update the file when upgrading Rook.
+
 **Why both:** ntfy covers problems inside a running cluster (failed backup, full disk, OSD down, UPS on battery). It cannot report its own outage, so healthchecks.io watches for the Watchdog heartbeat to *stop* and alerts through channels outside the house.
 
 > [!WARNING]

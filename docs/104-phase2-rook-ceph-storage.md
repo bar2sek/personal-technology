@@ -178,14 +178,24 @@ kubectl -n kube-system run mtu-test --rm -it --image=alpine:3.20 --overrides='{"
 
 ## 🧰 Runbook: Taking a Node Offline for Hardware Work
 
-Used on 2026-10-17 to reseat a disk in `sm-node-02` (a control-plane node holding three OSDs and a monitor).
+Used on 2026-10-17 to reseat a disk in `sm-node-02` (a control-plane node holding three OSDs and a monitor), and on 2026-10-18 to inspect it (no monitor there by then).
 
-1. **Pre-checks (read-only):** `ceph pg stat` shows all PGs `active+clean`; `ceph mon stat` shows the other monitors can still form a quorum without this node; at least two other control-plane nodes are Ready.
-2. **`ceph osd set noout`:** the node's OSDs going down must not trigger a rebalance of their data.
-3. **Pause the operator:** `kubectl scale deploy/rook-ceph-operator -n rook-ceph --replicas=0`. Otherwise, after about 10 minutes it fails over the node's monitor to another node.
-4. **`kubectl drain <node> --ignore-daemonsets --delete-emptydir-data`:** OSD and mon pods go `Pending` (they are pinned to the node).
-5. **Shut down from Omni:** *Clusters → cluster → click the node → Shutdown*.
-6. After power-on: `kubectl uncordon <node>`, scale the operator back to 1, wait for PGs `active+clean`, then `ceph osd unset noout`.
+1. **Pre-checks (read-only):** `ceph pg stat` shows all PGs `active+clean`; `ceph mon stat` shows the other monitors can still form a quorum without this node; at least two other control-plane nodes are Ready (`talosctl -n <other cp> etcd members`). **Never take two control-plane nodes down at once:** etcd loses quorum and the Kubernetes API stops. `kubectl get pdb -A` should show no budget with 0 allowed disruptions, or the drain hangs.
+2. **Silence the expected alerts.** A planned outage still fires `CephOSDDownHigh` (critical, immediately, once ≥10% of OSDs are down), then OSD/host-down and node-unreachable warnings. Silence alerts for that node for the expected duration:
+   ```bash
+   AM="kubectl -n monitoring exec alertmanager-kube-prometheus-stack-alertmanager-0 -c alertmanager -- amtool --alertmanager.url=http://localhost:9093"
+   $AM silence add --duration=2h --comment="sm-node-02 maintenance" 'alertname=~"Ceph(OSDDown|OSDDownHigh|OSDHostDown|HealthWarning|PGsUnclean)"'
+   $AM silence add --duration=2h --comment="sm-node-02 maintenance" 'alertname=~"KubeNode.*|KubeletInstanceUnreachable|TargetDown|KubeDaemonSet.*|KubeDeploymentReplicasMismatch|KubePodNotReady"'
+   $AM silence query          # expire early with: $AM silence expire <id>
+   ```
+   Keep `CephHealthError` and `CephPGsInactive` unsilenced: they mean data actually went offline.
+3. **`ceph osd set-group noout <node>`:** the node's OSDs going down must not trigger a rebalance of their data. (Cluster-wide `ceph osd set noout` also works, but the per-host flag cannot be forgotten on unrelated OSDs.)
+4. **Only if the node holds a monitor, pause the operator:** `kubectl scale deploy/rook-ceph-operator -n rook-ceph --replicas=0`. Otherwise, after about 10 minutes it fails over the node's monitor to another node.
+5. **`kubectl drain <node> --ignore-daemonsets --delete-emptydir-data`:** OSD and mon pods are evicted and stay `Pending` (they are pinned to the node). Static control-plane pods are skipped.
+6. **Shut down:** `talosctl -n <node> shutdown` (or Omni: *Clusters → cluster → click the node → Shutdown*). Wait until it is powered off before unplugging.
+7. After power-on, once the node is `Ready`: `kubectl uncordon <node>`, scale the operator back to 1 if you paused it, `ceph osd unset-group noout <node>`, wait for `HEALTH_OK` and all PGs `active+clean`, then expire the silences.
+
+**2026-10-18 timeline for reference:** drain to `NotReady` in under a minute; 241 PGs stayed `active` (about a third `undersized`/`degraded`), so every volume kept working on two copies; boot to `Ready` about 5 minutes; `HEALTH_OK` 13 seconds after the OSDs came back.
 
 > [!WARNING]
 > **Moving a SATA cable renames the disks.** Linux names disks in detection order, so moving a drive to another port swapped `/dev/sdb` and `/dev/sdc` on sm-node-02. The OSD Deployments carry `ROOK_BLOCK_PATH=/dev/sdX` from their last prepare run, which then points at the *other* OSD's disk. Rook's `activate` init container searches the node's devices for the OSD's UUID and treats `ROOK_BLOCK_PATH` only as a hint, so each OSD still activated its own disk. To be safe anyway, scale the affected OSD Deployments to 0 before uncordoning, start them one at a time, and check that the `activate` log reports the expected `osd ID` and device. The CephCluster spec selects disks by `/dev/disk/by-id/…` (serial number), which never changes.
