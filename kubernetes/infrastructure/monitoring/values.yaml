@@ -125,7 +125,93 @@ kubelet:
 # ------------------------------------------------------------------------------
 alertmanager:
   enabled: true
+  # Phone alerts via self-hosted ntfy (docs/106, kubernetes/infrastructure/ntfy).
+  # Replaces the chart's default config, so its inhibit rules are copied below.
+  config:
+    global:
+      resolve_timeout: 5m
+    time_intervals:
+      - name: night
+        time_intervals:
+          - times:
+              - start_time: "22:00"
+                end_time: "24:00"
+              - start_time: "00:00"
+                end_time: "07:00"
+            location: America/Chicago
+    inhibit_rules:
+      - source_matchers: ['severity = critical']
+        target_matchers: ['severity =~ warning|info']
+        equal: ['namespace', 'alertname']
+      - source_matchers: ['severity = warning']
+        target_matchers: ['severity = info']
+        equal: ['namespace', 'alertname']
+      - source_matchers: ['alertname = InfoInhibitor']
+        target_matchers: ['severity = info']
+        equal: ['namespace']
+      - target_matchers: ['alertname = InfoInhibitor']
+    route:
+      group_by: ['namespace', 'alertname']
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 12h
+      receiver: 'null'
+      routes:
+        # Dead man's switch: Watchdog always fires, so healthchecks.io is pinged
+        # about once a minute. If the pings stop (cluster, power or internet
+        # down), healthchecks.io notifies by email/ntfy.sh after ~15 minutes.
+        - receiver: healthchecks
+          matchers: ['alertname = Watchdog']
+          group_wait: 0s
+          group_interval: 1m
+          repeat_interval: 1m
+        - receiver: 'null'
+          matchers: ['alertname = InfoInhibitor']
+        # Loud, any time; reminds every 4h while still firing.
+        - receiver: ntfy-critical
+          matchers: ['severity = critical']
+          repeat_interval: 4h
+        # Quiet. Muted 22:00-07:00: anything still firing at 07:00 is sent then,
+        # anything that resolved overnight is never sent.
+        - receiver: ntfy-warning
+          matchers: ['severity = warning']
+          repeat_interval: 24h
+          mute_time_intervals: ['night']
+    receivers:
+      - name: 'null'
+      # The ping URL embeds the check's secret UUID, so it is read from the
+      # Secret healthchecks-ping-url rather than written here.
+      - name: healthchecks
+        webhook_configs:
+          - url_file: /etc/alertmanager/secrets/healthchecks-ping-url/url
+            send_resolved: false
+      # ntfy's built-in alertmanager template formats the payload. Priority 5
+      # (urgent) is a time-sensitive iOS notification with sound; 2 (low) is
+      # delivered silently to Notification Center.
+      - name: ntfy-critical
+        webhook_configs:
+          - url: http://ntfy.ntfy.svc.cluster.local/homelab-alerts?template=alertmanager&priority=5&tags=rotating_light
+            send_resolved: true
+            http_config:
+              authorization:
+                type: Bearer
+                credentials_file: /etc/alertmanager/secrets/ntfy-alertmanager-token/token
+      - name: ntfy-warning
+        webhook_configs:
+          - url: http://ntfy.ntfy.svc.cluster.local/homelab-alerts?template=alertmanager&priority=2&tags=warning
+            send_resolved: true
+            http_config:
+              authorization:
+                type: Bearer
+                credentials_file: /etc/alertmanager/secrets/ntfy-alertmanager-token/token
+    templates:
+      - '/etc/alertmanager/config/*.tmpl'
   alertmanagerSpec:
+    # Token for posting to ntfy, written by `just ntfy-auth`. Mounted at
+    # /etc/alertmanager/secrets/ntfy-alertmanager-token/token.
+    secrets:
+      - ntfy-alertmanager-token
+      - healthchecks-ping-url # created by hand, see docs/106
     tolerations:
       - key: node-role.kubernetes.io/control-plane
         operator: Exists

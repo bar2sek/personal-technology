@@ -59,6 +59,41 @@ monitoring-apply:
     kubectl apply -f kubernetes/infrastructure/monitoring/dashboards/
     helm upgrade kube-prometheus-stack prometheus-community/kube-prometheus-stack --version 91.4.1 -n monitoring -f kubernetes/infrastructure/monitoring/values.yaml
 
+# Deploy the Tailscale operator (chart pinned) and the ingress-VIP subnet router.
+# Needs the tailnet policy + OAuth Secret from docs/203 first.
+tailscale-apply:
+    helm repo add tailscale https://pkgs.tailscale.com/helmcharts --force-update
+    kubectl apply -f kubernetes/infrastructure/tailscale/namespace.yaml
+    helm upgrade --install tailscale-operator tailscale/tailscale-operator --version 1.104.1 -n tailscale -f kubernetes/infrastructure/tailscale/values.yaml --wait
+    kubectl apply -f kubernetes/infrastructure/tailscale/connector.yaml
+
+# Writes Secret ntfy/ntfy-auth and the token copy monitoring/ntfy-alertmanager-token.
+# Nothing is committed. Users: `ryan` (admin, iPhone app) and `alertmanager`
+# (publish-only to homelab-alerts, token auth).
+# Create or rotate ntfy logins (prompts for the iPhone app password)
+ntfy-auth:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    read -rsp "Password for ntfy user 'ryan' (iPhone app login): " PW; echo
+    read -rsp "Confirm: " PW2; echo
+    [ "$PW" = "$PW2" ] || { echo "Passwords do not match." >&2; exit 1; }
+    # Hash inside the ntfy pod (bcrypt, the format ntfy expects); the password
+    # goes over stdin, never onto a command line.
+    hash() { printf '%s\n%s\n' "$1" "$1" | kubectl -n ntfy exec -i deploy/ntfy -- ntfy user hash 2>/dev/null | awk '{print $NF}'; }
+    RYAN_HASH=$(hash "$PW"); unset PW PW2
+    AM_HASH=$(hash "$(openssl rand -base64 24)") # alertmanager only ever uses its token
+    AM_TOKEN=$(kubectl -n ntfy exec deploy/ntfy -- ntfy token generate | tr -d '\r\n')
+    case "$RYAN_HASH$AM_HASH" in *'$2a$'*'$2a$'*) ;; *) echo "Hashing failed." >&2; exit 1 ;; esac
+    kubectl -n ntfy create secret generic ntfy-auth \
+      --from-literal=NTFY_AUTH_USERS="ryan:${RYAN_HASH}:admin,alertmanager:${AM_HASH}:user" \
+      --from-literal=NTFY_AUTH_ACCESS="alertmanager:homelab-alerts:wo" \
+      --from-literal=NTFY_AUTH_TOKENS="alertmanager:${AM_TOKEN}:Alertmanager" \
+      --dry-run=client -o yaml | kubectl apply -f -
+    kubectl -n monitoring create secret generic ntfy-alertmanager-token \
+      --from-literal=token="${AM_TOKEN}" --dry-run=client -o yaml | kubectl apply -f -
+    kubectl -n ntfy rollout restart deploy/ntfy
+    kubectl -n ntfy rollout status deploy/ntfy
+
 # Retrieve Grafana admin credentials
 grafana-password:
     @echo "Grafana Admin User: admin"

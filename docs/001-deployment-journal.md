@@ -801,6 +801,18 @@ Any AI agent or human operator can review this document to pick up exactly where
 - **Interim: soft taint on the sm nodes.** Omni patch `controlplane-prefer-no-schedule` adds `homelab.bar2sek.com/small-var=true:PreferNoSchedule`, so new pods prefer pc-node-04/05. The movable workloads on the sm nodes request about 8.4 GiB of memory and 2.4 CPUs, against about 40 GiB and 17 CPUs free on pc-node-04. Nothing is evicted; pods move as they restart.
 - **Planned real fix: move Talos `/var` (EPHEMERAL) off the SuperDOMs.** The sm nodes are the strongest hardware (sm-node-03: 28 threads, 160 GB); only their 12.5 GiB `/var` is the problem, and it also hosts etcd. Plan: on each sm node, retire one 2 TB MX500 from Ceph and point EPHEMERAL at it with a Talos `VolumeConfig` disk selector, one node at a time (drain OSD → remove from Omni → re-add). The SSD tier drops to about 9.5 TiB raw. The taint comes off afterwards.
 - **Lesson:** applying a monitor placement change while a monitor is scaled to 0 deadlocks Rook's rolling restart (`EBUSY`). Apply, wait for the restarts, then fail over ([[104-phase2-rook-ceph-storage|Rook-Ceph]]).
+- **Result:** monitors f (pc-node-04), h (pc-node-05), i (sm-node-01). etcd write p99 on sm-node-02 fell from 2.6 s to 66 ms within minutes.
+
+---
+
+## 🎯 Milestone 20: Tailscale in the Cluster & Phone Alerts (2026-10-18)
+
+- **Tailscale operator deployed** (chart 1.104.1, `just tailscale-apply`), finishing the design in [[203-tailscale-mesh-vpn|Tailscale]]. The unused hand-built router Deployment was removed. A `Connector` advertises only the ingress VIP `10.10.20.50/32`, auto-approved by tailnet policy; Mac/iOS clients would otherwise route Moonlight and node traffic through the router pod even at home. The OAuth secret is entered at a hidden prompt, not passed with Helm `--set` (which stores it in the release record).
+- **ntfy self-hosted** at `https://ntfy.tail6e33.ts.net` (Tailscale Ingress, Tailscale-issued certificate, no public DNS). `deny-all` by default; logins provisioned declaratively from a Secret by `just ntfy-auth`. iOS pushes go through `upstream-base-url: https://ntfy.sh`, which only sees a poll request, never the alert text.
+- **Alertmanager now delivers** (it had no receivers): critical → loud, warning → silent and muted 22:00–07:00, using ntfy's built-in Alertmanager template. Tested end to end with a fake critical alert, plus the real `KubeAPIErrorBudgetBurn` warning.
+- **Dead man's switch:** Watchdog pings healthchecks.io about once a minute; if it stops, healthchecks.io notifies by email and a public ntfy.sh topic.
+- **Found:** the AAAA DNS leak also affects Tailscale clients. `grafana.bar2sek.com` is a Cloudflare-tunnel record; only the UDM's local IPv4 override points it at `10.10.20.50`, so IPv6 still goes to Cloudflare. Fixing that is still on the backlog.
+- Details: [[106-observability-prometheus-grafana|Observability]], *Phone alerts*.
 - Details: [[104-phase2-rook-ceph-storage|Rook-Ceph Storage]], *Placement Groups & the PG Autoscaler*.
 
 ---

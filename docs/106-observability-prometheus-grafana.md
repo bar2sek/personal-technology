@@ -157,6 +157,51 @@ Apply monitoring changes with `just monitoring-apply`: it applies the custom rul
 > [!TIP]
 > Histogram bucket labels are floats as strings: `le="1800.0"`, not `le="1800"`. A wrong `le` matches nothing and returns an empty result, not an error.
 
+### Phone alerts: ntfy + dead man's switch (2026-10-18)
+
+```mermaid
+graph LR
+    PROM["Prometheus rules"] --> AM["Alertmanager"]
+    AM -->|"critical: priority 5 (loud)"| NTFY["ntfy (namespace ntfy)"]
+    AM -->|"warning: priority 2 (silent), muted 22:00-07:00"| NTFY
+    AM -->|"Watchdog, every ~1 min"| HC["healthchecks.io"]
+    NTFY -->|"poll_request only (no content)"| UP["ntfy.sh -> APNs"]
+    UP --> PHONE["iPhone ntfy app"]
+    PHONE -->|"fetch message over Tailscale"| TS["ntfy.tail6e33.ts.net"]
+    TS --> NTFY
+    HC -->|"pings stop for 15 min"| OUT["email + public ntfy.sh topic"]
+    OUT --> PHONE
+```
+
+| Piece | Where | Notes |
+|---|---|---|
+| ntfy server | `kubernetes/infrastructure/ntfy/ntfy.yaml` | `deny-all` default; users/ACLs/tokens from Secret `ntfy-auth` (`NTFY_AUTH_*` env); `upstream-base-url: https://ntfy.sh` for iOS push |
+| Tailnet URL | Tailscale Ingress → `https://ntfy.tail6e33.ts.net` | Tailscale-issued certificate (tailnet *HTTPS Certificates* must be on). No public DNS record |
+| Logins | `just ntfy-auth` | `ryan` (admin, phone app) and `alertmanager` (write-only to `homelab-alerts`, token). Re-run to rotate. Token copy in `monitoring/ntfy-alertmanager-token` |
+| Routing | `alertmanager.config` in `values.yaml` | critical → priority 5, repeat 4 h; warning → priority 2, repeat 24 h, muted 22:00–07:00 America/Chicago; ntfy's built-in `?template=alertmanager` formats the message |
+| Dead man's switch | Watchdog → healthchecks.io check `homelab-alertmanager` (period 5 min, grace 10 min) | Ping URL in Secret `monitoring/healthchecks-ping-url` (`url_file`), never committed |
+
+**Why both:** ntfy covers problems inside a running cluster (failed backup, full disk, OSD down, UPS on battery). It cannot report its own outage, so healthchecks.io watches for the Watchdog heartbeat to *stop* and alerts through channels outside the house.
+
+> [!WARNING]
+> Every Secret listed under `alertmanagerSpec.secrets` must exist **before** `just monitoring-apply`; a missing one keeps the Alertmanager pod from starting. On a rebuild: `just ntfy-auth`, then create `healthchecks-ping-url`:
+> ```bash
+> read -rs "HC_URL?healthchecks ping URL: "; echo
+> kubectl -n monitoring create secret generic healthchecks-ping-url --from-literal=url="$HC_URL"; unset HC_URL
+> ```
+
+**Test end to end** (should arrive loud within a minute, then a RESOLVED message):
+```bash
+AM="kubectl -n monitoring exec alertmanager-kube-prometheus-stack-alertmanager-0 -c alertmanager -- amtool --alertmanager.url=http://localhost:9093"
+$AM alert add HomelabTestAlert severity=critical namespace=monitoring --annotation=summary="test"
+$AM alert add HomelabTestAlert severity=critical namespace=monitoring --end="$(date -u +%Y-%m-%dT%H:%M:%SZ)"   # resolve
+```
+
+**Gotchas from the build:**
+- `amtool config routes test --config.file=/dev/stdin` ignores the piped config and reports `null` for everything; use `amtool config routes --config.file=/dev/stdin` (prints the tree) instead.
+- The iPhone app attaches a saved login only when its *Service URL* matches the subscription's server exactly (`https://ntfy.tail6e33.ts.net`, no trailing slash). "Not authorized to read this topic" can also simply mean a wrong password: check with `curl -su ryan https://ntfy.tail6e33.ts.net/v1/account`.
+- Keep Tailscale on the phone always connected (On Demand). Without it the push still arrives, but the app cannot fetch the message text.
+
 **Adding a panel:** test the PromQL against Prometheus first (`kubectl port-forward -n monitoring svc/kube-prometheus-stack-prometheus 9090` and the `/api/v1/query` endpoint), then add it to the JSON and `kubectl apply` the ConfigMap. The sidecar reloads it within a minute.
 
 ---

@@ -1,20 +1,24 @@
 # ==============================================================================
-# Declarative Subnet Router via Tailscale Kubernetes Operator CRD
+# Subnet router via the Tailscale operator's Connector CRD
 # ==============================================================================
-# Routes internal cluster control plane (VLAN 20) and application workloads
-# (VLAN 30) to the Tailnet.
+# Advertises only the ingress-nginx VIP, so tailnet devices away from home reach
+# every *.bar2sek.com app behind it (ntfy, Grafana, Ceph dashboard, Authentik)
+# with the existing wildcard certificate. Public DNS already resolves those
+# names to 10.10.20.50.
 #
-# IMPORTANT: VLAN 10 (10.10.10.0/24 MGMT-IPMI) is explicitly EXCLUDED to prevent
-# exposing out-of-band motherboard BMC interfaces over Tailscale.
+# Deliberately NOT the whole 10.10.20.0/24: Mac/iOS clients use advertised
+# subnets by default, even at home, so Moonlight to the gaming VM (10.10.20.52)
+# and node traffic would detour through this pod. VLAN 10 (MGMT-IPMI) is never
+# advertised.
+#
+# The route is approved automatically by `autoApprovers` in the tailnet policy.
 # ==============================================================================
 apiVersion: tailscale.com/v1alpha1
 kind: Connector
 metadata:
   name: homelab-subnet-router
-  namespace: tailscale
 spec:
   hostname: talos-homelab-router
   subnetRouter:
-    routes:
-      - 10.10.20.0/24 # K8S-CONTROL (Talos API, VIPs, Nodes)
-      - 10.10.30.0/24 # K8S-APPS (Workloads & Pods)
+    advertiseRoutes:
+      - 10.10.20.50/32 # ingress-nginx VIP

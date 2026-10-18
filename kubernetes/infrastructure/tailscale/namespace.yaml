@@ -1,0 +1,9 @@
+# The Connector's proxy pod needs NET_ADMIN and a privileged init container
+# (it enables IP forwarding), which Talos's default "baseline" Pod Security
+# level rejects.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tailscale
+  labels:
+    pod-security.kubernetes.io/enforce: privileged

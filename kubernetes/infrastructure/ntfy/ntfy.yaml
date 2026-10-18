@@ -1,0 +1,157 @@
+# ==============================================================================
+# ntfy: self-hosted push notifications for Alertmanager (docs/106)
+# ==============================================================================
+# Reached only over the tailnet (Tailscale Ingress at the bottom); Alertmanager
+# posts to the in-cluster Service. Users, ACLs and tokens are provisioned from
+# the Secret `ntfy-auth` (NTFY_AUTH_* env vars), created by `just ntfy-auth` and
+# never committed. Until it exists, deny-all means nobody can read or publish.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ntfy
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ntfy-config
+  namespace: ntfy
+data:
+  server.yml: |
+    # Must match the URL the iPhone app uses: iOS push relays identify the topic
+    # by a hash of base-url + topic.
+    base-url: "https://ntfy.tail6e33.ts.net"
+    listen-http: ":8080"
+    behind-proxy: true
+    cache-file: /var/lib/ntfy/cache.db
+    cache-duration: "24h"
+    auth-file: /var/lib/ntfy/user.db
+    auth-default-access: deny-all
+    # iOS only gets instant pushes via Apple's servers. ntfy.sh relays a
+    # "poll_request" (message ID only); the app then fetches the text from here.
+    upstream-base-url: "https://ntfy.sh"
+    log-level: info
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ntfy-data
+  namespace: ntfy
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: rook-ceph-block
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ntfy
+  namespace: ntfy
+spec:
+  replicas: 1
+  # RWO volume: stop the old pod before starting the new one
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: ntfy
+  template:
+    metadata:
+      labels:
+        app: ntfy
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: ntfy
+          image: binwiederhier/ntfy:v2.31.1@sha256:91bb7fa607b02006c119bb4a31032923b414a713a032ecb40f0c5d6bfd5b7e40
+          args: ["serve", "--config", "/etc/ntfy/server.yml"]
+          envFrom:
+            - secretRef:
+                name: ntfy-auth
+                optional: true # deploys before `just ntfy-auth`; deny-all until then
+          ports:
+            - containerPort: 8080
+              name: http
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: config
+              mountPath: /etc/ntfy
+              readOnly: true
+            - name: data
+              mountPath: /var/lib/ntfy
+            - name: tmp
+              mountPath: /tmp
+          readinessProbe:
+            httpGet:
+              path: /v1/health
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /v1/health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+      volumes:
+        - name: config
+          configMap:
+            name: ntfy-config
+        - name: data
+          persistentVolumeClaim:
+            claimName: ntfy-data
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ntfy
+  namespace: ntfy
+spec:
+  selector:
+    app: ntfy
+  ports:
+    - port: 80
+      targetPort: http
+      name: http
+---
+# Tailnet-only HTTPS: the operator runs a proxy that joins the tailnet as `ntfy`
+# (MagicDNS name ntfy.tail6e33.ts.net) with a Tailscale-issued certificate.
+# Requires "HTTPS Certificates" enabled in the tailnet DNS settings.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ntfy
+  namespace: ntfy
+spec:
+  ingressClassName: tailscale
+  defaultBackend:
+    service:
+      name: ntfy
+      port:
+        name: http
+  tls:
+    - hosts:
+        - ntfy

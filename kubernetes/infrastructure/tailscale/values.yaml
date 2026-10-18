@@ -1,18 +1,22 @@
 # ==============================================================================
-# Tailscale Kubernetes Operator Helm Values
+# Tailscale Kubernetes Operator Helm Values (chart pinned in `just tailscale-apply`)
 # Reference: https://tailscale.com/kb/1236/kubernetes-operator
 # ==============================================================================
+# OAuth credentials come from the Secret `operator-oauth` (keys client_id and
+# client_secret), created by hand and never committed. See
+# operator-oauth.example.yaml and docs/203.
 operatorConfig:
-  image:
-    repository: tailscale/k8s-operator
-    tag: "v1.74.2"
-    pullPolicy: IfNotPresent
   hostname: "talos-tailscale-operator"
   logging: "info"
+  # The operator must own these tags in the tailnet policy (tagOwners).
+  defaultTags:
+    - "tag:k8s-operator"
 
-oauth:
-  # Secret name containing client_id and client_secret
-  secretName: "operator-oauth"
+proxyConfig:
+  # Tag for the proxies the operator creates (the Connector subnet router).
+  defaultTags: "tag:k8s"
 
+# kubectl goes through Omni; no need for a second path or the impersonation
+# RBAC it requires.
 apiServerProxyConfig:
-  mode: "true"
+  mode: "false"
