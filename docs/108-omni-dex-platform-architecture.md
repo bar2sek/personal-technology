@@ -135,3 +135,27 @@ If the OptiPlex host is replaced:
 3. Apply `omni-secrets.yaml` to the namespace `omni`.
 4. Apply `kubernetes/infrastructure/omni/` manifests (`dex.yaml`, `booter.yaml`, `omni.yaml`).
 5. Omni will immediately resume management of existing cluster nodes without re-PXE booting or rebuilding cluster state.
+
+---
+
+## 💻 Workstation CLI Access (`omnictl` / `talosctl`)
+
+Both CLIs talk to Omni's API at `https://omni.bar2sek.com/`. Omni serves the `*.bar2sek.com` Let's Encrypt wildcard certificate, which has **no IP SANs**, so a client configured with `https://10.10.10.5/` fails with `x509: cannot validate certificate for 10.10.10.5`.
+
+**Refreshing access (about two minutes):**
+1. Omni web UI → **Home** → **Download omniconfig** (and **Download talosconfig**).
+2. `omnictl config merge ~/Downloads/omniconfig.yaml` (and `talosctl config merge ~/Downloads/talosconfig.yaml`).
+3. Run any command (for example `omnictl get clusters`). The first call opens the browser to sign in and saves a PGP key under `~/.talos/keys/`.
+
+> [!WARNING]
+> **Split-horizon DNS only covers IPv4.** The UDM-Pro answers `A` queries for `*.bar2sek.com` locally (`10.10.10.5`), but forwards `AAAA` queries upstream, which return **Cloudflare** IPv6 addresses. macOS prefers IPv6, so CLI traffic goes to Cloudflare and Access answers `403`. omnictl reports this as `server closed the stream without sending trailers`. Browsers work because they can log in through Access.
+>
+> Workstation workaround (both lines are needed, because macOS consults DNS for IPv6 even when `/etc/hosts` has an IPv4 entry):
+> ```bash
+> echo "10.10.10.5 omni.bar2sek.com" | sudo tee -a /etc/hosts
+> echo "::ffff:10.10.10.5 omni.bar2sek.com" | sudo tee -a /etc/hosts
+> sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder
+> curl -sk -o /dev/null -w '%{remote_ip}\n' https://omni.bar2sek.com/   # must not be 2606:4700:…
+> ```
+> Open item: fix the router so local names also get local (or empty) `AAAA` answers. The same leak sends LAN traffic for `grafana.bar2sek.com` through Cloudflare.
+

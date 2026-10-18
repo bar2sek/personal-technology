@@ -173,3 +173,44 @@ Launch an ephemeral diagnostic pod on any node with `hostNetwork: true` in `kube
 kubectl -n kube-system run mtu-test --rm -it --image=alpine:3.20 --overrides='{"spec":{"hostNetwork":true,"nodeName":"sm-node-01"}}' -- sh -c "apk add --no-cache iputils >/dev/null 2>&1 && ping -c 3 -M do -s 8972 10.10.40.120"
 ```
 *(Payload $8972 + 8 \text{ ICMP} + 20 \text{ IPv4} = 9000 \text{ bytes}$. Exit code 0 confirms jumbo frames traverse the switch fabric without fragmentation.)*
+
+---
+
+## 🧰 Runbook: Taking a Node Offline for Hardware Work
+
+Used on 2026-10-17 to reseat a disk in `sm-node-02` (a control-plane node holding three OSDs and a monitor).
+
+1. **Pre-checks (read-only):** `ceph pg stat` shows all PGs `active+clean`; `ceph mon stat` shows the other monitors can still form a quorum without this node; at least two other control-plane nodes are Ready.
+2. **`ceph osd set noout`:** the node's OSDs going down must not trigger a rebalance of their data.
+3. **Pause the operator:** `kubectl scale deploy/rook-ceph-operator -n rook-ceph --replicas=0`. Otherwise, after about 10 minutes it fails over the node's monitor to another node.
+4. **`kubectl drain <node> --ignore-daemonsets --delete-emptydir-data`:** OSD and mon pods go `Pending` (they are pinned to the node).
+5. **Shut down from Omni:** *Clusters → cluster → click the node → Shutdown*.
+6. After power-on: `kubectl uncordon <node>`, scale the operator back to 1, wait for PGs `active+clean`, then `ceph osd unset noout`.
+
+> [!WARNING]
+> **Moving a SATA cable renames the disks.** Linux names disks in detection order, so moving a drive to another port swapped `/dev/sdb` and `/dev/sdc` on sm-node-02. The OSD Deployments carry `ROOK_BLOCK_PATH=/dev/sdX` from their last prepare run, which then points at the *other* OSD's disk. Rook's `activate` init container searches the node's devices for the OSD's UUID and treats `ROOK_BLOCK_PATH` only as a hint, so each OSD still activated its own disk. To be safe anyway, scale the affected OSD Deployments to 0 before uncordoning, start them one at a time, and check that the `activate` log reports the expected `osd ID` and device. The CephCluster spec selects disks by `/dev/disk/by-id/…` (serial number), which never changes.
+
+> [!NOTE]
+> **Restarting the operator can fail over a monitor.** On restart, the operator judged `mon.a` unhealthy and replaced it with `mon.e` on whichever node was free. Check `ceph mon stat` and the mon pods' nodes afterwards.
+
+### Checking a disk's health
+The mgr devicehealth module collects SMART data through the OSDs:
+```bash
+ceph device ls                                   # device IDs, host:dev, wear
+ceph device scrape-health-metrics <DEVICE_ID>    # refresh now
+ceph device get-health-metrics <DEVICE_ID>       # SMART JSON
+```
+Look at reallocated blocks (5), pending (197), uncorrectable (187/198) and interface CRC errors (199). On Crucial MX500 drives, attribute 202 `Percent_Lifetime_Remain` actually reports lifetime *used*, so `0` is good.
+
+---
+
+## 📍 Monitor Placement & Control-Plane Disk Space (2026-10-17)
+
+Monitors store their data under `dataDirHostPath` (`/var/lib/rook`), on each node's `/var`. The Supermicro nodes boot from 16 GB SuperDOMs and have only **12.5 GiB** of `/var`, shared with container images, so Ceph kept raising `MON_DISK_LOW` (less than 30% free) and image pulls evicted pods.
+
+Two changes:
+1. **Earlier image garbage collection on the control-plane nodes** (Omni patch `controlplane-image-gc` in `talos/cluster-template.yaml`): the kubelet starts removing unused images at 60% disk use and stops at 50% (defaults 85/80), and removes unused images older than 7 days (`imageMaximumGCAge: 168h`). sm-node-02 went from 72% to 55% used. sm-node-03 barely moved because every image on it belongs to a running pod.
+2. **Monitor placement preference** (`spec.placement.mon` in `cluster.yaml`): prefer pc-node-04 and pc-node-05, then sm-node-02. It is *preferred* rather than required, so Rook can still fail a monitor over to any node if a preferred node is lost. Placement only affects new monitors. To move an existing one, scale its Deployment to 0 and let the operator fail it over (about 10 minutes): `kubectl -n rook-ceph scale deploy/rook-ceph-mon-<id> --replicas=0`.
+
+Apply Omni template changes with a diff first: `omnictl cluster template diff -f talos/cluster-template.yaml`, then `omnictl cluster template sync -f …`. The kubelet restarts; nodes do not reboot.
+

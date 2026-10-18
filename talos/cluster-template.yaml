@@ -68,6 +68,19 @@ patches:
               - os:reader
             allowedKubernetesNamespaces:
               - kube-system
+  # The Supermicro nodes boot from 16 GB SuperDOMs, leaving only 12.5 GiB for
+  # /var (images, logs, Ceph mon store). The kubelet's default image GC (start at
+  # 85%, stop at 80%) leaves <2 GiB headroom there, which caused pod evictions
+  # during image pulls and keeps Ceph's MON_DISK_LOW (<30% free) warning on.
+  # Clean up earlier, and drop unused images after a week regardless of space.
+  - name: controlplane-image-gc
+    inline: |-
+      machine:
+        kubelet:
+          extraConfig:
+            imageGCHighThresholdPercent: 60
+            imageGCLowThresholdPercent: 50
+            imageMaximumGCAge: 168h
 
 ---
 kind: Workers

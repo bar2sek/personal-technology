@@ -751,6 +751,25 @@ Any AI agent or human operator can review this document to pick up exactly where
 
 ---
 
+## 🎯 Milestone 15: Homelab Overview Dashboard & Recovered Ceph Disk (2026-10-17)
+
+- **Homelab Overview dashboard** (`kubernetes/infrastructure/monitoring/dashboards/homelab-overview.yaml`): one screen for nodes, Ceph, backups, UPS power, key apps and firing alerts, with a written explanation on every panel. Every query was tested against Prometheus before deployment. See [[106-observability-prometheus-grafana|Observability]].
+- **Problem it surfaced: osd.5 had been down since 2026-10-04.** It is a Crucial MX500 2 TB in sm-node-02 that had dropped off the SATA bus. Ceph had marked it out and re-replicated without raising a health warning, and the mgr exporter stopped reporting it, so the first version of the dashboard also missed it (fixed: see the warning in the Observability doc).
+- **Fix:** controlled maintenance (noout, operator paused, drain, shutdown from Omni); the drive was moved to another motherboard SATA port. SMART is clean (0 reallocated, pending or uncorrectable; 632 power-on hours), so the cause was the connection, not the drive. The port change swapped `sdb` and `sdc`; Rook activates OSDs by UUID, so each OSD found its own disk. Result: 21/21 OSDs up and in, all PGs `active+clean`. Procedure in [[104-phase2-rook-ceph-storage|Rook-Ceph]].
+- **Side effect:** on restart the operator replaced `mon.a` with `mon.e` on sm-node-03, so two monitors now sit on nodes with a 12.5 GiB `/var` (`MON_DISK_LOW`). This is the first item for the storage review.
+
+---
+
+## 🎯 Milestone 16: Ceph Back to HEALTH_OK (2026-10-17)
+
+- **Image garbage collection on the control-plane nodes** (Omni patch `controlplane-image-gc`): kubelet image GC at 60/50% instead of 85/80%, plus a 7-day maximum age for unused images. sm-node-02 went from 72% to 55% `/var` used. Applied with a template diff first; the kubelet restarted without a node reboot.
+- **Monitor moved off sm-node-03:** a preferred monitor placement (pc-node-04 and pc-node-05, then sm-node-02) in `cluster.yaml`. mon.e was scaled to 0 and the operator failed it over to **mon.f on pc-node-04** (49% `/var` free). Monitors are now c (pc-node-05), d (sm-node-02) and f (pc-node-04).
+- **Crash reports reviewed and archived:** mon.c hit a known 19.2.1 assertion (`MonMap::get_name`, `n < ranks.size()`) while mon.a was being removed; mgr.b hit an NFS-module error (no orchestrator configured, harmless under Rook); osd.5 crashed on 2026-09-17, which suggests its SATA connection was flaky before it dropped on 10-04.
+- **Result: `HEALTH_OK`** with 21/21 OSDs, 3/3 monitors and all PGs `active+clean`.
+- Also documented: refreshing `omnictl`/`talosctl` access and the split-horizon DNS IPv6 leak ([[108-omni-dex-platform-architecture|Omni]]).
+
+---
+
 ## 🎯 Immediate Next Actions & Infrastructure Backlog
 
 1. **GitOps Controller Evaluation (Flux CD)**:

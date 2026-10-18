@@ -126,6 +126,27 @@ Enabling native Ceph monitoring in `CephCluster` (`spec.monitoring.enabled: true
 
 ---
 
+## 🏠 Homelab Overview Dashboard (start here)
+
+`https://grafana.bar2sek.com/d/homelab-overview` (Grafana folder **Homelab**) is the one-screen answer to *"is everything OK?"*. Source: `kubernetes/infrastructure/monitoring/dashboards/homelab-overview.yaml`, a ConfigMap labelled `grafana_dashboard: "1"` that the Grafana sidecar loads into the folder named by the `k8s-sidecar-target-directory` annotation. UI edits are disabled (`allowUiUpdates: false`), so the repo is the source of truth.
+
+| Row | Panels | Built from |
+|---|---|---|
+| Is everything OK? | Nodes ready, Ceph health, Disks down, Alerts firing, Power, Oldest backup | kube-state-metrics, Ceph mgr, NUT exporter, `ALERTS` |
+| Nodes | `/var` used, memory, CPU per node | node-exporter joined to `node_uname_info` for node names |
+| Backups | Hours since last success per CronJob, Ceph capacity, active Ceph health checks | `kube_cronjob_status_last_successful_time`, `ceph_health_detail` |
+| Power and apps | UPS charge, runtime, load; ready replicas of key services | `network_ups_tools_*`, `kube_deployment_status_replicas_available` |
+| Active alerts | Every firing alert and how long it has fired | `ALERTS_FOR_STATE` |
+
+Every panel has a description (the (i) icon) saying what it measures and what to do when it is not green.
+
+> [!WARNING]
+> **A completely failed Ceph disk disappears from Ceph's metrics.** The mgr exporter stops publishing `ceph_osd_up`/`ceph_osd_metadata` for an OSD that has not booted since the mgr restarted, so `ceph_osd_up == 0` misses it. The *Disks down* tile therefore takes the larger of Ceph's own count and the number of Rook `rook-ceph-osd-*` Deployments with unavailable replicas. Found when osd.5 had been down for two weeks while the first version of the tile read 0.
+
+**Adding a panel:** test the PromQL against Prometheus first (`kubectl port-forward -n monitoring svc/kube-prometheus-stack-prometheus 9090` and the `/api/v1/query` endpoint), then add it to the JSON and `kubectl apply` the ConfigMap. The sidecar reloads it within a minute.
+
+---
+
 ## 🛠 Operational Runbook & Commands
 
 All monitoring operations are integrated into the root `Justfile`:

@@ -46,6 +46,26 @@ spec:
         - key: node-role.kubernetes.io/control-plane
           operator: Exists
           effect: NoSchedule
+    # Monitors keep their store under dataDirHostPath (/var/lib/rook), on each
+    # node's /var. The Supermicro nodes have only 12.5 GiB of /var and keep
+    # tripping MON_DISK_LOW (<30% free), so prefer the PCs (72 GiB and 929 GiB).
+    # Preferred, not required: if a preferred node is lost for good, Rook can
+    # still fail a monitor over to any other node instead of staying at two.
+    mon:
+      nodeAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
+                - key: kubernetes.io/hostname
+                  operator: In
+                  values: ["pc-node-04", "pc-node-05"]
+          - weight: 50
+            preference:
+              matchExpressions:
+                - key: kubernetes.io/hostname
+                  operator: In
+                  values: ["sm-node-02"]
   resources:
     mgr:
       limits:
