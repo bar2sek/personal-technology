@@ -53,6 +53,12 @@ monitoring-status:
     @echo "\n===> Ceph ServiceMonitor:"
     kubectl -n rook-ceph get servicemonitor
 
+# Apply monitoring config: custom alert rules, dashboards, then the Helm release (chart version pinned)
+monitoring-apply:
+    kubectl apply -f kubernetes/infrastructure/monitoring/kube-client-cert-rule.yaml
+    kubectl apply -f kubernetes/infrastructure/monitoring/dashboards/
+    helm upgrade kube-prometheus-stack prometheus-community/kube-prometheus-stack --version 91.4.1 -n monitoring -f kubernetes/infrastructure/monitoring/values.yaml
+
 # Retrieve Grafana admin credentials
 grafana-password:
     @echo "Grafana Admin User: admin"

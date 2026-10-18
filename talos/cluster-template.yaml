@@ -81,6 +81,19 @@ patches:
             imageGCHighThresholdPercent: 60
             imageGCLowThresholdPercent: 50
             imageMaximumGCAge: 168h
+  # Every pod pulls its image onto its node's /var. On the SuperDOM nodes that
+  # left sm-node-03 with 7.5 GiB of images on a 12.5 GiB /var and got backups
+  # evicted. Soft-taint them so the scheduler prefers pc-node-04/05 (~72 GiB and
+  # 930 GiB /var) and uses these only when needed. Interim: remove once /var
+  # moves off the SuperDOMs (journal Milestone 19). PreferNoSchedule never evicts; pods
+  # move as they restart. Ceph daemons keep their own placement. A custom key,
+  # because Talos manages node-role.kubernetes.io/control-plane itself
+  # (allowSchedulingOnControlPlanes removes it).
+  - name: controlplane-prefer-no-schedule
+    inline: |-
+      machine:
+        nodeTaints:
+          homelab.bar2sek.com/small-var: "true:PreferNoSchedule"
 
 ---
 kind: Workers

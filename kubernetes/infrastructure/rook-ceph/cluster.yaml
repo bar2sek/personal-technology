@@ -51,6 +51,9 @@ spec:
     # tripping MON_DISK_LOW (<30% free), so prefer the PCs (72 GiB and 929 GiB).
     # Preferred, not required: if a preferred node is lost for good, Rook can
     # still fail a monitor over to any other node instead of staying at two.
+    # Third choice is sm-node-01: its SuperDOM is the least loaded. A monitor
+    # shares the SuperDOM with etcd, and both fsync constantly; on sm-node-02
+    # that pushed etcd write p99 to 2.6 s (KubeAPIErrorBudgetBurn, 2026-10-18).
     mon:
       nodeAffinity:
         preferredDuringSchedulingIgnoredDuringExecution:
@@ -65,7 +68,7 @@ spec:
               matchExpressions:
                 - key: kubernetes.io/hostname
                   operator: In
-                  values: ["sm-node-02"]
+                  values: ["sm-node-01"]
   resources:
     mgr:
       limits:

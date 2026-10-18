@@ -46,6 +46,18 @@ spec:
         fsGroup: 1000 # makes the mounted volume writable by that user
         seccompProfile:
           type: RuntimeDefault
+      # Prefer worker nodes: the control planes (sm-node-*) boot from 16 GB SuperDOMs
+      # with a 12.5 GiB /var that container images keep near the eviction threshold.
+      # The backup CronJobs follow this pod (podAffinity), so this also keeps their
+      # image pulls and scratch space off the small disks.
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: DoesNotExist
       containers:
         - name: actual-server
           image: actualbudget/actual-server:26.10.0@sha256:24645e971da6bb1a1f953d6859e307a0b29be1e8b4130a35b3220c209b5b860c

@@ -7,6 +7,13 @@ global:
   rbac:
     create: true
 
+# Replaced by kube-client-cert-rule.yaml: a Talos/Omni component reconnects all
+# day with client certs valid for under 30 minutes, which keeps the stock rule's
+# 1st-percentile check permanently critical.
+defaultRules:
+  disabled:
+    KubeClientCertificateExpiration: true
+
 # ------------------------------------------------------------------------------
 # 1. Prometheus Operator
 # ------------------------------------------------------------------------------
@@ -109,6 +116,9 @@ kubelet:
     cAdvisor: true
     probes: true
     resource: true
+    # Chart default /metrics/resource/v1alpha1 no longer exists on current
+    # kubelets (404 -> TargetDown since 2026-09-16).
+    resourcePath: /metrics/resource
 
 # ------------------------------------------------------------------------------
 # 6. Alertmanager

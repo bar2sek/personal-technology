@@ -1,0 +1,47 @@
+# Replacement for kube-prometheus-stack's KubeClientCertificateExpiration
+# (disabled in values.yaml under defaultRules.disabled).
+#
+# The stock rule fires when the 1st percentile of presented client certs has
+# < 7d / < 24h left. On this cluster a Talos/Omni component reconnects ~225
+# times an hour, around the clock, with certs that are minted with < 30 minutes
+# of validity, so the stock rule is always critical.
+#
+# This version counts only handshakes whose cert has between 30 minutes and
+# 7 days (warning) / 24 hours (critical) left. A long-lived cert that is really
+# expiring passes through that window for days before it lapses; certs that are
+# short-lived by design never enter it.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: kube-client-cert-expiration
+  namespace: monitoring
+spec:
+  groups:
+    - name: kube-client-cert-expiration
+      rules:
+        - alert: KubeClientCertificateExpiration
+          expr: |
+            sum without (namespace, service, endpoint, le) (rate(apiserver_client_certificate_expiration_seconds_bucket{job="apiserver",le="604800.0"}[5m]))
+            -
+            sum without (namespace, service, endpoint, le) (rate(apiserver_client_certificate_expiration_seconds_bucket{job="apiserver",le="1800.0"}[5m]))
+            > 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: Client certificate is about to expire.
+            description: A long-lived client certificate used to authenticate to the kubernetes apiserver {{ $labels.instance }} expires in less than 7 days (certs minted with under 30 minutes of validity are ignored).
+            runbook_url: https://runbooks.prometheus-operator.dev/runbooks/kubernetes/kubeclientcertificateexpiration
+        - alert: KubeClientCertificateExpiration
+          expr: |
+            sum without (namespace, service, endpoint, le) (rate(apiserver_client_certificate_expiration_seconds_bucket{job="apiserver",le="86400.0"}[5m]))
+            -
+            sum without (namespace, service, endpoint, le) (rate(apiserver_client_certificate_expiration_seconds_bucket{job="apiserver",le="1800.0"}[5m]))
+            > 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: Client certificate is about to expire.
+            description: A long-lived client certificate used to authenticate to the kubernetes apiserver {{ $labels.instance }} expires in less than 24 hours (certs minted with under 30 minutes of validity are ignored).
+            runbook_url: https://runbooks.prometheus-operator.dev/runbooks/kubernetes/kubeclientcertificateexpiration

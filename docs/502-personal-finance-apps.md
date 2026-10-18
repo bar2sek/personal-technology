@@ -90,3 +90,22 @@ spec:
   selector:
     app: actual-budget
 ```
+
+> [!NOTE]
+> The manifest above is an early snapshot. `kubernetes/apps/finance/actual-budget.yaml` and `actual-budget-backup.yaml` are the source of truth.
+
+---
+
+## 📍 Node Placement & Backups (2026-10-18)
+
+The Deployment **prefers non-control-plane nodes** (`nodeAffinity` on `node-role.kubernetes.io/control-plane DoesNotExist`), so it runs on pc-node-04 or pc-node-05.
+
+**Why:** the backup CronJobs mount the app's RWO Ceph volume, so `podAffinity` pins them to whichever node runs the app. While the app ran on sm-node-03, the 2026-10-18 S3 backup was **evicted three times** for `ephemeral-storage`. The sm nodes boot from 16 GB SuperDOMs with a 12.5 GiB `/var`, and sm-node-03 had 7.5 GiB of it filled with container images; pulling the `aws-cli` image tipped it over the kubelet's eviction threshold. The backup itself is tiny (about 37 KiB encrypted), so moving its scratch space to Ceph would not have helped. Container images always live on the node's own disk, so the fix is to keep the pod off the small disks.
+
+> [!TIP]
+> **Run a backup on demand** (for example after a failed night):
+> ```bash
+> kubectl -n finance create job --from=cronjob/backup-actual-budget backup-actual-budget-manual-$(date +%m%d)
+> kubectl -n finance logs job/backup-actual-budget-manual-$(date +%m%d) --all-containers | tail -3
+> ```
+> A failed Job keeps `KubeJobFailed` firing until the Job object is deleted (`kubectl -n finance delete job <name>`), even after a later run succeeds.

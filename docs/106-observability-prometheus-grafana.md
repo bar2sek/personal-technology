@@ -147,6 +147,16 @@ Every panel has a description (the (i) icon) saying what it measures and what to
 > [!WARNING]
 > **A completely failed Ceph disk disappears from Ceph's metrics.** The mgr exporter stops publishing `ceph_osd_up`/`ceph_osd_metadata` for an OSD that has not booted since the mgr restarted, so `ceph_osd_up == 0` misses it. The *Disks down* tile therefore takes the larger of Ceph's own count and the number of Rook `rook-ceph-osd-*` Deployments with unavailable replicas. Found when osd.5 had been down for two weeks while the first version of the tile read 0.
 
+### Alert rule tuning (2026-10-18)
+
+Apply monitoring changes with `just monitoring-apply`: it applies the custom rules and dashboards, then runs `helm upgrade` with `values.yaml` and the chart version pinned (91.4.1). Before upgrading, confirm the live values still match the repo (`helm -n monitoring get values kube-prometheus-stack`).
+
+- **`TargetDown` for the kubelet (since 2026-09-16):** the chart scraped `/metrics/resource/v1alpha1`, which current kubelets no longer serve (404). `kubelet.serviceMonitor.resourcePath: /metrics/resource` fixes it.
+- **`KubeClientCertificateExpiration` was permanently critical.** About 225 times an hour, day and night, some client (probably Omni's or Talos's own connection) presents a certificate minted with under 30 minutes of validity. The stock rule fires when the 1st percentile of presented certificates has less than 24 hours left, so it never clears. It is disabled (`defaultRules.disabled`) and replaced by `kubernetes/infrastructure/monitoring/kube-client-cert-rule.yaml`, which counts only certificates with between 30 minutes and 7 days / 24 hours left. A long-lived certificate that is really expiring stays in that window for days; short-lived-by-design ones never enter it.
+
+> [!TIP]
+> Histogram bucket labels are floats as strings: `le="1800.0"`, not `le="1800"`. A wrong `le` matches nothing and returns an empty result, not an error.
+
 **Adding a panel:** test the PromQL against Prometheus first (`kubectl port-forward -n monitoring svc/kube-prometheus-stack-prometheus 9090` and the `/api/v1/query` endpoint), then add it to the JSON and `kubectl apply` the ConfigMap. The sidecar reloads it within a minute.
 
 ---

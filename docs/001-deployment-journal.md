@@ -788,6 +788,19 @@ Any AI agent or human operator can review this document to pick up exactly where
 - **PG autoscaler fixed:** every pool was stuck at 1 PG because `.mgr`'s default CRUSH rule overlapped the device-class rules, so the autoscaler skipped all pools. `.mgr` is now pinned to ssd (a `builtin-mgr` CephBlockPool plus a one-time `crush_rule` change, because Rook does not change rules on existing pools), and the NVMe pool is `bulk`. PG counts went from 6 in total to 241, and all four NVMe OSDs now hold PGs (82/91/130/129, in proportion to size).
 - **Storage policy:** SSD (default StorageClass) and NVMe first; the HDD pool is scratch and overflow only; the garage Synology holds off-cluster copies.
 - **Dashboard:** a new *Storage* row on Homelab Overview with % dials for Ceph total, NVMe, SSD and HDD, plus Used / Total amounts ([[106-observability-prometheus-grafana|Observability]]).
+
+---
+
+## 🎯 Milestone 19: Alert Noise Cleared & Actual Budget off the SuperDOM Nodes (2026-10-18)
+
+- **Kubelet `TargetDown` (firing since 09-16):** the chart's `/metrics/resource/v1alpha1` scrape path returns 404 on current kubelets; `values.yaml` now uses `/metrics/resource`. All 20 kubelet targets are up.
+- **`KubeClientCertificateExpiration` (critical, permanent):** caused by a client that reconnects all day with certificates valid for under 30 minutes. The stock rule is replaced by one that ignores certificates minted that short-lived ([[106-observability-prometheus-grafana|Observability]], *Alert rule tuning*).
+- **New `just monitoring-apply`** for the Helm release (chart version pinned) plus custom rules and dashboards.
+- **Actual Budget S3 backup evicted:** sm-node-03's 12.5 GiB `/var` was 60% container images, and pulling the backup image crossed the eviction threshold. The app now prefers non-control-plane nodes and runs on pc-node-04; its backups follow it. A manual backup succeeded the same day ([[502-personal-finance-apps|Actual Budget]]).
+- **`KubeAPIErrorBudgetBurn`:** lease writes on sm-node-02 timed out (etcd write p99 2.6 s). The SuperDOM is healthy per SMART but was shared by etcd and Ceph monitor mon.d, both `fsync`-heavy. mon.d was failed over to sm-node-01, which has the least-loaded SuperDOM ([[104-phase2-rook-ceph-storage|Rook-Ceph]], *Monitor Placement*).
+- **Interim: soft taint on the sm nodes.** Omni patch `controlplane-prefer-no-schedule` adds `homelab.bar2sek.com/small-var=true:PreferNoSchedule`, so new pods prefer pc-node-04/05. The movable workloads on the sm nodes request about 8.4 GiB of memory and 2.4 CPUs, against about 40 GiB and 17 CPUs free on pc-node-04. Nothing is evicted; pods move as they restart.
+- **Planned real fix: move Talos `/var` (EPHEMERAL) off the SuperDOMs.** The sm nodes are the strongest hardware (sm-node-03: 28 threads, 160 GB); only their 12.5 GiB `/var` is the problem, and it also hosts etcd. Plan: on each sm node, retire one 2 TB MX500 from Ceph and point EPHEMERAL at it with a Talos `VolumeConfig` disk selector, one node at a time (drain OSD → remove from Omni → re-add). The SSD tier drops to about 9.5 TiB raw. The taint comes off afterwards.
+- **Lesson:** applying a monitor placement change while a monitor is scaled to 0 deadlocks Rook's rolling restart (`EBUSY`). Apply, wait for the restarts, then fail over ([[104-phase2-rook-ceph-storage|Rook-Ceph]]).
 - Details: [[104-phase2-rook-ceph-storage|Rook-Ceph Storage]], *Placement Groups & the PG Autoscaler*.
 
 ---

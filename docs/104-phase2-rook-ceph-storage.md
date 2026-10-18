@@ -216,6 +216,19 @@ Apply Omni template changes with a diff first: `omnictl cluster template diff -f
 
 **2026-10-18:** a later failover had put mon.g on sm-node-03 (`MON_DISK_LOW` again), probably because pc-node-05 was being rebooted during the gaming-VM disk work. Scaling mon.g to 0 failed it over to mon.h on pc-node-05 as preferred. Monitors are now **d (sm-node-02), f (pc-node-04), h (pc-node-05)**. If a monitor lands on an sm node again, check whether a pc node was unavailable at the time, then repeat the scale-to-0 failover.
 
+**2026-10-18, later: the third monitor moved from sm-node-02 to sm-node-01.** `KubeAPIErrorBudgetBurn` traced back to lease `PUT`s timing out on sm-node-02. etcd write p99 there was 2.6 s against about 80 ms on the other control planes, and its SuperDOM averaged 10.7 ms per write against 0.8 ms on sm-node-01's identical drive. SMART was healthy (6.0 Gb/s link, 0 reallocated, 16% endurance used after 4,241 h), but the drive was writing about 5× more to flash than the host sent it, which is what many small `fsync`s look like. The cause is **etcd and a Ceph monitor sharing one small SuperDOM**: both `fsync` constantly. The third placement preference is now sm-node-01, the least-loaded SuperDOM.
+
+> [!CAUTION]
+> **Change monitor placement first, then fail over, never both at once.** Applying a placement change makes Rook restart every monitor in turn so the new setting takes effect, and it checks before each restart that a majority would remain. If a monitor is already scaled to 0, that check fails (`EBUSY: not enough monitors would be available`), Rook retries every minute, and the failover never starts. Safe order: `kubectl apply` the CephCluster, wait until every `rook-ceph-mon-*` pod has restarted and `ceph quorum_status` lists all three, then scale the monitor you want to move to 0. If you get stuck, scale that monitor back to 1, let the restarts finish, and start again.
+
+> [!TIP]
+> **Read SMART on a Talos boot disk** (Ceph's devicehealth only covers OSD disks):
+> ```bash
+> kubectl debug node/<node> -n kube-system --profile=sysadmin -it --image=alpine:3.24 -- \
+>   sh -c 'apk add -q smartmontools && smartctl -x /dev/sda'
+> ```
+> Delete the `node-debugger-*` pod afterwards. Per-node disk latency is also in Prometheus: `rate(node_disk_write_time_seconds_total[1h]) / rate(node_disk_writes_completed_total[1h])`.
+
 ---
 
 ## 📊 Placement Groups & the PG Autoscaler (2026-10-18)
