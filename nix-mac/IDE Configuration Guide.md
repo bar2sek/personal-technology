@@ -11,24 +11,25 @@ status: evergreen
 aliases: []
 ---
 
-# ⚡ Antigravity IDE + Multi-Model Setup
 
-**Antigravity IDE** is your primary development environment on macOS—combining the familiarity and extension ecosystem of Code OSS with Google's native agentic architecture and **Roo Code** as a multi-model backup switcher.
+# ⚡ Visual Studio Code + Antigravity Multi-Model Setup
 
-- **Unified Agent Canvas:** Seamlessly integrates native Antigravity agent workflows (Gemini Flash/Pro) directly alongside the editor canvas, visual diffs, and terminal.
-- **Multi-Model Switcher (Roo Code):** Provides an instant toggle between **Claude Sonnet 5** and **Claude Opus 5** (Anthropic API) whenever AGY tokens are exhausted or a second opinion is wanted.
-- **Zero Bloat:** Replaces standalone VS Code entirely, and runs no local inference — the unified memory stays available for builds and containers.
+**Visual Studio Code** (`visual-studio-code`) paired with the **Antigravity extension** (`Google.google-antigravity`) is your primary development environment on macOS—combining official VS Code with Google's native agentic architecture, **Claude Code**, and **Roo Code** as a multi-model backup switcher.
+
+- **Unified Agent Canvas:** Seamlessly integrates native Antigravity agent workflows (Gemini Flash/Pro) directly inside VS Code alongside visual diffs and the integrated terminal.
+- **Multi-Model Switcher (Claude Code + Roo Code):** Provides instant access to Claude via your subscription (`anthropic.claude-code`) plus xAI Grok, Local MLX, and AWS Bedrock via Roo Code.
+- **Single-IDE Footprint:** Eliminates the duplicate standalone `antigravity-ide` fork (~2.1 GB reclaimed across app binary and extension caches).
 
 ---
 
-## 🛠️ Step 1: Install Antigravity IDE via `nix-darwin`
+## 🛠️ Step 1: Install Visual Studio Code & Antigravity via `nix-darwin`
 
-Antigravity IDE is declared directly in your `templates/flake.nix` under `homebrew.casks`:
+Visual Studio Code and the Antigravity Desktop 2.0 orchestrator are declared directly in your `templates/flake.nix` under `homebrew.casks`:
 
 ```nix
 homebrew.casks = [
-  "antigravity-ide"
   "antigravity"
+  "visual-studio-code"
   "obsidian"
   "orbstack"
   "appcleaner"
@@ -40,26 +41,29 @@ homebrew.casks = [
 
 ## ⚙️ Step 2: Essential Extensions
 
-Install the recommended extensions to match the workstation's typography, aesthetics, and autonomous backup capabilities:
+Extensions are installed declaratively via `templates/flake.nix` on `just switch`:
 
 ```bash
+# Native Antigravity Agent Extension for VS Code
+code --install-extension Google.google-antigravity
+
 # Frontier Reasoning (Claude.ai Subscription — Zero per-token charges)
-agy-ide --install-extension anthropic.claude-code
+code --install-extension anthropic.claude-code
 
 # Autonomous Multi-Model Switcher (Grok, Local MLX, AWS Bedrock)
-agy-ide --install-extension RooVeterinaryInc.roo-cline
+code --install-extension RooVeterinaryInc.roo-cline
 
 # Aesthetics & Typography
-agy-ide --install-extension PKief.material-icon-theme
-agy-ide --install-extension enkia.tokyo-night
+code --install-extension PKief.material-icon-theme
+code --install-extension enkia.tokyo-night
 
 # Language & Tooling Support
-agy-ide --install-extension bbenoist.Nix
-agy-ide --install-extension hashicorp.terraform
-agy-ide --install-extension amazonwebservices.aws-toolkit-vscode
-agy-ide --install-extension ms-azuretools.vscode-azureresourcegroups
-agy-ide --install-extension ms-azuretools.vscode-docker
-agy-ide --install-extension ms-kubernetes-tools.vscode-kubernetes-tools
+code --install-extension jnoortheen.nix-ide
+code --install-extension hashicorp.terraform
+code --install-extension amazonwebservices.aws-toolkit-vscode
+code --install-extension ms-azuretools.vscode-azureresourcegroups
+code --install-extension ms-azuretools.vscode-docker
+code --install-extension ms-kubernetes-tools.vscode-kubernetes-tools
 ```
 
 ---
@@ -71,7 +75,7 @@ agy-ide --install-extension ms-kubernetes-tools.vscode-kubernetes-tools
 >
 > Roo Code is reserved exclusively as a multi-model switchboard for **xAI Grok**, your **local MLX model**, and **AWS Bedrock**.
 
-Roo Code profiles are managed **declaratively** via `~/.config/roo-code/settings.json` and automatically imported into Antigravity IDE on startup via `"roo-cline.autoImportSettingsPath"`.
+Roo Code profiles are managed **declaratively** via `~/.config/roo-code/settings.json` and automatically imported into VS Code on startup via `"roo-cline.autoImportSettingsPath"`.
 
 ### Profile 1: Grok (xAI Real-Time & Velocity)
 
@@ -104,7 +108,7 @@ Roo Code profiles are managed **declaratively** via `~/.config/roo-code/settings
 
 ## 🎨 Step 4: Ergonomic Editor Settings
 
-Configure your user settings (`~/Library/Application Support/Antigravity/User/settings.json`) to align with Ghostty and your hardware preferences:
+Configure your user settings (`~/Library/Application Support/Code/User/settings.json`) to align with Ghostty and your hardware preferences:
 
 ```json
 {
@@ -141,8 +145,8 @@ Configure your user settings (`~/Library/Application Support/Antigravity/User/se
 │    • Claude.ai Subscription logged into Claude extension    │
 │    • XAI_API_KEY · AWS Credentials / Profile                │
 │                                                             │
-│ 2. Primary Daily Driver in ANTIGRAVITY IDE:                 │
-│    • Use Native Antigravity Agent for high-level tasks      │
+│ 2. Primary Daily Driver in VISUAL STUDIO CODE:              │
+│    • Use Native Antigravity Agent extension for tasks       │
 │    • Autonomous builds, tests, and multi-repo planning      │
 │    • Native Antigravity Tab for inline ghost-text           │
 │                                                             │

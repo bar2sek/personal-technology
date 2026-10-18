@@ -47,10 +47,6 @@ test-prompt:
 agy-app:
     open -a Antigravity .
 
-# Launch Antigravity IDE on the current directory
-agy-ide:
-    open -a "Antigravity IDE" .
-
 # Launch Antigravity CLI in current terminal
 agy:
     agy

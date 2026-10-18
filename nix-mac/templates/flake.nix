@@ -45,6 +45,7 @@
         pkgs.stern
         pkgs.yamllint
         pkgs.tflint
+        pkgs.nixfmt
         pkgs.gh # GitHub CLI (Actions runs, PRs, repo admin)
 
         # Cloud Storage & Sync Tooling
@@ -188,7 +189,6 @@
 
           # Developer, AI & Remote Access
           "antigravity"
-          "antigravity-ide"
           "claude"
           "ghostty"
           "orbstack"
@@ -249,7 +249,6 @@
             "/Applications/BambuStudio.app"
             "/Applications/Claude.app"
             "/Applications/Antigravity.app"
-            "/Applications/Antigravity IDE.app"
             "/Applications/Visual Studio Code.app"
             "/Applications/Ghostty.app"
             "/Applications/Obsidian.app"
@@ -431,7 +430,12 @@
           chown -h "$PRIMARY_USER" "$USER_HOME/.local/bin/tailscale" 2>/dev/null || true
         fi
 
-        echo "--> Deploying declarative Antigravity IDE & AI configuration..."
+        echo "--> Purging retired Antigravity IDE caches & extension state..."
+        rm -rf "$USER_HOME/Library/Application Support/Antigravity IDE" 2>/dev/null || true
+        rm -rf "$USER_HOME/.antigravity-ide" 2>/dev/null || true
+        rm -rf "$USER_HOME/Library/Caches/com.google.antigravity-ide"* 2>/dev/null || true
+
+        echo "--> Deploying declarative VS Code & AI configuration..."
         # Declarative Roo Code multi-model profiles:
         # - Grok (xAI)
         # - Local MLX (Qwen 2.5 Coder 32B Instruct on port 8080)
@@ -476,9 +480,8 @@ EOF
         chown -R "$PRIMARY_USER" "$USER_HOME/.config/roo-code"
 
         # Deploy declarative Roo Code custom modes (pure Chat mode with zero tools for local LLMs)
-        for app_support in "Antigravity IDE" "Code"; do
-          mkdir -p "$USER_HOME/Library/Application Support/$app_support/User/globalStorage/rooveterinaryinc.roo-cline/settings"
-          cat << 'EOF' > "$USER_HOME/Library/Application Support/$app_support/User/globalStorage/rooveterinaryinc.roo-cline/settings/custom_modes.yaml"
+        mkdir -p "$USER_HOME/Library/Application Support/Code/User/globalStorage/rooveterinaryinc.roo-cline/settings"
+        cat << 'EOF' > "$USER_HOME/Library/Application Support/Code/User/globalStorage/rooveterinaryinc.roo-cline/settings/custom_modes.yaml"
 customModes:
   - slug: "chat"
     name: "💬 Chat / Pair Programmer"
@@ -486,14 +489,11 @@ customModes:
     groups: []
     customInstructions: "Answer all questions directly in clear markdown with code blocks. Do not attempt to invoke tools or execute terminal commands."
 EOF
-          chown -R "$PRIMARY_USER" "$USER_HOME/Library/Application Support/$app_support"
-        done
 
-        # Apply settings to both Antigravity IDE and Code
-        for app_name in "Antigravity IDE" "Code"; do
-          settings_dir="$USER_HOME/Library/Application Support/$app_name/User"
-          mkdir -p "$settings_dir"
-          cat << EOF > "$settings_dir/settings.json"
+        # Apply settings to Visual Studio Code
+        settings_dir="$USER_HOME/Library/Application Support/Code/User"
+        mkdir -p "$settings_dir"
+        cat << 'EOF' > "$settings_dir/settings.json"
 {
   "editor.fontFamily": "'JetBrainsMono Nerd Font', Menlo, Monaco, 'Courier New', monospace",
   "editor.fontSize": 14,
@@ -501,6 +501,9 @@ EOF
   "editor.lineNumbers": "on",
   "editor.minimap.enabled": true,
   "editor.formatOnSave": true,
+  "[nix]": {
+    "editor.formatOnSave": false
+  },
   "workbench.colorTheme": "Tokyo Night",
   "workbench.iconTheme": "material-icon-theme",
   "telemetry.telemetryLevel": "off",
@@ -520,7 +523,7 @@ EOF
     "personal-technology",
     "professional-technology"
   ],
-  "roo-cline.autoImportSettingsPath": "~/Library/Application Support/$app_name/User/globalStorage/rooveterinaryinc.roo-cline/settings/roo-settings.json",
+  "roo-cline.autoImportSettingsPath": "~/Library/Application Support/Code/User/globalStorage/rooveterinaryinc.roo-cline/settings/roo-settings.json",
   "files.watcherExclude": {
     "**/.git/objects/**": true,
     "**/.git/subtree-cache/**": true,
@@ -531,14 +534,10 @@ EOF
   }
 }
 EOF
-          chown -R "$PRIMARY_USER" "$USER_HOME/Library/Application Support/$app_name"
-        done
+        chown -R "$PRIMARY_USER" "$USER_HOME/Library/Application Support/Code"
 
-        echo "--> Installing declarative Antigravity IDE & editor extensions..."
+        echo "--> Installing declarative VS Code extensions..."
         for ide_bin in \
-          "/opt/homebrew/bin/antigravity-ide" \
-          "/opt/homebrew/bin/agy-ide" \
-          "/Applications/Antigravity IDE.app/Contents/Resources/app/bin/antigravity-ide" \
           "/opt/homebrew/bin/code" \
           "/usr/local/bin/code" \
           "/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code"; do
