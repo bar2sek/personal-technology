@@ -187,6 +187,7 @@
           "bambu-studio"
 
           # Developer, AI & Remote Access
+          "antigravity"
           "antigravity-ide"
           "claude"
           "ghostty"
@@ -194,6 +195,7 @@
           "tailscale-app"
           "moonlight"
           "tigervnc" # KubeVirt VM consoles (virtctl vnc); macOS Screen Sharing rejects passwordless VNC
+          "visual-studio-code"
         ];
 
         # Mac App Store Applications (Optional, requires numeric App ID)
@@ -246,7 +248,9 @@
             # 3. 3D Fabrication, AI & Developer Tools (Farthest Right)
             "/Applications/BambuStudio.app"
             "/Applications/Claude.app"
+            "/Applications/Antigravity.app"
             "/Applications/Antigravity IDE.app"
+            "/Applications/Visual Studio Code.app"
             "/Applications/Ghostty.app"
             "/Applications/Obsidian.app"
             "/Applications/OrbStack.app"
@@ -468,11 +472,13 @@
   },
   "globalSettings": {}
 }
+EOF
         chown -R "$PRIMARY_USER" "$USER_HOME/.config/roo-code"
 
         # Deploy declarative Roo Code custom modes (pure Chat mode with zero tools for local LLMs)
-        mkdir -p "$USER_HOME/Library/Application Support/Antigravity IDE/User/globalStorage/rooveterinaryinc.roo-cline/settings"
-        cat << 'EOF' > "$USER_HOME/Library/Application Support/Antigravity IDE/User/globalStorage/rooveterinaryinc.roo-cline/settings/custom_modes.yaml"
+        for app_support in "Antigravity IDE" "Code"; do
+          mkdir -p "$USER_HOME/Library/Application Support/$app_support/User/globalStorage/rooveterinaryinc.roo-cline/settings"
+          cat << 'EOF' > "$USER_HOME/Library/Application Support/$app_support/User/globalStorage/rooveterinaryinc.roo-cline/settings/custom_modes.yaml"
 customModes:
   - slug: "chat"
     name: "💬 Chat / Pair Programmer"
@@ -480,14 +486,14 @@ customModes:
     groups: []
     customInstructions: "Answer all questions directly in clear markdown with code blocks. Do not attempt to invoke tools or execute terminal commands."
 EOF
-        chown -R "$PRIMARY_USER" "$USER_HOME/Library/Application Support/Antigravity IDE/User/globalStorage/rooveterinaryinc.roo-cline/settings"
+          chown -R "$PRIMARY_USER" "$USER_HOME/Library/Application Support/$app_support"
+        done
 
-        # Apply settings to both Antigravity IDE and Code OSS
-        for settings_dir in \
-          "$USER_HOME/Library/Application Support/Antigravity IDE/User" \
-          "$USER_HOME/Library/Application Support/Code/User"; do
+        # Apply settings to both Antigravity IDE and Code
+        for app_name in "Antigravity IDE" "Code"; do
+          settings_dir="$USER_HOME/Library/Application Support/$app_name/User"
           mkdir -p "$settings_dir"
-          cat << 'EOF' > "$settings_dir/settings.json"
+          cat << EOF > "$settings_dir/settings.json"
 {
   "editor.fontFamily": "'JetBrainsMono Nerd Font', Menlo, Monaco, 'Courier New', monospace",
   "editor.fontSize": 14,
@@ -499,7 +505,7 @@ EOF
   "workbench.iconTheme": "material-icon-theme",
   "telemetry.telemetryLevel": "off",
   "update.mode": "default",
-  "git.enableSmartCommit": false,
+  "git.enableSmartCommit": true,
   "git.confirmSync": false,
   "git.autorefresh": true,
   "git.autoRepositoryDetection": true,
@@ -514,7 +520,7 @@ EOF
     "personal-technology",
     "professional-technology"
   ],
-  "roo-cline.autoImportSettingsPath": "~/Library/Application Support/Antigravity IDE/User/globalStorage/rooveterinaryinc.roo-cline/settings/roo-settings.json",
+  "roo-cline.autoImportSettingsPath": "~/Library/Application Support/$app_name/User/globalStorage/rooveterinaryinc.roo-cline/settings/roo-settings.json",
   "files.watcherExclude": {
     "**/.git/objects/**": true,
     "**/.git/subtree-cache/**": true,
@@ -525,7 +531,7 @@ EOF
   }
 }
 EOF
-          chown -R "$PRIMARY_USER" "$settings_dir"
+          chown -R "$PRIMARY_USER" "$USER_HOME/Library/Application Support/$app_name"
         done
 
         echo "--> Installing declarative Antigravity IDE & editor extensions..."
@@ -533,9 +539,12 @@ EOF
           "/opt/homebrew/bin/antigravity-ide" \
           "/opt/homebrew/bin/agy-ide" \
           "/Applications/Antigravity IDE.app/Contents/Resources/app/bin/antigravity-ide" \
-          "/opt/homebrew/bin/code"; do
+          "/opt/homebrew/bin/code" \
+          "/usr/local/bin/code" \
+          "/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code"; do
           if [ -x "$ide_bin" ]; then
             for ext in \
+              "Google.google-antigravity" \
               "anthropic.claude-code" \
               "RooVeterinaryInc.roo-cline" \
               "enkia.tokyo-night" \
@@ -548,7 +557,10 @@ EOF
               "ms-vscode.azure-account" \
               "ms-azuretools.vscode-azureresourcegroups" \
               "ms-azuretools.vscode-docker" \
-              "ms-kubernetes-tools.vscode-kubernetes-tools"; do
+              "ms-kubernetes-tools.vscode-kubernetes-tools" \
+              "ms-python.python" \
+              "golang.go" \
+              "redhat.vscode-yaml"; do
               sudo -H -u "$PRIMARY_USER" env HOME="$USER_HOME" "$ide_bin" --install-extension "$ext" --force 2>/dev/null || true
             done
           fi

@@ -59,9 +59,9 @@ agy:
 agy-awake:
     caffeinate -s
 
-# Launch Antigravity IDE (alias for code)
+# Launch Visual Studio Code on current directory
 code:
-    open -a "Antigravity IDE" .
+    code .
 
 # ------------------------------------------------------------------------------
 # System Housekeeping & Anti-Bloat
