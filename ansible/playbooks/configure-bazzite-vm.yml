@@ -190,6 +190,68 @@
         enabled: true
         state: started
 
+    # The VM sits behind KubeVirt masquerade NAT and a MetalLB address, so
+    # Sunshine does not recognise https://10.10.20.52:47990 as its own origin and
+    # its CSRF protection rejects the web UI (PIN pairing, settings).
+    - name: Allow the LAN address as a Sunshine web UI origin
+      ansible.builtin.lineinfile:
+        path: /home/bazzite/.var/app/dev.lizardbyte.app.Sunshine/config/sunshine/sunshine.conf
+        regexp: '^csrf_allowed_origins\s*='
+        line: "csrf_allowed_origins = https://{{ ansible_host if ansible_host is match('^[0-9.]+$') else '10.10.20.52' }}:47990"
+        create: true
+        mode: '0644'
+      register: sunshine_conf
+      tags: [sunshine]
+
+    # A Flatpak can't use KMS capture, so on KDE Wayland Sunshine goes through
+    # the remote-desktop portal, which normally shows an "allow" dialog on the
+    # VM's screen (unreachable: no USB passthrough, no VNC in production).
+    # Plasma 6.3+ pre-authorization skips it. Must run as the user, not sudo.
+    - name: Check Sunshine's remote-desktop portal pre-authorization
+      ansible.builtin.command: flatpak permissions kde-authorized remote-desktop
+      register: sunshine_portal
+      changed_when: false
+      failed_when: false
+      tags: [sunshine]
+
+    - name: Pre-authorize Sunshine for the KDE remote-desktop portal
+      ansible.builtin.command: flatpak permission-set kde-authorized remote-desktop dev.lizardbyte.app.Sunshine yes
+      when: "'dev.lizardbyte.app.Sunshine' not in sunshine_portal.stdout"
+      register: sunshine_portal_set
+      tags: [sunshine]
+
+    - name: Restart Sunshine to pick up its configuration
+      ansible.builtin.systemd_service:
+        name: app-dev.lizardbyte.app.Sunshine.service
+        scope: user
+        state: restarted
+      when: sunshine_conf is changed or sunshine_portal_set is changed
+      tags: [sunshine]
+
+    # Sunshine captures the logged-in desktop. Autologin only takes effect at the
+    # next boot, so without this reboot a fresh install sits at the login screen
+    # and Sunshine reports "Video failed to find working encoder".
+    - name: Reboot so autologin starts the desktop session for Sunshine
+      become: true
+      ansible.builtin.reboot:
+        reboot_timeout: 900
+      when: desktop_autologin is changed
+
+    # Streaming-only VM: the KDE lock screen just blocks Moonlight after idle.
+    # Access control is Moonlight pairing (and the LAN), not the desktop lock.
+    - name: Disable KDE automatic screen locking
+      community.general.ini_file:
+        path: /home/bazzite/.config/kscreenlockerrc
+        section: Daemon
+        option: "{{ item }}"
+        value: "false"
+        no_extra_spaces: true
+        mode: '0600'
+      loop:
+        - Autolock
+        - LockOnResume
+      tags: [sunshine]
+
     - name: Check Steam and Flatpak gaming status
       ansible.builtin.command: flatpak list
       register: flatpak_list
