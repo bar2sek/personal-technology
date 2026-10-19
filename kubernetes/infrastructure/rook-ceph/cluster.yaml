@@ -54,6 +54,18 @@ spec:
         - key: node-role.kubernetes.io/control-plane
           operator: Exists
           effect: NoSchedule
+    # OSDs (and their prepare jobs, which inherit this) must tolerate the soft
+    # taint homelab.bar2sek.com/small-var on the sm nodes (Omni patch
+    # controlplane-prefer-no-schedule). Rook's node check treats ANY untolerated
+    # taint, even PreferNoSchedule, as "placement settings do not match" and
+    # silently skips the node: found 2026-10-19 when sm-node-03's new IronWolfs
+    # got no prepare job (Wave 4, docs/110). Only OSDs: mgr/mds keep preferring
+    # the PCs. Rook merges these with placement.all's tolerations.
+    osd:
+      tolerations:
+        - key: homelab.bar2sek.com/small-var
+          operator: Exists
+          effect: PreferNoSchedule
     # Monitors keep their store under dataDirHostPath (/var/lib/rook), on each
     # node's /var. The Supermicro nodes have only 12.5 GiB of /var and keep
     # tripping MON_DISK_LOW (<30% free), so prefer the PCs (72 GiB and 929 GiB).
@@ -141,6 +153,15 @@ spec:
           - name: "/dev/disk/by-id/ata-CT2000MX500SSD1_2253E6986843"
             config:
               deviceType: ssd
+          # Two IronWolf 4 TB from pc-node-04 (Wave 4, docs/110, 2026-10-19):
+          # sm-node-03 becomes the third HDD host for the EC 2+1 pool (Wave 5).
+          # /var now lives on the 250 GB MX500 (not a Ceph device).
+          - name: "/dev/disk/by-id/ata-ST4000VN008-2DR166_ZGY91H5S"
+            config:
+              deviceType: hdd
+          - name: "/dev/disk/by-id/ata-ST4000VN008-2DR166_ZDH9HRSJ"
+            config:
+              deviceType: hdd
 
       # Tier 1 (NVMe) & Tier 3 (Bulk HDD Array) on Storage PC Node 04
       # (Boot drive Intel 320 SSD and the two spare Intel 335 SSDs are excluded

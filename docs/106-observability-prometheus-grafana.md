@@ -112,7 +112,7 @@ Enabling native Ceph monitoring in `CephCluster` (`spec.monitoring.enabled: true
    Grafana automatically provisions official production dashboards:
    - **Ceph - Cluster Overview** (ID: 2842): Storage cluster health, raw capacity (~33.7 TiB since the 2026-10-18 reshuffle), IOPS, and read/write bandwidth.
    - **Ceph - OSDs** (ID: 5336): Real-time breakdown of all 18 OSDs, NVMe/SSD/HDD latency heatmaps, and fill ratios.
-   - **Ceph - Pools** (ID: 5337): Capacity and compression efficiency across `nvme-high-iops-pool`, `builtin-ssd-pool`, and `hdd-bulk-pool`.
+   - **Ceph - Pools** (ID: 5337): Capacity and compression efficiency across `nvme-high-iops-pool`, `builtin-ssd-pool`, and the HDD erasure-coded pair `hdd-ec-data-pool` / `hdd-ec-meta-pool` (`hdd-bulk-pool` before 2026-10-19).
    - **Node Exporter Full** (ID: 1860): Physical server telemetry across all 5 nodes.
 
 ---

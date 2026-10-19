@@ -125,7 +125,7 @@ graph TD
 | **2** | **pc-node-04 window:** silence; pause the Rook operator (mon.f); `noout`; drain; shutdown. Out: 4 × IronWolf, WD Green, 250 GB MX500. In: 3 × MX500 2 TB. Boot; add the three MX500s to pc-node-04 in `cluster.yaml` (by-id); Rook creates SSD OSDs and data rebalances onto the fourth SSD host | about 30 min; apps move to other nodes | 1 |
 | **3** | **pc-node-05 re-case:** silence; stop the gaming VM; pause the operator (mon.h); `noout`; drain; shutdown. Move board, GPU and both NVMe into the new case; add 2 × IronWolf. Boot; add them to pc-node-05 in `cluster.yaml`; cap their `osd_memory_target`; start the VM | a few hours | 2 |
 | **3b** | **pc-node-05 boot move (added 2026-10-18):** Talos + `/var` → the Kingston SQ500S3 240 GB (`naa.50026b768322ebd7`, SMART OK, ~18 TB written); the whole Sabrent becomes the gaming VM's own partition (~930 GiB). Back up the VM disk image (38 GiB used) to a temporary RBD volume; pin `machine.install.diskSelector` by WWID; pause the operator; remove the machine in Omni and reinstall it from the Omni USB installer (Kingston first in BIOS); wipe the Sabrent while the node runs; add the `gaming-vm` user volume as a partition; restore and start the VM. A pilot for Wave 4's Omni re-add on a worker | about 1.5 h, VM offline | 3 |
-| **4** | **sm-node-03 window:** Omni patch `VolumeConfig` EPHEMERAL → serial `2228E6489822` (sync first; a no-op on the running node). Insert the 250 GB MX500 and 2 × IronWolf (hot-swap or powered off). Silence, `noout`, then Omni *Destroy* → maintenance → template sync re-adds it with `/var` on the 250 GB. Add the IronWolfs to sm-node-03 in `cluster.yaml` | about 1 h (etcd runs on 2 of 3) | 2 |
+| **4** | **sm-node-03 window:** Omni patch `VolumeConfig` EPHEMERAL → `disk.wwid == "naa.500a0751e6489822"` (the MX250; **not** its serial: Talos reports no serial for SATA disks, so a serial selector would match nothing). Sync first; a no-op on the running node. Insert the 250 GB MX500 and 2 × IronWolf (hot-swap or powered off). Silence, `noout`, then Omni *Destroy* → maintenance → template sync re-adds it with `/var` on the 250 GB. Add the IronWolfs to sm-node-03 in `cluster.yaml` | about 1 h (etcd runs on 2 of 3) | 2 |
 | **5** | **HDD pool → EC 2+1 by host:** create the new EC data pool, its replicated metadata pool and StorageClass; delete the old empty `hdd-bulk-pool` and `rook-ceph-hdd-bulk`; update docs/104 *Accepted Trade-offs* | none | 3, 4 |
 | **6** | **sm-node-02:** NVMe split per the per-node procedure (osd.9) | about 1 h | — |
 | **7** | **sm-node-01:** same (osd.10); pause the operator for mon.i | about 1 h | 6 |
@@ -151,10 +151,13 @@ Waves 6–7 are independent of the hardware waves and can run before or after th
 4. **Wipe the disk** from a privileged debug pod on the node (zap the GPT, clear the BlueStore label, discard):
    ```bash
    kubectl debug node/sm-node-02 -n kube-system --profile=sysadmin -it --image=alpine:3.24 -- sh -c \
-     'apk add -q sgdisk util-linux && D=/dev/disk/by-id/nvme-Sabrent_Rocket_Q_F2C10719080B00006324 && \
+     'apk add -q sgdisk util-linux && D=$(readlink -f /host/dev/disk/by-id/nvme-Sabrent_Rocket_Q_F2C10719080B00006324) && [ -b "$D" ] && \
       sgdisk --zap-all $D && dd if=/dev/zero of=$D bs=1M count=100 oflag=direct && blkdiscard $D && lsblk -f $D'
    ```
    `lsblk -f` must show no filesystem. Delete the `node-debugger-*` pod afterwards.
+
+   > [!WARNING]
+   > Inside a `kubectl debug node` pod, `/dev/disk/by-id/` **does not exist**: udev symlinks live on the host, whose `/dev` is mounted at `/host/dev`. Always resolve `readlink -f /host/dev/disk/by-id/<id>` and guard with `[ -b "$D" ]`. An empty path otherwise slips past a "not the system disk" check (found 2026-10-19 in the sm-node-03 Wave 4 prep scan).
 
 > [!CAUTION]
 > **Ceph Squid keeps backup BlueStore labels at 1, 10, 100 and 1000 GiB** (`bluestore_bdev_label_multi`, Ceph 19.2+). `blkdiscard` clears them on SSD/NVMe, but **HDDs do not support discard**, so on an HDD the wipe above only clears the first 100 MiB. `ceph-volume raw list` then finds a backup label, and the Rook prepare job, which scans *every* disk on the node, not just the ones in `cluster.yaml`, **re-activates the purged OSD with its old ID**. Talos `discoveredvolumes` and `lsblk -f` do not recognise the label, so the disk *looks* blank.
@@ -213,7 +216,7 @@ kubectl get node sm-node-02                                       # Ready
 Then in `cluster.yaml` set sm-node-02's NVMe entry to `/dev/disk/by-partlabel/r-osd-nvme`, apply, and wait for Rook to create the new OSD. Finally `ceph osd unset-group noout sm-node-02` and wait for `HEALTH_OK`.
 
 ### Differences for the other nodes
-- **sm-node-03:** combined with the disk swap (see *Target layout*): drain osd.12, osd.13 and osd.4 (they move to pc-node-04); `VolumeConfig` for EPHEMERAL selects the 250 GB MX500 by serial (whole disk, `grow: true`, no `maxSize`), no `RawVolumeConfig`. See *Execution waves*, Wave 4 (serial `2228E6489822`).
+- **sm-node-03:** combined with the disk swap (see *Target layout*): drain osd.12, osd.13 and osd.4 (they move to pc-node-04); `VolumeConfig` for EPHEMERAL selects the 250 GB MX500 by **WWID** `naa.500a0751e6489822` (whole disk, `minSize: 200GiB`, `grow: true`, no `maxSize`), no `RawVolumeConfig`. See *Execution waves*, Wave 4. sm-01/02 can keep `disk.serial`: Talos does report NVMe serials.
 - **sm-node-01:** like sm-node-02 with osd.10 and serial `BC7107061E7C02090817`. It holds **mon.i**; it fails over (about 10 min) while the node is out. Do this node last.
 
 ---
@@ -234,16 +237,34 @@ Then in `cluster.yaml` set sm-node-02's NVMe entry to `/dev/disk/by-partlabel/r-
 | 2 pc-node-04 window | **Done 2026-10-18**: drained (apps → pc-node-05; only the empty hdd-bulk-pool went stale; AirPrint is pinned to pc-04 so it was offline), shut down, 4 × IronWolf + WD Green + MX250 out, 3 × MX500 in. All existing OSDs re-activated by UUID despite new `/dev/sdX` letters. New SSD OSDs osd.4 (684D), osd.11 (DE1D), osd.12 (DE26); backfill of ~35% of the SSD pool took about 6 min; HEALTH_OK, 16 OSDs. MX250 + IW-H5S + IW-RSJ hot-inserted into sm-node-03 the same day (unused until Wave 4) |
 | 3 pc-node-05 re-case | **Done 2026-10-18**: VM stopped, drained (apps → pc-node-04), re-cased with IW-65H + IW-889 on onboard SATA. New HDD OSDs osd.13 (IW-65H) and osd.14 (IW-889), capped at 2 GiB via `spec.cephConfig` in `cluster.yaml`; osd.0 re-activated. HEALTH_OK, 18 OSDs; VM + Sunshine back. An unplanned Kingston SQ500S3 SATA SSD appeared as `sdc` (not in `cluster.yaml`, unused) |
 | 3b pc-node-05 boot → Kingston | **Done 2026-10-18**: decided whole Sabrent for gaming, no Ceph OSD (the NVMe pool is nearly empty; a split would add only ~140 GiB usable). VM image backed up and restored (sha256 matched); Talos + 238 GB EPHEMERAL on the Kingston; `gaming-vm` partition volume = whole Sabrent (932 GB). Needed two reset cycles: the first reinstalled onto the Sabrent because `MachineInstallDiskConfig` pinned `/dev/nvme1n1` and Omni's status was stale (see Phase C *Proven* callout). HEALTH_OK, VM + Sunshine back |
-| 4 sm-node-03 window | Planned |
-| 5 HDD pool → EC 2+1 | Planned |
+| 4 sm-node-03 window | **Done 2026-10-19** (11:34–11:52 CDT): drained, silenced, `noout`; Omni *Destroy* → maintenance in ~60 s; install disk re-checked in maintenance mode (`machineinstalldiskstatus` = `/dev/sde`, WWID `…9a000069`, fresh status version; STATE/EPHEMERAL gone from the SuperDOM); re-added via a scratch template; node `Ready` ~2 min after the Destroy. **`/var` = MX250 `sdc1`, 250 GB XFS** (was 14 GB). etcd back to 3 members; osd.7 re-activated by UUID within a minute. IronWolfs → **osd.15 (IW-H5S) and osd.16 (IW-RSJ)**, hdd; 20 OSDs, 41 TiB raw, HEALTH_OK. See *Wave 4 lessons* below |
+| 5 HDD pool → EC 2+1 | **Done 2026-10-19**: `hdd-ec-data-pool` (k=2 m=1, host, hdd, `min_size 2`, `bulk`, `ec_overwrites`) + `hdd-ec-meta-pool` (3x SSD) + StorageClass `rook-ceph-hdd-ec`. CRUSH rule `take default~hdd` → `chooseleaf_indep host`. Smoke test: 1 GiB written at ~98 MB/s with fsync, stored 1.0 GiB = used 1.5 GiB; MAX AVAIL 13 TiB; autoscaler grew it to 128+ PGs. Old `hdd-bulk-pool` / `rook-ceph-hdd-bulk` (empty) deleted. Dashboard tooltip updated |
 | 6 sm-node-02 | Planned |
 | 7 sm-node-01 | Planned |
 | 8 Cleanup | Planned |
 
+### Wave 4 lessons (2026-10-19)
+
+> [!WARNING]
+> **Rook silently skips nodes with an untolerated taint, even `PreferNoSchedule`.** The new IronWolfs got no prepare job; the operator log said `skipping creation of OSDs on nodes [sm-node-01 sm-node-02 sm-node-03]: placement settings do not match`. Cause: the soft taint `homelab.bar2sek.com/small-var` (Omni patch `controlplane-prefer-no-schedule`), added after the existing sm OSDs were created. Fix: `placement.osd.tolerations` for that key in `cluster.yaml` (OSDs only; mgr/mds keep preferring the PCs). Waves 6–7 depend on this too.
+
+> [!IMPORTANT]
+> **Any change to the OSD placement restarts every OSD.** The pod spec changes, so Rook rolls all OSD Deployments one host at a time (it checks `ok-to-stop` first). Expect a few minutes of `host down` / `degraded` flapping in `ceph -s`; it settled to `241 active+clean` in about 10 minutes here. Silence first, and do it outside other maintenance.
+
+> [!TIP]
+> **Syncing the shared template while another change is pending in it:** another session's unsynced pc-node-05 network change sat in `talos/cluster-template.yaml`, and the re-add requires a sync. Build a scratch copy from `git show HEAD:talos/cluster-template.yaml` plus only the hunk you need, and require `omnictl cluster template diff -f <scratch>` to be **empty** before relying on it. (`omnictl cluster template export` is not a clean substitute: it also exports the `MachineInstallDiskConfigs`, and syncing it would make the template take ownership of them.)
+
+- **Disk names moved again on sm-node-03 after the reset** (IronWolfs `sda`/`sdb`, MX250 `sdc`). Every selector involved was by WWID or by-id, so nothing cared.
+- **`talosctl get volumeconfigs` is `PermissionDenied` through Omni's proxy;** verify a synced patch with `omnictl get configpatches <id> -o yaml` and `omnictl get clustermachineconfigstatus <machine-id>` (`lastconfigerror` empty).
+- **The API VIP** (`10.10.20.10`) was on sm-node-03 and moved automatically; kubectl via Omni's proxy (`10.10.10.5:8100`) was unaffected.
+- **`CephNodeDiskspaceWarning` (pc-node-05)** names `/dev/nvme1n1p4` with mountpoint `/var`, a device from before Wave 3b. Likely stale, not a space problem; investigate separately.
+
 ### Open items before Wave 4 (as of 2026-10-19)
-- [ ] **sm-node-03 install disk:** `talos/machine-install-disks.yaml` pins `/dev/sde` (still a SuperDOM today, but `sdX` names shifted in Waves 1–2). Switch it to a CEL `diskselector` (SuperDOM model/serial), `omnictl apply -f`, and confirm `omnictl get machineinstalldiskstatus <id>` names the SuperDOM. Do the same for the other entries while at it.
-- [ ] **Wipe the MX250's old `zfs_member` signature** in sm-node-03 (now `sda`, WWID `naa.500a0751e6489822`) while the node runs: see [[111-storage-reshuffle-hardware-checklist|docs/111]] Wave 4.
-- [ ] **Pod-network MTU mismatch:** since its reinstall, pc-node-05's flannel `cni0` is 8950 (derived from its 9000-byte NIC) while every other node is 1450; `CephNodeInconsistentMTU` fires. Pin one VXLAN MTU cluster-wide in the Talos/flannel config. Low impact meanwhile (Ceph uses the host network; TCP negotiates MSS).
+- [x] **Install disks by WWID:** `talos/machine-install-disks.yaml` rewritten 2026-10-19 so every node uses a CEL `diskselector` on `disk.wwid` instead of `/dev/sdX`. Model/serial selectors don't work here: Talos reports no serial for any SATA disk, and sm-node-03 has two identical SuperDOMs. Applied 2026-10-19; `omnictl get machineinstalldiskstatus` re-evaluated the four changed entries (version +1) and still names the current system disk on all five nodes. Note that a running node reports *Talos is already installed on …*, so the selector itself is only exercised at the next reset (Wave 4 for sm-node-03): check this status again in maintenance mode before the template sync.
+- [x] **Wipe sm-node-03's spare SuperDOM** (`sdf`, WWID `naa.515d94519a000032`; old non-Talos install with an EFI partition, so the BIOS could boot it after the reset): see [[111-storage-reshuffle-hardware-checklist|docs/111]] Wave 4.
+- [x] **Wipe the MX250's old `zfs_member` signature** in sm-node-03 (now `sda`, WWID `naa.500a0751e6489822`) while the node runs: see [[111-storage-reshuffle-hardware-checklist|docs/111]] Wave 4.
+- [x] **Wipes done 2026-10-19** (both disks via `kubectl debug` + `/host/dev/disk/by-id/wwn-…`): the MX250 still had **two `zfs_member` labels in its last 512 KiB** (ZFS L2/L3, pool `database_pool`); Talos `discoveredvolumes` called it blank because it only probes the start of the disk, but `wipefs` (list mode) found them. The spare SuperDOM held an old ZFS-on-root boot disk (EF02 BIOS-boot + EF00 ESP + BF01 ZFS). Per-partition `wipefs -a`, `sgdisk --zap-all`, whole-disk `wipefs -a` and `blkdiscard` (worked on both, the SuperDOM included); afterwards `wipefs`/`blkid -p` show nothing and Talos lists both as plain disks.
+- [ ] **Pod-network MTU mismatch:** since its reinstall, pc-node-05's flannel `cni0` is 8950 (derived from its 9000-byte NIC) while every other node is 1450; `CephNodeInconsistentMTU` fires. Low impact meanwhile (Ceph uses the host network; TCP negotiates MSS). Talos-managed flannel has no MTU setting (in v1.13 `net-conf.json` is hard-coded), so the fix is to tag VLAN 20 on pc-node-05: `enp12s0` 9000 with no IP, `enp12s0.20` 1500, `enp12s0.40` 9000. The template change was written 2026-10-19 and is **not yet synced**. It needs a switch-port change and a reboot in a set order: see the cutover runbook in [[201-unifi-network-topology|docs/201]].
 - [ ] **Watch** `CephNodeDiskspaceWarning` on pc-node-05: a trend alert from the fresh `/var` and the restore; it should clear by itself.
 - [ ] **BIOS on pc-node-05:** set the Kingston as first boot device at the next reboot (optional; it is the only bootable disk).
 - [ ] **Re-auth helper:** a generic talosconfig for maintenance-mode machines is not stored in the repo; recreate it with `omnictl talosconfig <file> --merge=false` (see Phase C *Proven*).

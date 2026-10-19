@@ -26,7 +26,7 @@ The cluster provides block (`RBD`), distributed shared filesystem (`CephFS`), an
 | :--- | :--- | :--- | :--- | :--- |
 | **Tier 1 (High-IOPS NVMe)** | 2x 2TB Sabrent Rocket Q NVMe (`sm-node-01/02`) + 1x 1TB Crucial P3 Plus (`pc-node-04`) + 1x 1TB Crucial P3 (`pc-node-05`) | **6.0 TB** | `nvme-high-iops-pool` | PostgreSQL/Redis databases, etcd WAL, Ceph RocksDB/WAL metadata, low-latency app PVCs. |
 | **Tier 2 (SATA SSD Replicated)** | 8x 2TB Crucial MX500 SATA SSDs (`sm-node-01`: 2, `sm-node-02`: 2, `sm-node-03`: 1, `pc-node-04`: 3, since 2026-10-18) | **16.0 TB** | `builtin-ssd-pool`, `ceph-filesystem` | Replicated Block (`RBD`) & File (`CephFS`) PVCs for active homelab applications. |
-| **Tier 3 (Bulk HDD Array)** | 6x HDDs: `pc-node-04` (3TB + 2TB Enterprise + 2x 1TB) and `pc-node-05` (2x 4TB IronWolf) | **15.0 TB** | `hdd-bulk-pool` | **Scratch / overflow only** (2 replicas, `failureDomain: osd`, so both copies can land on one host; EC 2+1 across three hosts is planned for Wave 5 of [[110-ephemeral-var-migration\|/var migration]]): re-creatable data, secondary copies, temporary bulk. Never the only copy of anything. |
+| **Tier 3 (Bulk HDD Array)** | 8x HDDs on three hosts: `pc-node-04` (3TB + 2TB Enterprise + 2x 1TB), `pc-node-05` (2x 4TB IronWolf), `sm-node-03` (2x 4TB IronWolf) | **~12.7 TiB usable** (21 TiB raw) | `hdd-ec-data-pool` (+ `hdd-ec-meta-pool` on SSD) | **Scratch / overflow only.** Erasure coded 2+1, `failureDomain: host` (since 2026-10-19, Wave 5 of [[110-ephemeral-var-migration\|/var migration]]): survives one host down, 1.5x raw per byte. StorageClass `rook-ceph-hdd-ec`. Re-creatable data, secondary copies, temporary bulk. Never the only copy of anything. |
 
 > [!NOTE]
 > **Installed but not yet in Ceph (as of 2026-10-19):** `sm-node-03` holds 2x 4TB IronWolf (future HDD OSDs) and a 250GB MX500 (future dedicated `/var`), hot-inserted on 2026-10-18. They join in Wave 4 of [[110-ephemeral-var-migration|/var migration]]; HDD raw capacity then rises to 23 TB across three hosts.
@@ -91,7 +91,7 @@ graph TD
 | **`sm-node-02`** | `9983ae00...` | `eno7np2` (`10.10.20.120`) | `eno8np3.40` (`10.10.40.120`) | SFP+ 10GbE to `Ceph-USW-Aggregation` Port 4 |
 | **`sm-node-03`** | `00000000...` | `ens6f0` (`10.10.20.131`) | `ens6f1.40` (`10.10.40.131`) | SFP+ 10GbE to `Ceph-USW-Aggregation` Port 5 |
 | **`pc-node-04`** | `927ef8ab...` | `enp43s0f0` (`10.10.20.20`) | `enp43s0f1.40` (`10.10.40.20`) | SFP+ 10GbE to `Ceph-USW-Aggregation` Port 1 |
-| **`pc-node-05`** | `7a7d25b8...` | `enp12s0` (`10.10.20.111`, Native Untagged) | `enp12s0.40` (`10.10.40.111`, Tagged 802.1Q) | 2.5GbE Onboard RJ45 to SFP+ Multi-Gig Transceiver |
+| **`pc-node-05`** | `7a7d25b8...` | `enp12s0.20` (`10.10.20.111`, Tagged 802.1Q; parent `enp12s0` at MTU 9000, see [[201-unifi-network-topology|docs/201]]) | `enp12s0.40` (`10.10.40.111`, Tagged 802.1Q) | 2.5GbE Onboard RJ45 to SFP+ Multi-Gig Transceiver |
 
 > [!IMPORTANT]
 > **Talos Subnet Anchoring Invariant**:
@@ -263,17 +263,17 @@ Until 2026-10-18 every pool had **1 PG**, so each pool's data lived on exactly 3
 > ```
 > Repeat this after rebuilding the cluster. To check, every pool must appear in `ceph osd pool autoscale-status`.
 
-The autoscaler then raises PG counts in steps (`nvme-high-iops-pool` to 128; `builtin-ssd-pool`, `hdd-bulk-pool` and `ceph-filesystem-data0` to 32; `ceph-filesystem-metadata` to 16). Expect a short backfill for the pools that hold data.
+The autoscaler then raises PG counts in steps (`nvme-high-iops-pool` to 128; `builtin-ssd-pool`, `hdd-bulk-pool` (since replaced by `hdd-ec-data-pool`, `bulk`, 128) and `ceph-filesystem-data0` to 32; `ceph-filesystem-metadata` to 16). Expect a short backfill for the pools that hold data.
 
 ---
 
 ## ⚖️ Accepted Trade-offs
 
-- **HDD bulk pool on a single host.** `hdd-bulk-pool` keeps 2 copies with an OSD-level failure domain, and all HDDs sit in pc-node-04, the only chassis that takes 3.5" drives. It survives a disk failure but not the loss of pc-node-04: a reboot takes the pool offline, and losing the node loses its data. `min_size 1` keeps it writable on a single copy, at the risk of losing recent writes if the second disk fails during recovery. Accepted deliberately; revisit if another node gains drive bays (an HBA in a second chassis, then `failureDomain: host`).
+- **HDD pool: erasure coded 2+1 across exactly three hosts (since 2026-10-19).** Each object is 2 data + 1 parity chunk on pc-node-04, pc-node-05 and sm-node-03. It survives one host or disk down, but with only three HDD hosts there is no spare host to rebuild onto: the pool runs degraded until the host returns. `min_size 2` (default would be 3) keeps it writable during that window, with no redundancy left; a second failure then loses data. Usable space is bounded by the smallest host (pc-node-04, 6.4 TiB): about 2 x 6.4 = 12.7 TiB. Small random writes are slower than on a replicated pool (read-modify-write of the stripe); fine for bulk/scratch. RBD on EC needs `ec_overwrites` (set by Rook) and a replicated pool for image metadata (`hdd-ec-meta-pool`, SSD). Replaced the old `hdd-bulk-pool` (2 copies, `failureDomain: osd`, all HDDs on pc-node-04), which did not survive losing that node.
 
   **Storage placement policy (decided 2026-10-18):**
   1. **Default to the replicated tiers.** `rook-ceph-block` (SSD, the cluster default StorageClass) and `rook-ceph-block-nvme` (latency-sensitive) hold everything that matters: 3 copies across hosts. Use them until capacity runs short.
-  2. **HDD pool = scratch and overflow.** Use `rook-ceph-hdd-bulk` only for data that is re-creatable or already exists elsewhere (caches, transcodes, temporary bulk, secondary copies). It must never be the only copy, and it is never the default StorageClass.
+  2. **HDD pool = scratch and overflow.** Use `rook-ceph-hdd-ec` only for data that is re-creatable or already exists elsewhere (caches, transcodes, temporary bulk, secondary copies). It must never be the only copy, and it is never the default StorageClass.
   3. **Garage NAS (Synology) = off-cluster copy.** Backups and bulk mirrors go there; see [[307-garage-synology-dr-time-machine|Garage Synology DR]].
 - **Gaming VM disk outside Ceph.** The Bazzite VM's disk is local NVMe on pc-node-05 (no replication, no backups): it can only run on that node anyway, and its contents are re-downloadable. See [[303-kubevirt-bazzite-gpu-vm|Bazzite Gaming VM]].
 - **pc-node-05 system disk.** Talos's EPHEMERAL fills the 1 TB Sabrent. Shrinking it means wiping EPHEMERAL, and Omni rejects `talosctl reset` through its proxy (`PermissionDenied`), so the spare space is used via a Talos *directory* user volume on EPHEMERAL instead of a separate partition.

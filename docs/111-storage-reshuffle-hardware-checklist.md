@@ -130,6 +130,11 @@ Clean up the debug pods afterwards: `kubectl -n kube-system get pods -o name | g
 
 **Before (terminal):** Omni patch for EPHEMERAL on MX250 synced; silence; `noout` for sm-node-03. The MX250 still carries a `zfs_member` signature from pc-node-04: wipe it (`sgdisk --zap-all` + `wipefs -a` + `blkdiscard` from a debug pod) while sm-node-03 runs, before the Omni *Destroy*.
 
+**Also wipe the spare SuperDOM (`sdf`, WWID `naa.515d94519a000032`)** in the same debug-pod session: `sgdisk --zap-all` + `wipefs -a` (SuperDOMs may not support `blkdiscard`; skip it if it errors). Found 2026-10-19: it carries an old non-Talos install (BIOS-boot, 537 MB EFI and 14 GB root partitions). With an EFI partition still on it, the BIOS could boot that old OS after the Omni reset instead of Talos.
+
+> [!CAUTION]
+> sm-node-03 has **two identical 16 GB SuperDOMs**. Talos runs on `sde` (WWID `naa.515d93419a000069`). Before wiping, resolve the target by WWID (`talosctl -n 10.10.20.131 get disks`) and confirm it has **no** `EFI`/`STATE`/`EPHEMERAL` partition labels in `talosctl get discoveredvolumes`. Wiping the wrong one takes the control plane node down.
+
 > [!NOTE]
 > 2026-10-18: the MX250 and IW-H5S / IW-RSJ were hot-inserted into sm-node-03 right after Wave 2, ahead of the rest of this wave. Talos sees them; they are unused until the steps below.
 

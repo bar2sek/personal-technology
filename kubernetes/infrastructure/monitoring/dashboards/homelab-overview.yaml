@@ -1229,7 +1229,7 @@ data:
           "id": 27,
           "type": "gauge",
           "title": "HDD",
-          "description": "Raw space used on the HDD OSDs, all replicas included (rook-ceph-hdd-bulk, scratch only; 2 copies, both on pc-node-04). This averages the tier: Ceph's nearfull (85%) and full (95%) limits apply per disk, so one disk can fill first; check `ceph osd df` if this is orange.",
+          "description": "Raw space used on the HDD OSDs, all replicas included (rook-ceph-hdd-ec, scratch only; erasure coded 2+1 across pc-node-04, pc-node-05 and sm-node-03: 1.5x raw per byte stored). This averages the tier: Ceph's nearfull (85%) and full (95%) limits apply per disk, so one disk can fill first; check `ceph osd df` if this is orange.",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"

@@ -199,6 +199,19 @@ patches:
                   mtu: 9000
                   addresses:
                     - 10.10.40.131/24
+      ---
+      # /var off the 16 GB SuperDOM onto the whole 250 GB MX500 (Wave 4,
+      # docs/110). Selected by WWID: Talos reports no serial for SATA disks.
+      # Only takes effect when EPHEMERAL is (re)created, i.e. after an Omni
+      # reset; a no-op on the running node.
+      apiVersion: v1alpha1
+      kind: VolumeConfig
+      name: EPHEMERAL
+      provisioning:
+        diskSelector:
+          match: disk.wwid == "naa.500a0751e6489822"
+        minSize: 200GiB
+        grow: true
 
 ---
 kind: Machine
@@ -267,18 +280,22 @@ patches:
           nameservers:
             - 10.10.20.1
             - 10.0.1.1
+          # One NIC carries both VLANs, both tagged (switch port: native VLAN
+          # none, tagged 20 + 40). The parent stays at 9000 with no address so
+          # VLAN 40 can use jumbo frames; VLAN 20 is its own 1500-byte link.
+          # flannel derives the pod MTU from the default-route link, so this
+          # gives cni0 = 1450 like the other nodes (route MTUs don't count).
           interfaces:
             - interface: enp12s0
               mtu: 9000
-              addresses:
-                - 10.10.20.111/24
-              routes:
-                - network: 0.0.0.0/0
-                  gateway: 10.10.20.1
-                  mtu: 1500
-                - network: 10.10.20.0/24
-                  mtu: 1500
               vlans:
+                - vlanId: 20
+                  mtu: 1500
+                  addresses:
+                    - 10.10.20.111/24
+                  routes:
+                    - network: 0.0.0.0/0
+                      gateway: 10.10.20.1
                 - vlanId: 40
                   mtu: 9000
                   addresses:

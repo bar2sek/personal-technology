@@ -46,7 +46,7 @@ This document details the physical network topology, switch interconnects, WAN c
 - **Wireless Infrastructure (Access Points)**:
   - **Home Wi-Fi 7 AP**: 1x **UniFi U7 Pro WAP** (`94:2a:6f:xx:xx:xx` - `10.0.1.214`) connected to USW-24-G2 Port 6 for primary household wireless coverage.
   - **Garage Wi-Fi 6 AP**: 1x **UniFi U6-Lite WAP** (`24:5a:4c:xx:xx:xx` - `10.0.1.45`) connected to USW-Lite-8-PoE Port 1 for garage/outdoor IoT and vehicle wireless coverage.
-- **Node 05 Multi-Gig Uplink**: `pc-node-05` 2.5GbE Onboard RJ45 connected to **USW-Aggregation** SFP+ port via TP-Link Multi-Gig SFP+ 10GBASE-T Transceiver (auto-negotiated at **2.5 Gbps**).
+- **Node 05 Multi-Gig Uplink**: `pc-node-05` 2.5GbE Onboard RJ45 connected to **USW-Aggregation** SFP+ port via TP-Link Multi-Gig SFP+ 10GBASE-T Transceiver (auto-negotiated at **2.5 Gbps**). It is a trunk port with VLANs 20 and 40 both tagged; see *pc-node-05: single-NIC trunk and the pod MTU* below.
 
 ---
 
@@ -166,6 +166,42 @@ To ensure maximum security, QOS, and high storage performance for Rook-Ceph, we 
 
 1. **Jumbo Frames (MTU 9000)**: Enable Jumbo Frames on the `CEPH-STORAGE` VLAN and USW-Aggregation switch ports connected to the nodes to maximize 10GbE Ceph throughput and lower CPU overhead.
 2. **BGP Routing (Optional)**: If using Cilium for CNI, UniFi Dream Machine Pro / USW-Aggregation supports BGP routing to dynamically advertise Kubernetes LoadBalancer IPs directly into the network.
+3. **pc-node-05 trunk port (USW-Agg #2 Port 1)**: native VLAN **none**, tagged **20 + 40**. pc-node-05 has a single NIC, so both VLANs are tagged sub-interfaces on it. See below for the reason. This port setting is made in the UniFi UI; `terraform/unifi` doesn't manage switch ports.
+
+### pc-node-05: single-NIC trunk and the pod MTU
+
+**Why both VLANs are tagged.** The other four nodes have two NICs: a 1500-byte NIC for VLAN 20 and a 9000-byte NIC for VLAN 40. pc-node-05 has one 2.5 GbE NIC (RTL8125), and a VLAN sub-interface can't have a larger MTU than its parent. With VLAN 20 untagged, the NIC (`enp12s0`) had to run at 9000 for VLAN 40, and VLAN 20 inherited that. That caused two problems:
+
+- **Pod MTU.** Flannel sets the VXLAN MTU from the link MTU of the default-route interface, minus 50. It ignores route MTUs. pc-node-05 got `cni0` = 8950 while every other node had 1450, and `CephNodeInconsistentMTU` fired. Talos-managed flannel has no MTU setting: in Talos v1.13 `net-conf.json` is hard-coded, and `cluster.network.cni.flannel` only offers `extraArgs` and `kubeNetworkPoliciesEnabled`. flanneld has no MTU flag either; the vxlan backend's `MTU` key is only read from `net-conf.json`.
+- **Jumbo frames on VLAN 20.** The Talos route `10.10.20.0/24 mtu 1500` didn't take effect. The kernel's own connected route (metric 0, no MTU) wins over it (metric 1024), so traffic to hosts on the VLAN 20 subnet could leave at up to 9000 bytes. The switches carry jumbo frames, but the 1500-byte NICs on the other end drop them without sending an error back. TCP was unaffected because MSS negotiation keeps segments small, but large UDP datagrams and VXLAN packets from pc-node-05 pods were lost. The default route's `mtu: 1500` did work, so traffic through the gateway was fine.
+
+**The layout.** `enp12s0` runs at 9000 with no address. `enp12s0.20` runs at 1500 and holds `10.10.20.111/24` and the default route. `enp12s0.40` runs at 9000 for Ceph. This matches the other nodes, so flannel derives 1450. The config is in the pc-node-05 `Machine` patch in `talos/cluster-template.yaml`.
+
+```mermaid
+graph LR
+    SW["USW-Agg #2 Port 1<br/>native: none · tagged: 20, 40"] --- P["enp12s0<br/>MTU 9000, no IP"]
+    P --> V20["enp12s0.20 · MTU 1500<br/>10.10.20.111/24 + default route"]
+    P --> V40["enp12s0.40 · MTU 9000<br/>10.10.40.111/24 (Ceph)"]
+    V20 --> F["flannel.1 / cni0 · MTU 1450"]
+```
+
+#### Cutover runbook (planned outage of pc-node-05, about 10 minutes)
+
+> [!WARNING]
+> **Order matters: Talos first, then the switch.** After the sync, the node sends VLAN 20 tagged but the port still delivers it untagged, so pc-node-05 is cut off (from Omni too) until the port change. Changing the switch first would cut it off before Omni could push the config. If it doesn't come back after step 4, use a monitor and keyboard on pc-node-05: the Talos console dashboard shows the link and address state.
+
+1. **Prepare.** Shut down the gaming VM (GPU passthrough means it can't migrate). Then follow steps 1–5 of *Runbook: Taking a Node Offline for Hardware Work* in [[104-phase2-rook-ceph-storage|docs/104]]: pre-checks, alert silences, `ceph osd set-group noout pc-node-05`, pausing the Rook operator (pc-node-05 holds `mon.h`), and the drain. While pc-node-05 is down, `hdd-ec-data-pool` (EC 2+1) runs on 2 of 3 chunks: still writable, but with no redundancy. Keep the window short.
+2. **Review the diff.** Run `omnictl cluster template diff -f talos/cluster-template.yaml`. It should show only pc-node-05's `interfaces` block (checked 2026-10-19), plus any other patch that hasn't been synced since.
+3. **Sync.** Run `omnictl cluster template sync -f talos/cluster-template.yaml`. pc-node-05 drops off the network within seconds.
+4. **Switch.** In the UniFi UI, open USW-Agg #2 Port 1 and set Native VLAN to *None* and tagged VLANs to *Custom: K8S-CONTROL (20), CEPH-STORAGE (40)*. Apply. Within about a minute the node's SideroLink reconnects, and Omni shows it as connected.
+5. **Reboot pc-node-05** (Omni UI or `talosctl -n 10.10.20.111 reboot`). This recreates the bridge: an existing `cni0` and its veths keep the old 8950 MTU even after flannel restarts.
+6. **Verify.**
+   ```bash
+   talosctl -n 10.10.20.111 get links   # enp12s0 9000, enp12s0.20 1500, enp12s0.40 9000, flannel.1 + cni0 1450
+   talosctl -n 10.10.20.111 get routes  # default via 10.10.20.1 on enp12s0.20
+   ```
+   Then confirm jumbo frames still pass on VLAN 40 using the DF ping in [[104-phase2-rook-ceph-storage|docs/104]], with `nodeName: pc-node-05`.
+7. **Restore.** Follow step 7 of the docs/104 runbook: uncordon, scale the operator back to 1, `ceph osd unset-group noout pc-node-05`, wait for `HEALTH_OK`, and expire the silences. Then start the gaming VM and check that `CephNodeInconsistentMTU` has cleared in Alertmanager.
 
 ---
 

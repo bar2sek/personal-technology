@@ -1,6 +1,18 @@
 # ==============================================================================
 # Declarative Machine Install Disk Configurations for Sidero Omni
 # Pins each node to its dedicated OS drive to protect bulk & Ceph storage drives.
+#
+# Every entry selects its disk by WWID (world-wide name), never by /dev/sdX:
+#   - Linux assigns sdX letters in discovery order, so they shift whenever a
+#     disk is added, removed or moved to another port (seen in Waves 1-3b of
+#     docs/110).
+#   - Talos reports no serial for any SATA disk here, and model alone is not
+#     unique (sm-node-03 has two SuperDOMs), so the factory WWID is the only
+#     stable per-disk identifier.
+#   - Omni writes the chosen disk into machine.install.disk, which takes
+#     precedence over any install.diskSelector in the cluster template.
+# Find a WWID with: talosctl -n <node-ip> get disks
+# Verify with:      omnictl get machineinstalldiskstatus
 # ==============================================================================
 
 # sm-node-01 (Control Plane 1): 16GB SATA SuperDOM
@@ -9,7 +21,8 @@ metadata:
   type: MachineInstallDiskConfigs.omni.sidero.dev
   id: da165a00-3e5d-11ea-8000-3cecef44a132
 spec:
-  disk: /dev/sda
+  disk: ""
+  diskselector: 'disk.wwid == "naa.515d90720a000088"'
 ---
 # sm-node-02 (Control Plane 2): 16GB SATA SuperDOM
 metadata:
@@ -17,30 +30,32 @@ metadata:
   type: MachineInstallDiskConfigs.omni.sidero.dev
   id: 9983ae00-e364-11ea-8000-3cecef6fd61e
 spec:
-  disk: /dev/sda
+  disk: ""
+  diskselector: 'disk.wwid == "naa.515d90720a000103"'
 ---
-# sm-node-03 (Control Plane 3): 16GB SATA SuperDOM (sda..sdd are Crucial 2TB SSDs)
+# sm-node-03 (Control Plane 3): 16GB SATA SuperDOM (sde on 2026-10-19).
+# This node has a SECOND SuperDOM (sdf, WWID naa.515d94519a000032) with an old
+# non-Talos install, so a model selector would match two disks.
 metadata:
   namespace: default
   type: MachineInstallDiskConfigs.omni.sidero.dev
   id: 00000000-0000-0000-0000-3cecef58ed64
 spec:
-  disk: /dev/sde
+  disk: ""
+  diskselector: 'disk.wwid == "naa.515d93419a000069"'
 ---
-# pc-node-04 (Storage Worker): 80GB Intel 320 SSD (preserves all 11 bulk HDDs)
+# pc-node-04 (Storage Worker): 80GB Intel 320 SSD (preserves all bulk HDDs)
 metadata:
   namespace: default
   type: MachineInstallDiskConfigs.omni.sidero.dev
   id: 927ef8ab-872a-f416-acb4-2cf05d577ea4
 spec:
-  disk: /dev/sdc
+  disk: ""
+  diskselector: 'disk.wwid == "naa.5001517959517618"'
 ---
 # pc-node-05 (GPU Worker): 240GB Kingston SQ500S3 SATA SSD (since 2026-10-18,
-# Wave 3b in docs/110; before that the 1TB Sabrent NVMe). Selected by WWID, not
-# /dev/sdX: device names shift when disks are added (the Kingston has no serial
-# in Talos). The Sabrent holds only the gaming VM disk; the Crucial P3 is Ceph.
-# Omni writes the chosen disk into machine.install.disk, which takes precedence
-# over any install.diskSelector in the cluster template, so pin it here.
+# Wave 3b in docs/110; before that the 1TB Sabrent NVMe). The Sabrent holds
+# only the gaming VM disk; the Crucial P3 is Ceph.
 metadata:
   namespace: default
   type: MachineInstallDiskConfigs.omni.sidero.dev

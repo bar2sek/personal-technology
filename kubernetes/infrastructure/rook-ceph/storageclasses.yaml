@@ -84,25 +84,52 @@ parameters:
 reclaimPolicy: Retain
 allowVolumeExpansion: true
 ---
+# Tier 3 (bulk HDD): erasure coded 2+1 across the three HDD hosts (pc-node-04,
+# pc-node-05, sm-node-03), Wave 5 in docs/110, 2026-10-19. Replaces the old
+# hdd-bulk-pool (replicated size 2, failureDomain osd: both copies could land on
+# pc-node-04). Each object = 2 data + 1 parity chunk on three different hosts:
+# 1.5x overhead, survives one host down. Usable ~ 2 x smallest host (~12.7 TiB).
+# Scratch/overflow tier only (docs/104 storage policy): never the only copy.
 apiVersion: ceph.rook.io/v1
 kind: CephBlockPool
 metadata:
-  name: hdd-bulk-pool
+  name: hdd-ec-data-pool
   namespace: rook-ceph
 spec:
-  failureDomain: osd
-  replicated:
-    size: 2
+  failureDomain: host
   deviceClass: hdd
+  erasureCoded:
+    dataChunks: 2
+    codingChunks: 1
+  parameters:
+    bulk: "true"
+    # Default min_size for k=2,m=1 is 3: one host down would block writes.
+    # 2 keeps the pool writable then, with no redundancy until the host
+    # returns. Accepted for a scratch tier.
+    min_size: "2"
+---
+# RBD keeps image headers and omap metadata in a replicated pool; only the
+# data objects go to the EC pool. Tiny, so put it on SSD for latency.
+apiVersion: ceph.rook.io/v1
+kind: CephBlockPool
+metadata:
+  name: hdd-ec-meta-pool
+  namespace: rook-ceph
+spec:
+  failureDomain: host
+  replicated:
+    size: 3
+  deviceClass: ssd
 ---
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: rook-ceph-hdd-bulk
+  name: rook-ceph-hdd-ec
 provisioner: rook-ceph.rbd.csi.ceph.com
 parameters:
   clusterID: rook-ceph
-  pool: hdd-bulk-pool
+  pool: hdd-ec-meta-pool
+  dataPool: hdd-ec-data-pool
   imageFormat: "2"
   imageFeatures: layering
   csi.storage.k8s.io/provisioner-secret-name: rook-csi-rbd-provisioner
