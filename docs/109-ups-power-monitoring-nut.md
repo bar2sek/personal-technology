@@ -46,7 +46,7 @@ graph TD
     end
 
     subgraph WORKER_EQUIPMENT["Heavy Compute & Bulk Storage Fabric (UPS 2)"]
-        PC4["pc-node-04 (Ryzen 3800X • 11 HDDs)"]
+        PC4["pc-node-04 (Ryzen 3800X • 4 HDDs + 3 SSDs)"]
         PC5["pc-node-05 (Ryzen 7600 • RTX 4070)"]
     end
 
@@ -81,7 +81,7 @@ graph TD
 During the recent breaker trip event, the cluster remained 100% operational due to battery backup engagement:
 1. **Cluster Node Load**:
    - `sm-node-01`, `sm-node-02`, and `sm-node-03` remained in low-utilization idle states (~0.8 to 2.0 cores average, < 10% peak load).
-   - `pc-node-04` (11 HDDs) load stayed under 1.75; no Ceph deep scrubs or mass array spin-ups were running.
+   - `pc-node-04` (then 11 HDDs) load stayed under 1.75; no Ceph deep scrubs or mass array spin-ups were running.
    - `pc-node-05` (RTX 4070) maintained steady idle load (0.18 cores); no AI training or NVENC transcode spikes were active.
    - `bazzite-gaming-vm` maintained steady uninterrupted uptime (9+ days).
 2. **Root Cause Analysis**:

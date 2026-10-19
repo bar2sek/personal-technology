@@ -1,4 +1,4 @@
-# Talos Linux Machine Config Patch: Storage PC Node 04 (Ryzen 3800X, 11-Disk HDD Array)
+# Talos Linux Machine Config Patch: Storage PC Node 04 (Ryzen 3800X, SSD + HDD storage host)
 machine:
   type: worker
   nodeLabels:

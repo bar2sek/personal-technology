@@ -25,8 +25,9 @@ Open the default **Terminal** (`Cmd + Space` $\rightarrow$ type `Terminal`), clo
 
 ```bash
 # Clone the repository
-git clone https://github.com/bar2sek/nix-mac.git ~/nix-mac
-cd ~/nix-mac
+# nix-mac lives inside the personal-technology repository (there is no standalone nix-mac repo)
+git clone https://github.com/bar2sek/personal-technology.git ~/personal-technology
+cd ~/personal-technology/nix-mac
 
 # Run the 1-click bootstrap installer
 bash templates/bootstrap.sh
@@ -35,12 +36,12 @@ bash templates/bootstrap.sh
 **What the bootstrap script automates:**
 * Installs **Xcode Command Line Tools**, **Homebrew**, and the official **Determinate Systems Nix** daemon.
 * Builds and applies the **`nix-darwin`** system state from `templates/flake.nix`.
-* Installs all GUI applications: **Visual Studio Code, Ghostty, Google Drive, Obsidian, OrbStack, and AppCleaner**.
+* Installs all GUI applications declared in `homebrew.casks`, including **Visual Studio Code, Antigravity, Claude, Ghostty, OrbStack, Tailscale, Moonlight, TigerVNC, Google Drive, Obsidian, and AppCleaner** (see `templates/flake.nix` for the full list).
 * Installs modern CLI utilities: `git`, `uv`, `ripgrep`, `fd`, `jq`, `just`, `eza`, `bat`, `zoxide`, `fzf`, and `p10k`.
 * Installs cloud infrastructure CLIs: `awscli`, `aws-cdk`, `azure-cli`, `terraform`, `node`, and `typescript`.
 * Deploys **JetBrainsMono Nerd Font** system-wide.
-* Auto-configures **Visual Studio Code** (`Default Dark+` theme, font ligatures, Material Icons, and declarative extensions).
-* Deploys **Continue.dev** pre-configured for Anthropic Claude endpoints.
+* Auto-configures **Visual Studio Code** (Tokyo Night theme, JetBrainsMono Nerd Font, Material Icons, and declarative extensions) and writes the Roo Code multi-model profiles.
+* Installs the **Antigravity CLI (`agy`)** (`bootstrap.sh`).
 * Configures **Ghostty** and **Zsh** with Powerlevel10k (colors, icons, Git status).
 * Arranges the macOS Dock in a tidy 3-tier layout and eliminates telemetry from Edge and Brave.
 * Purges GarageBand, iMovie, and sound libraries to reclaim **~5–8 GB** of SSD space.
@@ -49,14 +50,14 @@ bash templates/bootstrap.sh
 
 ## 🧠 Cloud AI Model Routing
 
-This workstation runs **no local model weights**. All inference is remote, which keeps the full 48 GB of unified memory available for builds, containers, and Nix derivations.
+This workstation is **cloud-first**: day-to-day inference is remote, which keeps the 48 GB of unified memory available for builds, containers, and Nix derivations. Local Qwen 2.5 Coder 32B via Apple MLX runs **on demand only** (`just serve-qwen-32b`, ~22 GB while active); see [[Local LLMs with MLX]]. *(The MLX setup is due for a revisit.)*
 
 ### Model Tiering
 * **`claude-haiku-4-5`** — tab autocomplete, where latency dominates quality.
 * **`claude-sonnet-5`** — daily driver for implementation, review, and tests.
 * **`claude-opus-5`** — deep reasoning, multi-file refactors, architecture decisions.
 
-Gemini is reached through the Antigravity IDE native agent; Claude and xAI Grok through the Roo Code switcher. See [[Cloud AI Providers & Models]] for the full routing table and credential handling.
+Gemini is reached through the Antigravity extension in VS Code (plus Antigravity Desktop and the `agy` CLI); Claude through the Claude Code extension, CLI and desktop app; xAI Grok through the Roo Code switcher. See [[Cloud AI Providers & Models]] for the full routing table and credential handling.
 
 ---
 
@@ -79,10 +80,14 @@ This repository includes a [`Justfile`](templates/Justfile) with handy shortcuts
 
 Visual Studio Code is configured with a curated suite of extensions managed declaratively in `flake.nix`:
 
-* **AI & Completion:** [Continue.dev](https://continue.dev) (wired to Anthropic Claude endpoints).
-* **Containers & Remote:** Dev Containers, Docker, and Remote - SSH (pairs natively with [OrbStack](https://orbstack.dev)).
-* **Cloud & DevOps:** AWS Toolkit, Microsoft Kubernetes Tools, and HashiCorp Terraform.
-* **Tooling & Themes:** Nix IDE, Material Icon Theme, and JetBrainsMono Nerd Font.
+* **AI agents:** Antigravity (`Google.google-antigravity`), Claude Code (`anthropic.claude-code`), and Roo Code (`RooVeterinaryInc.roo-cline`).
+* **Containers:** Docker (pairs natively with [OrbStack](https://orbstack.dev)).
+* **Cloud & DevOps:** AWS Toolkit, Azure Resource Groups, Kubernetes Tools, and HashiCorp Terraform.
+* **Languages & Formatting:** ESLint, Prettier, Python, Go, YAML, and Nix IDE.
+* **Themes:** Tokyo Night and Material Icon Theme.
+
+> [!NOTE]
+> Claude runs through the Claude Code extension under the Claude.ai subscription; Roo Code holds the Grok, local MLX and AWS Bedrock profiles.
 
 ---
 
@@ -96,7 +101,7 @@ The root of this repository contains an Obsidian-compatible documentation vault 
 * [[Hardware & Memory Budget]] — Unified memory allocation (48GB) and headroom math.
 * [[Hardware Protection & Keyboard Care]] — Step-by-step Barekey decal application & screen buffer setup.
 * [[Container Strategy]] — Why OrbStack replaces Docker Desktop for minimal CPU/RAM overhead.
-* [[IDE Configuration Guide]] — Step-by-step configuration for VS Code, Continue.dev, and Antigravity.
+* [[IDE Configuration Guide]] — Step-by-step configuration for VS Code and its Antigravity, Claude Code and Roo Code extensions.
 * [[AWS CDK & TypeScript Workstation Guide]] — Declarative AWS CDK v2 & TypeScript toolchain, aliases, and workflows.
 * [[Cloud AI Providers & Models]] — Model tiering, provider routing per tool, and credential hygiene.
 * [[Mac Cleanliness & Anti-Bloat Guide]] — Best practices for keeping macOS pristine (`uv`, Homebrew zap, cache pruning).

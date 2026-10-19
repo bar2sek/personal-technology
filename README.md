@@ -26,10 +26,10 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 
 | Resource Layer | Physical Hardware & Capacity Breakdown |
 | :--- | :--- |
-| **Physical Nodes** | **6 Nodes**: `omni-server` (Dell OptiPlex), `sm-node-01/02` (Supermicro Xeon D), `sm-node-03` (Supermicro 1U Xeon E5), `pc-node-04` (Ryzen 3800X 24.5TB Bulk Storage PC), `pc-node-05` (Ryzen 7600 RTX 4070 GPU PC). |
+| **Physical Nodes** | **6 Nodes**: `omni-server` (Dell OptiPlex), `sm-node-01/02` (Supermicro Xeon D), `sm-node-03` (Supermicro 1U Xeon E5), `pc-node-04` (Ryzen 3800X storage PC: SSD + HDD host), `pc-node-05` (Ryzen 7600 RTX 4070 GPU PC, also an HDD host). |
 | **Total Compute** | **36 Physical Cores / 72 vCPU Threads** (`allowSchedulingOnControlPlanes: true` across all 5 cluster nodes). |
 | **Total Memory** | **320 GB DDR4 RAM**. |
-| **Total Storage** | **42.3 TiB Raw Rook-Ceph Storage (21 OSDs)**: **6.0TB High-IOPS NVMe Tier** (4 OSDs) + **16.0TB Replicated SATA SSD Tier** (8 OSDs) + **24.5TB Bulk Mechanical HDD Tier** (9 OSDs on `pc-04`). *(Note: 3 scratch SSDs and the OS boot SSD on `pc-04` are intentionally excluded to prevent CRUSH weight skewing).* |
+| **Total Storage** | **~37 TB (33.7 TiB) Raw Rook-Ceph Storage (18 OSDs, as of 2026-10-18)**: **6.0TB High-IOPS NVMe Tier** (4 OSDs: sm-01, sm-02, pc-04, pc-05) + **16.0TB Replicated SATA SSD Tier** (8 OSDs across 4 hosts: sm-01 ×2, sm-02 ×2, sm-03 ×1, pc-04 ×3) + **15.0TB Bulk HDD Tier** (6 OSDs: 4 on `pc-04`, 2 on `pc-05`). *(The storage reshuffle is mid-flight: two IronWolf 4TB and a 250GB MX500 are staged in `sm-03` for Wave 4. See [110 - /var migration](docs/110-ephemeral-var-migration.md).)* |
 | **Network Fabric** | **3.5 Gbps Google Fiber WAN**, **20 Gbps LAG SFP+ Switch Backbone**, **Dual 10G SFP+ Server Uplinks**, **2.5G Multi-Gig Node Uplink**, MTU 9000 Jumbo Frames, Dual-Stack IPv4/IPv6, UniFi U7 Pro (Wi-Fi 7) & U6-Lite (Wi-Fi 6). |
 
 ---
@@ -49,6 +49,8 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 - [107 - Ingress Traffic Architecture: MetalLB, Ingress-Nginx & Cert-Manager](docs/107-ingress-traffic-metallb-cert-manager.md)
 - [108 - Sidero Omni, Dex & Booter Platform Architecture](docs/108-omni-dex-platform-architecture.md)
 - [109 - Phase 4: UPS Power Resiliency & Network UPS Tools (NUT) Monitoring](docs/109-ups-power-monitoring-nut.md)
+- [110 - Moving Talos /var off the SuperDOMs & Storage Reshuffle](docs/110-ephemeral-var-migration.md)
+- [111 - Storage Reshuffle Hardware Checklist](docs/111-storage-reshuffle-hardware-checklist.md)
 
 ### 🌐 Section 2: UniFi Networking & Infrastructure
 - [201 - UniFi Physical Cabling & Logical Topology Diagrams](docs/201-unifi-network-topology.md)
@@ -62,7 +64,7 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 - [303 - KubeVirt Bazzite Gaming VM (RTX 4070 Passthrough)](docs/303-kubevirt-bazzite-gpu-vm.md)
 - [305 - KubeVirt `omarchy-vm` Arch Linux VM](docs/305-kubevirt-arch-linux-vm.md)
 - [306 - Hybrid Cloud & Remote AI Development Architecture](docs/306-hybrid-local-remote-ai-dev.md)
-
+- [307 - Garage Synology NAS: Tier-3 Local DR & Time Machine](docs/307-garage-synology-dr-time-machine.md)
 
 ### ☁️ Section 4: Hybrid Multi-Cloud (AWS + Azure Arc & Entra ID)
 - [401 - AWS Controllers for Kubernetes (ACK) Architecture](docs/401-aws-ack-hybrid-architecture.md)
@@ -109,7 +111,6 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 ├── nix-mac/                   # Workstation configuration & USB bootstrap suite
 │   ├── START_HERE.html        # Offline visual bootstrap guide for new Mac setup
 │   ├── START_HERE.txt         # Offline CLI bootstrap instructions
-│   ├── Antigravity.dmg        # (Gitignored offline installer for USB drives)
 │   ├── templates/             # Canonical flake.nix, Justfile & bootstrap scripts
 │   └── *.md                   # Workstation architecture, cloud AI routing & care guides
 ├── ansible/                   # Ansible configuration management for VMs
@@ -117,28 +118,40 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 │   ├── inventory/             # Bazzite Gaming VM hosts
 │   └── playbooks/             # Automated post-install configuration (NVIDIA, Sunshine)
 ├── client-tools/              # Workstation client configuration & bootstrap scripts
-│   └── ai-dev/                # Continue.dev cloud model config & SSH snippets
+│   ├── ai-dev/                # Deprecated SSH snippet for the decommissioned remote dev pod
+│   ├── unifi-discover.py      # Read-only UniFi API inventory discovery
+│   └── generate_unifi_diagram.py # Renders docs/architecture-unifi.svg/png
 ├── docs/                      # Comprehensive homelab architecture documentation
 ├── kubernetes/                # Declarative Kubernetes manifests
 │   ├── infrastructure/        # Core platform services
-│   │   ├── rook-ceph/         # 3-tier Ceph cluster & StorageClasses
-│   │   ├── backups/           # Native S3 declarative state dumps & PostgreSQL backups
+│   │   ├── rook-ceph/         # 3-tier Ceph cluster, StorageClasses & Rook alert rules
+│   │   ├── backups/           # Encrypted S3 + Synology NAS backup CronJobs (cluster state, Postgres)
+│   │   ├── monitoring/        # kube-prometheus-stack values, alert tuning & Homelab Overview dashboard
+│   │   ├── ntfy/              # Self-hosted ntfy (Alertmanager → phone push over Tailscale)
+│   │   ├── nut/               # NUT UPS server, exporter & alert rules
+│   │   ├── metallb/           # MetalLB L2 address pool
+│   │   ├── ingress/           # ingress-nginx values & Ceph dashboard ingress
+│   │   ├── cert-manager/      # ClusterIssuer & wildcard certificate
 │   │   ├── cloudflare/        # Cloudflare Tunnel HA deployment
-│   │   ├── tailscale/         # Tailscale operator & subnet router
-│   │   ├── kubevirt/          # Bazzite Gaming VM (GPU passthrough) & Arch VMs
+│   │   ├── tailscale/         # Tailscale operator (Helm values) & Connector for the ingress VIP
+│   │   ├── kubevirt/          # Bazzite Gaming VM (GPU passthrough, local NVMe disk) & Arch VM
+│   │   ├── omni/              # Sidero Omni, Dex & Booter manifests
 │   │   ├── arc/               # Actions Runner Controller AutoscalingRunnerSet
 │   │   ├── authentik/         # Authentik master IdP & PostgreSQL
 │   │   └── aws-hybrid/        # AWS ACK (S3, Route53) & EKS Connector
 │   └── apps/                  # Containerized self-hosted application suite
 │       ├── teslamate/         # Tesla telemetry, MQTT, PostgreSQL, Grafana
-│       ├── finance/           # Actual Budget personal finance
+│       ├── finance/           # Actual Budget personal finance & its S3/NAS backup jobs
 │       ├── mealie/            # Mealie recipe manager
 │       ├── cups/              # CUPS print server & AirPrint bridge
 │       └── home-assistant/    # Home Assistant smart home automation
 └── talos/                     # Talos Linux machine configurations & patches
+    ├── cluster-template.yaml  # Omni cluster template (source of truth: patches, volumes, taints)
+    ├── machine-install-disks.yaml # Omni MachineInstallDiskConfig: per-machine install disk selectors
     ├── talosconfig.example    # talosctl client configuration template
-    └── patches/               # Node-specific configuration patches
+    ├── omni-server/           # Omni host Talos config (secrets gitignored; .example + patch tracked)
+    └── patches/               # Standalone node patches (not referenced: the Omni template inlines its own)
         ├── controlplane.yaml  # Supermicro HA control plane (allowSchedulingOnControlPlanes, VIP)
-        ├── storage-worker.yaml# pc-node-04 11-disk bulk HDD storage worker
+        ├── storage-worker.yaml# pc-node-04 storage worker
         └── gpu-worker.yaml    # pc-node-05 AM5 Ryzen 7600 + RTX 4070 VFIO passthrough
 ```

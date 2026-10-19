@@ -107,7 +107,7 @@ export XAI_API_KEY="..."
 ## 🎯 5. Post-Setup Verification (Day 1)
 
 After running the bootstrap script:
-- [ ] Open **Visual Studio Code** $\rightarrow$ Verify Continue.dev extension, theme, and keybindings.
+- [ ] Open **Visual Studio Code** $\rightarrow$ Verify the Antigravity, Claude Code and Roo Code extensions, theme, and keybindings.
 - [ ] Open **Ghostty** $\rightarrow$ Verify crisp JetBrains Mono Nerd Font typography.
 - [ ] Open **OrbStack** $\rightarrow$ Test container engine with `docker run --rm hello-world`.
 - [ ] Open **Google Drive** $\rightarrow$ Set Obsidian Vault folder to **"Available offline"**.

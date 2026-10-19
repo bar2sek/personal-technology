@@ -63,13 +63,9 @@ setup needed is credentials.
 
 3. Reload your shell:  source ~/.zshrc
 
-4. Copy the Continue config and substitute your real key:
-
-   cp client-tools/ai-dev/continue-config.json ~/.continue/config.json
-
-5. Open Visual Studio Code and use Continue.dev (Cmd + L for chat,
-   Cmd + I for inline edits). Antigravity IDE uses Gemini natively, with
-   Claude and Grok available through the Roo Code switcher.
+4. Open Visual Studio Code. The Antigravity extension uses Gemini
+   natively; Claude runs in the Claude Code extension (sign in with your
+   Claude.ai subscription) and Grok in Roo Code.
 
 !! NEVER commit an API key. Treat every repo here as public -- a leaked key
    is compromised the moment it lands, and rotating it is the only fix.

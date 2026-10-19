@@ -11,7 +11,7 @@ aliases:
 
 # ☁️ Cloud AI Providers & Models
 
-The workstation runs **no local model weights**. All inference is remote, over provider APIs. This note is the reference for which model to reach for, which tool routes to which provider, and how credentials are handled.
+The workstation is **cloud-first**: day-to-day inference is remote, over provider APIs. Local MLX (Qwen 2.5 Coder 32B) was removed in September 2026 and reinstated as an on-demand Roo Code profile (`just serve-qwen-32b`); see [[Local LLMs with MLX]]. This note is the reference for which model to reach for, which tool routes to which provider, and how credentials are handled.
 
 > [!IMPORTANT] Why cloud-first
 > A 48 GB M5 Pro can host a 32B model at 6-bit, but only by surrendering 25–34 GB of unified memory that native builds, OrbStack containers, and Nix derivations need. Frontier cloud models outperform anything that fits locally, and the memory stays available for actual development work. Retiring local serving reclaimed ~59 GB of SSD alongside that memory.
@@ -39,7 +39,7 @@ Each editor reaches a different provider. Knowing which is which avoids configur
 
 | Tool | Provider | Notes |
 | :--- | :--- | :--- |
-| **Antigravity IDE** | Google Gemini | Native agent canvas. Antigravity Tab uses Google's proprietary speculative decoding for autocomplete. |
+| **Antigravity (VS Code extension, Desktop, `agy` CLI)** | Google Gemini | Native agent canvas. Antigravity Tab uses Google's proprietary speculative decoding for autocomplete. |
 | **Claude Code Extension** | Anthropic Claude | Official IDE extension (`anthropic.claude-code`) authenticated directly via **Claude.ai subscription** (zero per-token charges). |
 | **Roo Code** | xAI Grok, Local MLX, AWS Bedrock | Multi-model switchboard in the IDE for real-time Grok, on-demand local Qwen 32B, and AWS Bedrock (with future plans to host OpenAI models in Bedrock). |
 | **Claude Code (CLI)** | Anthropic Claude | Terminal-native agent, installed declaratively via `pkgs.claude-code` in the flake. |
@@ -51,7 +51,7 @@ Each editor reaches a different provider. Knowing which is which avoids configur
 
 API keys are the one genuinely sensitive part of this setup.
 
-* **Never commit a key.** The tracked `continue-config.json` carries `REPLACE_WITH_ANTHROPIC_API_KEY` placeholders. Substitute real values only in your local copy at `~/.continue/config.json`, which is outside version control.
+* **Never commit a key.** The Roo Code profiles written by `flake.nix` hold no keys (`"apiKey": ""`); enter them in the extension or export them in your shell profile.
 * **Prefer the environment.** Export `ANTHROPIC_API_KEY` / `GEMINI_API_KEY` / `XAI_API_KEY` in your shell profile, or let the tool store them in the macOS keychain.
 * **Treat this repository as public** regardless of its current visibility — a key in git history is compromised the moment it lands, and rotating it is the only remedy.
 
@@ -72,7 +72,7 @@ The old local setup targeted `< 50ms` autocomplete because inference was on-devi
 
 ## 🗄️ Decommissioning Record (September 2026)
 
-Retained for context on what was removed and what to expect if you find stale references:
+Retained for context on what was removed and what to expect if you find stale references. *Local MLX has since returned in a lighter, on-demand form (`just serve-qwen-32b`); only `oMLX.app`, the second server and `serve-ai` stay retired.*
 
 * **Removed:** `oMLX.app`, ephemeral `mlx-lm` servers on ports `8080`/`8081`, the `serve-ai` Justfile recipe, and `client-tools/ai-dev/setup-mac-mlx.sh`.
 * **Reclaimed:** ~59 GB SSD (Hugging Face weight cache at `~/.cache/huggingface/hub/`), 25–34 GB unified memory.

@@ -18,7 +18,7 @@ aliases: []
 
 - **Unified Agent Canvas:** Seamlessly integrates native Antigravity agent workflows (Gemini Flash/Pro) directly inside VS Code alongside visual diffs and the integrated terminal.
 - **Multi-Model Switcher (Claude Code + Roo Code):** Provides instant access to Claude via your subscription (`anthropic.claude-code`) plus xAI Grok, Local MLX, and AWS Bedrock via Roo Code.
-- **Single-IDE Footprint:** Eliminates the duplicate standalone `antigravity-ide` fork (~2.1 GB reclaimed across app binary and extension caches).
+- **Single-IDE Footprint:** VS Code is the only editor; every agent runs as an extension inside it.
 
 ---
 

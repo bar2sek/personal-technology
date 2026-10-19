@@ -25,8 +25,11 @@ The cluster provides block (`RBD`), distributed shared filesystem (`CephFS`), an
 | Storage Tier | Physical Drive Pool | Raw Capacity | Usable Pools | Intended Workloads |
 | :--- | :--- | :--- | :--- | :--- |
 | **Tier 1 (High-IOPS NVMe)** | 2x 2TB Sabrent Rocket Q NVMe (`sm-node-01/02`) + 1x 1TB Crucial P3 Plus (`pc-node-04`) + 1x 1TB Crucial P3 (`pc-node-05`) | **6.0 TB** | `nvme-high-iops-pool` | PostgreSQL/Redis databases, etcd WAL, Ceph RocksDB/WAL metadata, low-latency app PVCs. |
-| **Tier 2 (SATA SSD Replicated)** | 8x 2TB Crucial MX500 SATA SSDs (`sm-node-01`: 2, `sm-node-02`: 2, `sm-node-03`: 4) | **16.0 TB** | `builtin-ssd-pool`, `ceph-filesystem` | Replicated Block (`RBD`) & File (`CephFS`) PVCs for active homelab applications. |
-| **Tier 3 (Bulk HDD Array)** | 9x Mechanical HDDs in `pc-node-04` (4x 4TB NAS + 2TB Enterprise + 3TB + 1.5TB + 2x 1TB) | **22.5 TB** | `hdd-bulk-pool` | **Scratch / overflow only** (2 replicas, both on pc-node-04): re-creatable data, secondary copies, temporary bulk. Never the only copy of anything. |
+| **Tier 2 (SATA SSD Replicated)** | 8x 2TB Crucial MX500 SATA SSDs (`sm-node-01`: 2, `sm-node-02`: 2, `sm-node-03`: 1, `pc-node-04`: 3, since 2026-10-18) | **16.0 TB** | `builtin-ssd-pool`, `ceph-filesystem` | Replicated Block (`RBD`) & File (`CephFS`) PVCs for active homelab applications. |
+| **Tier 3 (Bulk HDD Array)** | 6x HDDs: `pc-node-04` (3TB + 2TB Enterprise + 2x 1TB) and `pc-node-05` (2x 4TB IronWolf) | **15.0 TB** | `hdd-bulk-pool` | **Scratch / overflow only** (2 replicas, `failureDomain: osd`, so both copies can land on one host; EC 2+1 across three hosts is planned for Wave 5 of [[110-ephemeral-var-migration\|/var migration]]): re-creatable data, secondary copies, temporary bulk. Never the only copy of anything. |
+
+> [!NOTE]
+> **Installed but not yet in Ceph (as of 2026-10-19):** `sm-node-03` holds 2x 4TB IronWolf (future HDD OSDs) and a 250GB MX500 (future dedicated `/var`), hot-inserted on 2026-10-18. They join in Wave 4 of [[110-ephemeral-var-migration|/var migration]]; HDD raw capacity then rises to 23 TB across three hosts.
 
 > [!NOTE]
 > All storage drives are declared strictly using immutable `/dev/disk/by-id/` symlinks in `kubernetes/infrastructure/rook-ceph/cluster.yaml`. Boot drives (SuperDOMs on Supermicro nodes, SATA DOMs, and OS NVMe drives) are strictly excluded from Ceph disk filtering.
@@ -41,7 +44,7 @@ To eliminate contention between high-throughput Ceph replication traffic and Kub
 graph TD
     subgraph Client & K8s Plane [VLAN 20: 10.10.20.0/24 - MTU 1500]
         K8S["Kubernetes Nodes & Workload Pods"]
-        MON["Ceph MONs (mon.a, mon.c, mon.d)"]
+        MON["Ceph MONs (mon.f, mon.h, mon.i)"]
         MGR["Ceph MGRs (mgr.a, mgr.b)"]
         FRONT["OSD Public Listeners (front_addr)"]
     end
@@ -105,6 +108,7 @@ graph TD
 > [!WARNING]
 > **Ceph `mon.d` DHCP Binding Invariant**:
 > Ceph `mon.d` on `sm-node-02` binds to `--public-addr=10.10.20.121`, which is assigned via DHCP on the parent interface `eno8np3`. When declaring the tagged sub-interface `eno8np3.40` in Talos, `dhcp: true` MUST remain on `eno8np3` so `mon.d` never loses its listening address and drops out of quorum.
+> *mon.d itself was failed over to sm-node-01 (now mon.i) on 2026-10-18, but the rule still holds for any monitor on a node's VLAN 20 parent interface.*
 
 ---
 

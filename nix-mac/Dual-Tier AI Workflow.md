@@ -12,13 +12,13 @@ aliases: []
 
 # ⚡ The Unified Agentic Developer Workflow
 
-Routing work across **frontier cloud providers** inside a single unified canvas (**Antigravity IDE**) balances speed, cost, and depth of reasoning. The tiers below are ordered by how often you should reach for them, not by capability — escalate only when the cheaper tier stalls.
+Routing work across **frontier cloud providers** inside a single unified canvas (**VS Code** with the Antigravity, Claude Code and Roo Code extensions) balances speed, cost, and depth of reasoning. The tiers below are ordered by how often you should reach for them, not by capability — escalate only when the cheaper tier stalls.
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
 │                      HYBRID AGENTIC ARCHITECTURE                       │
 ├────────────────────────────────────────────────────────────────────────┤
-│                   WORKSPACE CANVAS: ANTIGRAVITY IDE                    │
+│                   WORKSPACE CANVAS: VISUAL STUDIO CODE                 │
 ├────────────────────────────┬────────────────────────────┬──────────────┤
 │ PRIMARY: Native AGY Agent  │ EXTENSION: Claude Code     │ ROO CODE     │
 ├────────────────────────────┼────────────────────────────┼──────────────┤
@@ -34,7 +34,7 @@ Routing work across **frontier cloud providers** inside a single unified canvas 
 
 ## Tier 1: Primary Orchestrator (Native Antigravity Agent)
 * **Goal:** High-level planning, complex multi-repo orchestration, and autonomous execution.
-* **Platform:** Antigravity IDE native agent panel.
+* **Platform:** Antigravity extension agent panel in VS Code.
 * **Model:** Gemini 3.8 Flash / Gemini Pro + Native Antigravity Tab (speculative decoding).
 * **Capabilities:**
   1. Inspecting file structures, reading docs, and drafting implementation plans.
@@ -47,7 +47,7 @@ Routing work across **frontier cloud providers** inside a single unified canvas 
 
 ## Tier 2: Subscription Frontier Reasoning (Claude Code Extension)
 * **Goal:** Top-tier reasoning, deep codebase comprehension, and multi-turn pair programming.
-* **Platform:** Official Claude Code extension in Antigravity IDE sidebar (`anthropic.claude-code`).
+* **Platform:** Official Claude Code extension in the VS Code sidebar (`anthropic.claude-code`).
 * **Authentication:** **Claude.ai paid subscription** (Pro/Team/Enterprise).
 * **Cost Advantage:** Billed under your existing monthly Claude subscription — **zero per-token Anthropic API charges**.
 * **Capabilities:** Full workspace indexing, interactive chat, inline diff application, and git status awareness.
@@ -82,7 +82,7 @@ Routing work across **frontier cloud providers** inside a single unified canvas 
 
 | Antigravity Flavor | Has In-Editor Code Canvas? | Multi-Model Extension Support? | Primary Focus |
 | :--- | :--- | :--- | :--- |
-| **Antigravity IDE** | Yes (VS Code base) | Yes (VS Code Extensions) | **Daily Driver: All-in-one coding & agent IDE** |
+| **Antigravity extension in VS Code** | Yes (VS Code) | Yes (VS Code Extensions) | **Daily Driver: coding & agent IDE** |
 | **Antigravity Desktop 2.0**| No (Companion app) | No | High-level agent mission control & cron dashboard |
 | **Antigravity CLI (`agy`)** | Terminal CLI | CLI Tools / MCP | Scriptable terminal pair programming |
 

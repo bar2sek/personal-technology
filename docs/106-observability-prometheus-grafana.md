@@ -37,7 +37,7 @@ graph TD
         NE["Node Exporter DaemonSet<br/>(Physical Machine CPU, RAM, Disk, Net)"]
         KSM["Kube-State-Metrics<br/>(Pod, Deployment & PVC Lifecycles)"]
         KUBELET["Kubelet cAdvisor<br/>(Container Resource Utilization)"]
-        CEPH_MGR["Ceph MGR Prometheus Exporter<br/>(Port 9283 - 21 OSDs, 3 MONs, Pools)"]
+        CEPH_MGR["Ceph MGR Prometheus Exporter<br/>(Port 9283 - 18 OSDs, 3 MONs, Pools)"]
     end
 
     subgraph PROMETHEUS["Prometheus Core"]
@@ -110,8 +110,8 @@ Enabling native Ceph monitoring in `CephCluster` (`spec.monitoring.enabled: true
 
 3. **Pre-Configured Ceph Dashboards**:
    Grafana automatically provisions official production dashboards:
-   - **Ceph - Cluster Overview** (ID: 2842): Storage cluster health, raw available capacity (42.3 TiB), IOPS, and read/write bandwidth.
-   - **Ceph - OSDs** (ID: 5336): Real-time breakdown of all 21 OSDs, NVMe/SSD/HDD latency heatmaps, and fill ratios.
+   - **Ceph - Cluster Overview** (ID: 2842): Storage cluster health, raw capacity (~33.7 TiB since the 2026-10-18 reshuffle), IOPS, and read/write bandwidth.
+   - **Ceph - OSDs** (ID: 5336): Real-time breakdown of all 18 OSDs, NVMe/SSD/HDD latency heatmaps, and fill ratios.
    - **Ceph - Pools** (ID: 5337): Capacity and compression efficiency across `nvme-high-iops-pool`, `builtin-ssd-pool`, and `hdd-bulk-pool`.
    - **Node Exporter Full** (ID: 1860): Physical server telemetry across all 5 nodes.
 

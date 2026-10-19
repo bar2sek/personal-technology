@@ -29,25 +29,26 @@ This document outlines the architectural blueprint, storage engine, networking t
                        +-----------------------------------+
                        |         Rook Storage Operator     |
                        +-----------------------------------+
-                        /                 |                 \
-     +-----------------------+ +-----------------------+ +-----------------------+
-     | OSDs (Node 01)        | | OSDs (Node 02)        | | OSDs (Node 03)        |
-     | - 2x 2TB MX500 SSDs   | | - 2x 2TB MX500 SSDs   | | - 4x 2TB MX500 SSDs   |
-     | - 1x 2TB NVMe (WAL/DB)| | - 1x 2TB NVMe (WAL/DB)| | (SATA Capacity Pool)|
-     +-----------------------+ +-----------------------+ +-----------------------+
+                                         |
+     +------------------+------------------+------------------+------------------+------------------+
+     | sm-node-01       | sm-node-02       | sm-node-03       | pc-node-04       | pc-node-05       |
+     | NVMe 2TB         | NVMe 2TB         | MX500 2TB x1     | NVMe 1TB         | NVMe 1TB         |
+     | MX500 2TB x2     | MX500 2TB x2     | (Wave 4: +2x 4TB | MX500 2TB x3     | IronWolf 4TB x2  |
+     |                  |                  |  IronWolf)       | HDD 7TB (x4)     |                  |
+     +------------------+------------------+------------------+------------------+------------------+
 ```
 
 ### Storage Device Assignment (3-Tier Rook-Ceph Architecture):
 
-1. **Tier 1 (NVMe High-IOPS Pool - 5TB)**:
-   - **Devices**: 2x 2TB NVMe (`sm-node-01`/`02`) + 1x 1TB NVMe (`pc-node-05`).
-   - **Role**: `etcd` WAL, high-speed database PVCs (PostgreSQL/Redis), Ceph RocksDB/WAL metadata acceleration, and Ollama AI model caching.
-2. **Tier 2 (SATA SSD Replicated Pool - 16TB)**:
-   - **Devices**: 8x 2TB Crucial MX500 SATA SSDs (`sm-node-01`, `02`, `03`).
-   - **Role**: Replicated Ceph Block (`RBD`) & File (`CephFS`) storage for active application state and PVCs across 10G SFP+.
-3. **Tier 3 (Bulk HDD Storage Pool - 27.0TB)**:
-   - **Devices**: 11x Mechanical HDDs in `pc-node-04` (**4x 4TB Seagate IronWolf NAS** + **2x 2TB Seagate Constellation ES.3 Enterprise** + 1x 3TB Seagate BarraCuda + 1x 1.5TB WD Green + 2x 1TB Seagate Barracuda + 1x 500GB HGST).
-   - **Role**: Bulk erasure-coded storage, MinIO S3 object store, Velero cluster backups, and media library archives. (Boots off dedicated 250GB Crucial MX500 SSD).
+1. **Tier 1 (NVMe High-IOPS Pool - 6TB raw)**:
+   - **Devices**: 2x 2TB NVMe (`sm-node-01`/`02`) + 1x 1TB NVMe (`pc-node-04`) + 1x 1TB NVMe (`pc-node-05`).
+   - **Role**: high-speed database PVCs and the CephFS metadata pool. StorageClass `rook-ceph-block-nvme`.
+2. **Tier 2 (SATA SSD Replicated Pool - 16TB raw, default)**:
+   - **Devices**: 8x 2TB Crucial MX500 SATA SSDs on four hosts (`sm-node-01` ×2, `sm-node-02` ×2, `sm-node-03` ×1, `pc-node-04` ×3).
+   - **Role**: default StorageClass `rook-ceph-block` and CephFS data: everything that matters lives here.
+3. **Tier 3 (Bulk HDD Pool - 15TB raw, scratch/overflow)**:
+   - **Devices**: 4 HDDs in `pc-node-04` (3TB, 2TB, 2× 1TB) + 2× 4TB IronWolf in `pc-node-05`.
+   - **Role**: re-creatable bulk data only, never the only copy. Planned: 2× 4TB IronWolf in `sm-node-03` (Wave 4) and conversion to erasure-coded 2+1 across three hosts (Wave 5). See [[110-ephemeral-var-migration|/var migration & storage reshuffle]].
 
 ---
 

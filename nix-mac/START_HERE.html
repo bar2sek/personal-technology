@@ -135,7 +135,7 @@
 
   <div class="card">
     <h2><span class="step-number">4</span> Setting Up Your AI Provider Keys</h2>
-    <p>This workstation runs <strong>no local models</strong> &mdash; all inference is remote, so the only setup needed is credentials.</p>
+    <p>This workstation is <strong>cloud-first</strong> &mdash; day-to-day inference is remote, so the only setup needed is credentials. (Local MLX is optional and on demand: <code>just serve-qwen-32b</code>.)</p>
 
     <p>Create API keys for the providers you use (<a href="https://console.anthropic.com" target="_blank">Anthropic</a>, <a href="https://aistudio.google.com" target="_blank">Google AI Studio</a>, <a href="https://console.x.ai" target="_blank">xAI</a>), then add them to <code>~/.zshrc</code> so they persist:</p>
 
@@ -143,11 +143,7 @@
 export GEMINI_API_KEY="..."
 export XAI_API_KEY="..."</code></pre>
 
-    <p>Reload your shell with <code>source ~/.zshrc</code>, then copy the Continue config and substitute your real key:</p>
-
-    <pre><code>cp client-tools/ai-dev/continue-config.json ~/.continue/config.json</code></pre>
-
-    <p>Open <strong>Visual Studio Code</strong> and use Continue.dev (<code>Cmd + L</code> for chat, <code>Cmd + I</code> for inline edits). <strong>Antigravity IDE</strong> uses Gemini natively, with Claude and Grok available through the Roo Code switcher.</p>
+    <p>Reload your shell with <code>source ~/.zshrc</code>, then open <strong>Visual Studio Code</strong>. The <strong>Antigravity extension</strong> uses Gemini natively; Claude runs in the Claude Code extension (sign in with your Claude.ai subscription) and Grok in Roo Code.</p>
 
     <p><strong>&#9888; Never commit an API key.</strong> Treat every repository here as public &mdash; a leaked key is compromised the moment it lands, and rotating it is the only fix.</p>
   </div>

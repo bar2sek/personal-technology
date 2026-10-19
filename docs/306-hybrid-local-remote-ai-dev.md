@@ -18,7 +18,7 @@ tags:
 The system separates concerns into three distinct layers:
 
 1. **Client Layer (macOS / 48GB Unified RAM)**:
-   - Runs standard VS Code with the **Continue.dev** extension, or Antigravity IDE with Roo Code.
+   - Runs standard VS Code with the **Continue.dev** extension, or with the Antigravity and Roo Code extensions.
    - Inference is **entirely remote** — Anthropic, Google, and xAI APIs over HTTPS. No model weights on disk.
    - Zero Antigravity binaries installed locally; no local build tools required.
    - The full 48 GB of unified memory stays available for containers, Nix builds, and the editor.
@@ -75,7 +75,7 @@ The system separates concerns into three distinct layers:
 | :--- | :--- | :--- | :--- |
 | **Tab Completion** | Continue.dev in VS Code | **Claude Haiku 4.5**<br>Latency-critical inline completion | Anthropic API |
 | **In-Editor Chat & Scoped Refactor** | Continue.dev sidebar / Roo Code | **Claude Sonnet 5**<br>Diffs, unit tests, routine implementation | Anthropic API |
-| **Deep Reasoning & Architecture** | Roo Code in Antigravity IDE | **Claude Opus 5**<br>Multi-file refactors, architectural tie-breakers | Anthropic API |
+| **Deep Reasoning & Architecture** | Roo Code in VS Code | **Claude Opus 5**<br>Multi-file refactors, architectural tie-breakers | Anthropic API |
 | **Autonomous Agent Automation** | Antigravity Remote Dashboard or `agy` CLI | **Antigravity Agent Platform**<br>Long-running test suites, multi-file refactors | Cluster host (`sm-node-03`) |
 
 ---
@@ -118,7 +118,7 @@ export XAI_API_KEY="..."         # Grok via Roo Code
 > Treat every repository here as public. A committed key is compromised the moment it lands, and rotation is the only remedy — see the Security section of `AGENTS.md`.
 
 ### 2. VS Code Continue.dev Configuration
-Deploy [`client-tools/ai-dev/continue-config.json`](../client-tools/ai-dev/continue-config.json) to `~/.continue/config.json`, replacing the `REPLACE_WITH_ANTHROPIC_API_KEY` placeholders with a real key (the deployed copy is outside version control):
+*(Historical: Continue.dev is no longer used and `client-tools/ai-dev/continue-config.json` was removed on 2026-10-19.)* Deploy `continue-config.json` to `~/.continue/config.json`, replacing the `REPLACE_WITH_ANTHROPIC_API_KEY` placeholders with a real key (the deployed copy is outside version control):
 
 ```json
 {

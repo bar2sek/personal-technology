@@ -7,11 +7,14 @@ tags:
   - qwen
   - macos
   - m5-pro
-status: evergreen
+status: in-progress
 aliases: []
 ---
 
 # ⚡ Local LLMs with Apple MLX (On-Demand Inference)
+
+> [!IMPORTANT]
+> **Due for a revisit (2026-10-19).** MLX is in use again in this on-demand form, but the model choice, Roo Code profile and memory budget below have not been re-checked since September 2026.
 
 This guide documents the workstation's setup for running **local open-weight LLMs** on Apple Silicon using [Apple MLX](https://github.com/ml-explore/mlx) and serving them on-demand via `mlx-lm` and **Astral `uvx`**.
 
@@ -78,9 +81,9 @@ uvx --from mlx-lm mlx_lm.generate \
 
 ---
 
-## 🤖 Connecting to Roo Code in Antigravity IDE
+## 🤖 Connecting to Roo Code in VS Code
 
-Roo Code (`RooVeterinaryInc.roo-cline`) inside **Antigravity IDE** is pre-configured with the **"Local MLX (Qwen 2.5 Coder 32B)"** provider profile.
+Roo Code (`RooVeterinaryInc.roo-cline`) inside **VS Code** is pre-configured with the **"Local MLX (Qwen 2.5 Coder 32B)"** provider profile.
 
 ### Configuration Specification
 Declared declaratively in `templates/flake.nix` and written to `~/.config/roo-code/settings.json`:
@@ -105,7 +108,7 @@ Declared declaratively in `templates/flake.nix` and written to `~/.config/roo-co
 
 ### How to Use
 1. Start the server in a terminal: `just serve-qwen-32b`.
-2. Open **Roo Code** in the Antigravity IDE sidebar.
+2. Open **Roo Code** in the VS Code sidebar.
 3. In the model dropdown selector, choose **"Local MLX (Qwen 2.5 Coder 32B)"**.
 4. Chat, prompt refactors, generate tests, or execute tasks offline.
 

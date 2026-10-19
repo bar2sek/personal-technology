@@ -19,7 +19,21 @@ Any AI agent or human operator can review this document to pick up exactly where
 
 ---
 
-## 🧭 Executive Summary & Current State (As of 2026-09-12)
+## 🧭 Current State (As of 2026-10-19)
+
+* **Cluster**: 5 Talos nodes managed by Sidero Omni (`talos/cluster-template.yaml`). The sm nodes carry a soft `PreferNoSchedule` taint until their `/var` moves off the 16 GB SuperDOMs.
+* **Storage**: Rook-Ceph `HEALTH_OK`, 18 OSDs (NVMe 4 / SSD 8 / HDD 6, ~37 TB raw); monitors f (pc-node-04), h (pc-node-05), i (sm-node-01). Storage reshuffle Waves 0–3b done, Wave 4 (sm-node-03) next: see [[110-ephemeral-var-migration|/var migration]] *Progress* and *Open items*.
+* **Gaming VM**: Bazzite on pc-node-05's local Sabrent NVMe (840 GiB); pc-node-05 boots from a Kingston SATA SSD.
+* **Backups**: encrypted (`age`) S3 and Synology NAS CronJobs, independent of each other, for cluster state, Postgres and Actual Budget. Key rotated 2026-10-17.
+* **Alerting**: Alertmanager → self-hosted ntfy over Tailscale (phone push); Watchdog → healthchecks.io dead man's switch; Rook's Ceph alert rules installed.
+* **Remote access**: Cloudflare Tunnel + Access for public apps; Tailscale operator with a `Connector` for the ingress VIP.
+* **Identity**: Authentik 2026.8.3 (PostgreSQL only, no Redis).
+
+The milestone entries below record how each of these got here. The section that follows is the original 2026-09-12 snapshot, kept for history.
+
+---
+
+## 🧭 Executive Summary (Original Snapshot, 2026-09-12)
 
 * **Workstation & Remote Access**:
   * Native macOS OpenSSH daemon (`sshd`) enabled on MacBook Pro workstation.
@@ -606,16 +620,14 @@ Any AI agent or human operator can review this document to pick up exactly where
       - Updated `personal-technology/bootstrap/github` to declaratively inject Cloudflare API tokens, Account IDs, Zone IDs, and destination email into repository variables and secrets.
       - Pruned legacy local Cloudflare recipes from `personal-technology/Justfile`.
 
-  - ### Milestone 20: Native Google Antigravity IDE Deployment & KasmVNC 60fps Web Streaming (2026-10-01)
-    - **Architecture Evolution (From Generic VS Code to True Antigravity IDE)**:
-      - Replaced generic open-source `codercom/code-server` with the official, native **Google Antigravity IDE (Linux x86_64 v2.5.5)** running inside `lscr.io/linuxserver/webtop:ubuntu-xfce`.
-      - Delivers the complete native Antigravity experience in any browser or iPad over `https://agy.bar2sek.com`: Gemini-powered agent canvas, task planning tabs, inline code lenses, terminal sandboxing, and multimodal media uploads.
+  - ### Milestone 20: Browser-Streamed Remote Dev Workspace: Evaluated & Decommissioned (2026-10-01)
+    - **What was built**: a remote desktop dev workspace (`dev-workspaces` namespace) running inside `lscr.io/linuxserver/webtop:ubuntu-xfce`, streamed over KasmVNC at `https://agy.bar2sek.com`, replacing an earlier `codercom/code-server` pod.
     - **Compute & Storage Alignment on `pc-node-04`**:
       - Pinpoint diagnosis: Scheduling on `sm-node-03` triggered `KubeletHasDiskPressure` due to its small 16GB SATADOM boot disk (~900MB free ephemeral space).
       - Pinned workload to `pc-node-04` via `nodeSelector: kubernetes.io/hostname: pc-node-04`, leveraging its 69 GB fast NVMe ephemeral storage, 24 vCPUs, and 65 GB RAM.
-      - Attached high-IOPS 100GB Ceph block storage (`rook-ceph-block-nvme`) mounted to `/config`, permanently persisting the unpacked Antigravity binary, user IDE extensions, and `/config/workspace/second-brain`.
+      - Attached high-IOPS 100GB Ceph block storage (`rook-ceph-block-nvme`) mounted to `/config`, persisting the editor install, its extensions, and `/config/workspace/second-brain`.
     - **Automated Bootstrap & Autostart Engine**:
-      - Codified `antigravity-init-scripts` ConfigMap executing on container boot: verifies runtime dependencies (`libsecret`, `libgbm`), downloads the official Google release tarball if absent, generates desktop launcher wrappers with `--no-sandbox --disable-gpu`, installs the `agy` CLI (`v1.2.14`), and configures XFCE autostart.
+      - Codified `antigravity-init-scripts` ConfigMap executing on container boot: verifies runtime dependencies (`libsecret`, `libgbm`), downloads the editor release tarball if absent, generates desktop launcher wrappers with `--no-sandbox --disable-gpu`, installs the `agy` CLI (`v1.2.14`), and configures XFCE autostart.
     - **Web Streaming & Ingress Optimization**:
       - Transitioned Service and Ingress routing from port `8080` to port `3000` (KasmVNC).
       - Configured Ingress-Nginx annotations with `proxy-buffering: "off"` and 3600-second WebSocket timeouts for seamless 60fps streaming and native clipboard sync across Cloudflare Zero Trust and local LAN (`10.10.20.50`).
@@ -683,7 +695,7 @@ Any AI agent or human operator can review this document to pick up exactly where
 
 ---
 
-## 🎯 Milestone 10: Garage Synology NAS Onboarding & Tier-3 DR Architecture (2026-10-04)
+## 🎯 Milestone 23: Garage Synology NAS Onboarding & Tier-3 DR Architecture (2026-10-04)
 
 - **Hardware Discovery & Physical Placement**:
   - Successfully brought online the garage **Synology DiskStation DS713+** (2-bay Intel Atom D2700, 2x 2TB HDDs in SHR / RAID 1 = 2.0 TB usable).
@@ -700,7 +712,7 @@ Any AI agent or human operator can review this document to pick up exactly where
 
 ---
 
-## 🎯 Milestone 11: Offsite Backup Hardening: Encryption, Immutability & Least Privilege (2026-10-05)
+## 🎯 Milestone 24: Offsite Backup Hardening: Encryption, Immutability & Least Privilege (2026-10-05)
 
 - **Mandatory client-side encryption (`age`)**:
   - Both backup CronJobs encrypt every artifact to an `age` public key (`configmap-backup-encryption.yaml`) and fail closed: a required ConfigMap, a script-level recipient check, streaming `tar | age` / `pg_dump | gzip | age`, and IAM plus bucket-policy rules that only accept `*.age` keys.
@@ -713,13 +725,13 @@ Any AI agent or human operator can review this document to pick up exactly where
 - **Verification**: fail-closed test, 11-case uploader permission matrix, 12 SubjectAccessReview checks, administrator delete/bypass probes against locked objects, IAM policy simulator, and an end-to-end restore drill (Authentik into a throwaway database; cluster-state archive with 0 Secrets).
 - **Corrections to earlier entries**:
   - The *Tiered Cost-Effective Disaster Recovery* entry described Postgres dumps as encrypted. They were not encrypted until this milestone.
-  - Milestone 10's Synology NFS mirror was never live: the PV/PVC were not deployed. It has been removed from the jobs and re-planned in [[307-garage-synology-dr-time-machine|Garage Synology NAS Onboarding]].
+  - Milestone 23's Synology NFS mirror was never live: the PV/PVC were not deployed. It has been removed from the jobs and re-planned in [[307-garage-synology-dr-time-machine|Garage Synology NAS Onboarding]].
   - The `backup-etcd-snapshot` CronJob described in that entry does not exist in the cluster.
 - Runbook: [[README|kubernetes/infrastructure/backups/README.md]].
 
 ---
 
-## 🎯 Milestone 12: Authentik Upgrade 2024.12 → 2026.8 & Redis Retirement (2026-10-12)
+## 🎯 Milestone 25: Authentik Upgrade 2024.12 → 2026.8 & Redis Retirement (2026-10-12)
 
 - **Upgrade path**: 2024.12.5 → 2025.2.3 → 2025.4.4 → 2025.6.4 → 2025.8.6 → 2025.10.4 → 2025.12.6 → 2026.2.7 → 2026.5.7 → 2026.8.3, one release per hop. Each hop had an encrypted pre-upgrade `pg_dump` to S3 and a scale-to-zero apply, and every image was pinned by digest.
 - **Redis retired**: from 2025.10 Authentik runs caching, sessions, WebSockets and tasks on PostgreSQL. After confirming Redis had no remaining clients, its Deployment, Service and `AUTHENTIK_REDIS__HOST` were removed.
@@ -730,7 +742,7 @@ Any AI agent or human operator can review this document to pick up exactly where
 
 ---
 
-## 🎯 Milestone 13: Backup Encryption Key Rotation (2026-10-17)
+## 🎯 Milestone 26: Backup Encryption Key Rotation (2026-10-17)
 
 - **Trigger**: the passphrase for the 2026-10-04 age identity was lost, which made every existing backup (S3 and Synology mirror) undecryptable. Nothing was lost from the live cluster.
 - **Rotation**: a new passphrase-wrapped identity was generated on the admin workstation. The passphrase was saved in the password manager first and then tested with an encrypt/decrypt round trip before the key was used. The new public key was rolled into both `backup-encryption` ConfigMaps (`backups`, `finance`).
@@ -740,7 +752,7 @@ Any AI agent or human operator can review this document to pick up exactly where
 
 ---
 
-## 🎯 Milestone 14: Independent Local Backup Tier (2026-10-17)
+## 🎯 Milestone 27: Independent Local Backup Tier (2026-10-17)
 
 - **Problem found**: the first Synology mirror added the NAS volume to the existing S3 backup jobs. Kubernetes mounts NFS before any container starts, so a NAS outage would have stopped the **offsite** backup too.
 - **Fix**: every dataset now runs as two CronJobs, one for S3 and one for the NAS, sharing one script per dataset (`configmap-backup-scripts.yaml`, `DEST=s3|nas`). S3 jobs hold the uploader key and never mount the NAS; NAS jobs mount the NAS and hold no AWS key. NAS writes use a `.partial` name plus rename, and prune copies after 35 days to match S3.
@@ -751,7 +763,7 @@ Any AI agent or human operator can review this document to pick up exactly where
 
 ---
 
-## 🎯 Milestone 15: Homelab Overview Dashboard & Recovered Ceph Disk (2026-10-17)
+## 🎯 Milestone 28: Homelab Overview Dashboard & Recovered Ceph Disk (2026-10-17)
 
 - **Homelab Overview dashboard** (`kubernetes/infrastructure/monitoring/dashboards/homelab-overview.yaml`): one screen for nodes, Ceph, backups, UPS power, key apps and firing alerts, with a written explanation on every panel. Every query was tested against Prometheus before deployment. See [[106-observability-prometheus-grafana|Observability]].
 - **Problem it surfaced: osd.5 had been down since 2026-10-04.** It is a Crucial MX500 2 TB in sm-node-02 that had dropped off the SATA bus. Ceph had marked it out and re-replicated without raising a health warning, and the mgr exporter stopped reporting it, so the first version of the dashboard also missed it (fixed: see the warning in the Observability doc).
@@ -760,7 +772,7 @@ Any AI agent or human operator can review this document to pick up exactly where
 
 ---
 
-## 🎯 Milestone 16: Ceph Back to HEALTH_OK (2026-10-17)
+## 🎯 Milestone 29: Ceph Back to HEALTH_OK (2026-10-17)
 
 - **Image garbage collection on the control-plane nodes** (Omni patch `controlplane-image-gc`): kubelet image GC at 60/50% instead of 85/80%, plus a 7-day maximum age for unused images. sm-node-02 went from 72% to 55% `/var` used. Applied with a template diff first; the kubelet restarted without a node reboot.
 - **Monitor moved off sm-node-03:** a preferred monitor placement (pc-node-04 and pc-node-05, then sm-node-02) in `cluster.yaml`. mon.e was scaled to 0 and the operator failed it over to **mon.f on pc-node-04** (49% `/var` free). Monitors are now c (pc-node-05), d (sm-node-02) and f (pc-node-04).
@@ -770,7 +782,7 @@ Any AI agent or human operator can review this document to pick up exactly where
 
 ---
 
-## 🎯 Milestone 17: Gaming VM on Local NVMe & Repeatable Bazzite Rebuild (2026-10-18)
+## 🎯 Milestone 30: Gaming VM on Local NVMe & Repeatable Bazzite Rebuild (2026-10-18)
 
 - **Local disk:** the Bazzite VM's root disk moved from a 1000 GiB, 3x-replicated Ceph RBD image to a 750 GiB local volume on pc-node-05's system NVMe (Talos directory user volume `gaming-vm`, static local PV). It is faster, and the old Ceph image is due for deletion (~1.7 TB raw NVMe).
 - **Fresh install** of Bazzite 42 → updated to 44.20261012.1 (Fedora 44). Install mode is now a reusable JSON patch (`bazzite-vm-install-patch.yaml`: ISO, VNC, GPU detached).
@@ -781,7 +793,7 @@ Any AI agent or human operator can review this document to pick up exactly where
 
 ---
 
-## 🎯 Milestone 18: NVMe Tier Reclaimed & PG Autoscaler Working (2026-10-18)
+## 🎯 Milestone 31: NVMe Tier Reclaimed & PG Autoscaler Working (2026-10-18)
 
 - **Old gaming disk deleted:** `vms/windows-gaming-nvme-pvc` was removed after switching its PV from `Retain` to `Delete`. The nvme device class went from **1.7 TiB raw used to 5.8 GiB**.
 - **Monitor off sm-node-03:** mon.g failed over to mon.h on pc-node-05. Monitors are d (sm-node-02), f (pc-node-04), h (pc-node-05); `MON_DISK_LOW` cleared.
@@ -791,7 +803,7 @@ Any AI agent or human operator can review this document to pick up exactly where
 
 ---
 
-## 🎯 Milestone 19: Alert Noise Cleared & Actual Budget off the SuperDOM Nodes (2026-10-18)
+## 🎯 Milestone 32: Alert Noise Cleared & Actual Budget off the SuperDOM Nodes (2026-10-18)
 
 - **Kubelet `TargetDown` (firing since 09-16):** the chart's `/metrics/resource/v1alpha1` scrape path returns 404 on current kubelets; `values.yaml` now uses `/metrics/resource`. All 20 kubelet targets are up.
 - **`KubeClientCertificateExpiration` (critical, permanent):** caused by a client that reconnects all day with certificates valid for under 30 minutes. The stock rule is replaced by one that ignores certificates minted that short-lived ([[106-observability-prometheus-grafana|Observability]], *Alert rule tuning*).
@@ -805,7 +817,7 @@ Any AI agent or human operator can review this document to pick up exactly where
 
 ---
 
-## 🎯 Milestone 20: Tailscale in the Cluster & Phone Alerts (2026-10-18)
+## 🎯 Milestone 33: Tailscale in the Cluster & Phone Alerts (2026-10-18)
 
 - **Tailscale operator deployed** (chart 1.104.1, `just tailscale-apply`), finishing the design in [[203-tailscale-mesh-vpn|Tailscale]]. The unused hand-built router Deployment was removed. A `Connector` advertises only the ingress VIP `10.10.20.50/32`, auto-approved by tailnet policy; Mac/iOS clients would otherwise route Moonlight and node traffic through the router pod even at home. The OAuth secret is entered at a hidden prompt, not passed with Helm `--set` (which stores it in the release record).
 - **ntfy self-hosted** at `https://ntfy.tail6e33.ts.net` (Tailscale Ingress, Tailscale-issued certificate, no public DNS). `deny-all` by default; logins provisioned declaratively from a Secret by `just ntfy-auth`. iOS pushes go through `upstream-base-url: https://ntfy.sh`, which only sees a poll request, never the alert text.
@@ -819,7 +831,7 @@ Any AI agent or human operator can review this document to pick up exactly where
 
 ---
 
-## 🎯 Milestone 21: Storage Reshuffle Waves 0–3b (2026-10-18)
+## 🎯 Milestone 34: Storage Reshuffle Waves 0–3b (2026-10-18)
 
 - **Waves 0–2:** 8 OSDs drained and purged; the three sm-node-03 MX500s hot-pulled and moved to pc-node-04, which is now a fourth SSD host (osd.4/11/12). The SSD pool rebalanced in about 6 minutes.
 - **Found: purged HDD OSDs came back.** Ceph Squid writes backup BlueStore labels at 1/10/100/1000 GiB. HDDs cannot `blkdiscard`, so the 100 MiB wipe left them, and Rook's prepare job (which scans every disk on the node) re-activated osd.11/14/15/16/18 with their old IDs. They held no data. Fixed by zeroing every label offset; the wipe procedure now includes that.
@@ -830,6 +842,10 @@ Any AI agent or human operator can review this document to pick up exactly where
 ---
 
 ## 🎯 Immediate Next Actions & Infrastructure Backlog
+
+> [!NOTE]
+> The active work queue is the storage reshuffle: see *Open items before Wave 4* and the remaining waves in [[110-ephemeral-var-migration|/var migration]]. Other open items: the split-horizon AAAA DNS leak (Milestone 33), deleting the Synology copies encrypted to the retired age key (Milestone 26), and removing the sm-node soft taint after Waves 4, 6 and 7.
+
 
 1. **GitOps Controller Evaluation (Flux CD)**:
    - Evaluate deploying Flux CD source and kustomize controllers to enforce declarative reconciliation between GitHub and in-cluster states.

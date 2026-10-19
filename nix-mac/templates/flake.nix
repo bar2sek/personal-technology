@@ -430,11 +430,6 @@
           chown -h "$PRIMARY_USER" "$USER_HOME/.local/bin/tailscale" 2>/dev/null || true
         fi
 
-        echo "--> Purging retired Antigravity IDE caches & extension state..."
-        rm -rf "$USER_HOME/Library/Application Support/Antigravity IDE" 2>/dev/null || true
-        rm -rf "$USER_HOME/.antigravity-ide" 2>/dev/null || true
-        rm -rf "$USER_HOME/Library/Caches/com.google.antigravity-ide"* 2>/dev/null || true
-
         echo "--> Deploying declarative VS Code & AI configuration..."
         # Declarative Roo Code multi-model profiles:
         # - Grok (xAI)

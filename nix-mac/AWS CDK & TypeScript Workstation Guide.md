@@ -44,7 +44,7 @@ graph TD
 | **TypeScript** | `typescript` | Homebrew (`brews`) | Global TypeScript compiler (`tsc`) |
 | **OrbStack** | `orbstack` | Homebrew (`casks`) | Docker daemon for CDK container asset bundling (e.g., Lambda Docker builds) |
 
-### 2. IDE Extensions (Antigravity IDE & VS Code)
+### 2. VS Code Extensions
 
 Declared in the `postActivation` script:
 * `amazonwebservices.aws-toolkit-vscode`: AWS resource explorer, CloudWatch logs viewer, and CDK Explorer.

@@ -31,7 +31,7 @@ Welcome to the **Mac AI Workstation** notes vault. This workspace documents the 
 ### 2. AI Architecture & Model Routing
 * [[Cloud AI Providers & Models]] — Model tiering, provider routing per tool, and credential hygiene.
 * [[Local LLMs with MLX]] — On-demand inference via Apple MLX, Qwen 2.5 Coder 32B, and Roo Code integration.
-* [[IDE Configuration Guide]] — Step-by-step config for Antigravity IDE and Roo Code multi-model profiles.
+* [[IDE Configuration Guide]] — Step-by-step config for VS Code (Antigravity, Claude Code & Roo Code extensions) and Roo Code multi-model profiles.
 
 ### 3. Containerization & Isolation
 * [[Container Strategy]] — Apple Container (`apple/container`) vs. OrbStack vs. Docker Desktop.

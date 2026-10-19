@@ -77,8 +77,8 @@ Whether operating at the root vault level or inside any child repository, you **
 * **Binary Hygiene**: Never commit installers, disk images (`*.dmg`, `*.pkg`, `*.iso`), build caches, or temporary runtime state.
 * **Python Discipline**: Never install Python packages globally or mutate macOS system Python. Use **`uv`** and **`uvx`** exclusively for isolated, ephemeral environments.
 * **Cloud-First AI Standard**:
-  * Primary intelligence, deep refactoring, and agentic pairing are powered by cloud models: Gemini in Antigravity IDE, Anthropic Claude (Sonnet/Opus), and xAI Grok (via Roo Code).
-  * Workstation RAM and storage are preserved for native development workloads, Nix builds, and container runtimes rather than local model weights.
+  * Primary intelligence, deep refactoring, and agentic pairing are powered by cloud models: Gemini (Antigravity extension in VS Code, Antigravity Desktop, `agy` CLI), Anthropic Claude (Sonnet/Opus), and xAI Grok (via Roo Code).
+  * Workstation RAM and storage are reserved for native development workloads, Nix builds, and container runtimes. Local model weights run only on demand (Apple MLX, `just serve-qwen-32b`) and are deleted when not in use.
 
 ---
 

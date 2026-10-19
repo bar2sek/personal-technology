@@ -20,7 +20,7 @@ The three Supermicro control-plane nodes boot from 16 GB SATA SuperDOMs. Talos p
 - `MON_DISK_LOW` whenever a Ceph monitor landed on an sm node,
 - etcd write latency up to 2.6 s on sm-node-02, where etcd and a monitor shared the SuperDOM (`KubeAPIErrorBudgetBurn`).
 
-Interim mitigations (soft taint `homelab.bar2sek.com/small-var`, earlier image GC, monitors on the pc nodes) are recorded in [[001-deployment-journal|the journal]], Milestones 16–19. This runbook is the real fix.
+Interim mitigations (soft taint `homelab.bar2sek.com/small-var`, earlier image GC, monitors on the pc nodes) are recorded in [[001-deployment-journal|the journal]], Milestones 29–32. This runbook is the real fix.
 
 ---
 
@@ -39,7 +39,7 @@ Inspecting the hardware shaped the plan:
 | sm-node-02 | SuperDOM | 250 GiB on the Sabrent NVMe (`F2C10719080B00006324`) | Same as sm-node-01 |
 | sm-node-03 | SuperDOM (second one stays spare) | **250 GB MX500 `2228E6489822`**, dedicated | MX500 × 1 (osd.7) + **2 × 4 TB IronWolf** |
 | pc-node-04 | Intel 320 80 GB | unchanged | NVMe + **3 × MX500 2 TB** (from sm-node-03) + HDD 3 TB, 2 TB, 2 × 1 TB |
-| pc-node-05 | Sabrent 1 TB (also the gaming-VM disk) | unchanged | NVMe + **2 × 4 TB IronWolf** (after re-case) |
+| pc-node-05 | **Kingston 240 GB SATA SSD** (Wave 3b; the whole Sabrent is now the gaming-VM disk) | on the Kingston | Crucial P3 NVMe + **2 × 4 TB IronWolf** (after re-case) |
 
 **Disk moves**
 | Disk | From → to | Today |
@@ -72,7 +72,7 @@ The HDD pool stays a scratch/overflow tier. Erasure coding 2+1 stores each objec
 - **Ports and power:** two free onboard SATA ports, SATA power from the PSU, two 3.5" bays in the new case. Confirm before buying or moving anything.
 
 ### Deferred
-- **pc-node-05 boot on a spare Intel SSD** (whole Sabrent for the gaming VM): rejected; the Sabrent's 750 GiB is the VM's disk and moving it means a Bazzite rebuild.
+- ~~**pc-node-05 boot on a spare Intel SSD** (whole Sabrent for the gaming VM): rejected; the Sabrent's 750 GiB is the VM's disk and moving it means a Bazzite rebuild.~~ Reversed and done in Wave 3b with a spare Kingston SSD instead: the VM image was backed up and restored, no rebuild needed (see *Progress*).
 
 ---
 

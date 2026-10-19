@@ -143,8 +143,8 @@ spec:
               deviceType: ssd
 
       # Tier 1 (NVMe) & Tier 3 (Bulk HDD Array) on Storage PC Node 04
-      # (Boot drive /dev/sdc Intel SSD is strictly excluded;
-      #  Scratch drives /dev/sdf, /dev/sdg, /dev/sdm are strictly excluded)
+      # (Boot drive Intel 320 SSD and the two spare Intel 335 SSDs are excluded
+      #  by omission; /dev/sdX letters changed in Wave 2, so match by-id only)
       # Storage reshuffle (docs/110, docs/111): the four IronWolf ST4000VN008
       # (to sm-node-03 and pc-node-05) and the failing WD15EADS (retired)
       # removed 2026-10-18. Three MX500 2 TB from sm-node-03 added in Wave 2,
@@ -177,7 +177,8 @@ spec:
               deviceType: hdd
 
       # Tier 1 (NVMe) on GPU Worker Node 05
-      # (Boot drive /dev/nvme1n1 Sabrent Rocket is strictly excluded)
+      # (Boot drive Kingston SQ500S3 SATA SSD and the Sabrent Rocket NVMe, which
+      #  is the gaming VM's local disk since Wave 3b, are excluded by omission)
       # Storage reshuffle Wave 3 (2026-10-18): re-cased with two IronWolf 4 TB
       # from pc-node-04, making it the third HDD host for the EC 2+1 pool.
       - name: pc-node-05

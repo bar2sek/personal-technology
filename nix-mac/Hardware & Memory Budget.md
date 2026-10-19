@@ -26,7 +26,7 @@ The **48 GB Unified Memory Architecture (UMA)** shares one pool between CPU, GPU
 | Consumer | Baseline Dev | With Local MLX Active | Notes |
 | :--- | :--- | :--- | :--- |
 | **macOS + system daemons** | ~6.0 GB | ~6.0 GB | Baseline; grows with login items |
-| **Antigravity IDE** | ~2.5 GB | ~2.5 GB | Per window; language servers & agent canvas |
+| **VS Code (+ Antigravity / Roo Code extensions)** | ~2.5 GB | ~2.5 GB | Per window; language servers & agent canvas |
 | **Browser** | ~3.0 GB | ~3.0 GB | Scales with tab count |
 | **Local MLX (Qwen 2.5 Coder 32B 4-bit)** | — | **~22.0 GB** | On-demand weights (~19.5GB) + KV cache (~2.5GB) |
 | **OrbStack VM + containers** | ~4.0 GB | ~4.0 GB (up to ~8 GB) | Databases and Dev Containers |
