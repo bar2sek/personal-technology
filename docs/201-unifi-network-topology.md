@@ -46,7 +46,7 @@ This document details the physical network topology, switch interconnects, WAN c
 - **Wireless Infrastructure (Access Points)**:
   - **Home Wi-Fi 7 AP**: 1x **UniFi U7 Pro WAP** (`94:2a:6f:xx:xx:xx` - `10.0.1.214`) connected to USW-24-G2 Port 6 for primary household wireless coverage.
   - **Garage Wi-Fi 6 AP**: 1x **UniFi U6-Lite WAP** (`24:5a:4c:xx:xx:xx` - `10.0.1.45`) connected to USW-Lite-8-PoE Port 1 for garage/outdoor IoT and vehicle wireless coverage.
-- **Node 05 Multi-Gig Uplink**: `pc-node-05` 2.5GbE Onboard RJ45 connected to **USW-Aggregation** SFP+ port via TP-Link Multi-Gig SFP+ 10GBASE-T Transceiver (auto-negotiated at **2.5 Gbps**). It is a trunk port with VLANs 20 and 40 both tagged; see *pc-node-05: single-NIC trunk and the pod MTU* below.
+- **Node 05 Multi-Gig Uplink**: `pc-node-05` 2.5GbE Onboard RJ45 connected to **USW Aggregation (#1) Port 6** (UniFi port name `pc-node-05-2.5G-GPU`) via TP-Link Multi-Gig SFP+ 10GBASE-T Transceiver (auto-negotiated at **2.5 Gbps**). It is a trunk port with VLANs 20 and 40 both tagged; see *pc-node-05: single-NIC trunk and the pod MTU* below.
 
 ---
 
@@ -88,7 +88,7 @@ graph TD
     AGG1_P6["USW-Agg #1 Port 6 (10G SFP+)"] -->|10G SFP+ Fiber/DAC| PC4_10G1["pc-node-04 Port 1 (10G SFP+)"]
     AGG2_P6["USW-Agg #2 Port 6 (10G SFP+)"] -->|10G SFP+ Fiber/DAC| PC4_10G2["pc-node-04 Port 2 (10G SFP+)"]
 
-    AGG2_P1["USW-Agg #2 Port 1 (10G SFP+)"] -->|2.5G SFP+ Transceiver| PC5_2G["pc-node-05 2.5GbE Onboard RJ45"]
+    AGG1_P6["USW-Agg #1 Port 6 (10G SFP+)"] -->|2.5G SFP+ Transceiver| PC5_2G["pc-node-05 2.5GbE Onboard RJ45"]
 
     %% USW-24-G2 1G Management Connections
     USW24_P1["USW-24-G2 Port 1 (1G RJ45)"] -->|1G RJ45| OMNI["omni-server (Dell OptiPlex)"]
@@ -166,7 +166,7 @@ To ensure maximum security, QOS, and high storage performance for Rook-Ceph, we 
 
 1. **Jumbo Frames (MTU 9000)**: Enable Jumbo Frames on the `CEPH-STORAGE` VLAN and USW-Aggregation switch ports connected to the nodes to maximize 10GbE Ceph throughput and lower CPU overhead.
 2. **BGP Routing (Optional)**: If using Cilium for CNI, UniFi Dream Machine Pro / USW-Aggregation supports BGP routing to dynamically advertise Kubernetes LoadBalancer IPs directly into the network.
-3. **pc-node-05 trunk port (USW-Agg #2 Port 1)**: native VLAN **none**, tagged **20 + 40**. pc-node-05 has a single NIC, so both VLANs are tagged sub-interfaces on it. See below for the reason. This port setting is made in the UniFi UI; `terraform/unifi` doesn't manage switch ports.
+3. **pc-node-05 trunk port (USW Aggregation Port 6, `pc-node-05-2.5G-GPU`; not the Ceph switch)**: native VLAN **none**, tagged **20 + 40**. pc-node-05 has a single NIC, so both VLANs are tagged sub-interfaces on it. See below for the reason. This port setting is made in the UniFi UI; `terraform/unifi` doesn't manage switch ports.
 
 ### pc-node-05: single-NIC trunk and the pod MTU
 
@@ -179,7 +179,7 @@ To ensure maximum security, QOS, and high storage performance for Rook-Ceph, we 
 
 ```mermaid
 graph LR
-    SW["USW-Agg #2 Port 1<br/>native: none · tagged: 20, 40"] --- P["enp12s0<br/>MTU 9000, no IP"]
+    SW["USW Aggregation Port 6<br/>native: none · tagged: 20, 40"] --- P["enp12s0<br/>MTU 9000, no IP"]
     P --> V20["enp12s0.20 · MTU 1500<br/>10.10.20.111/24 + default route"]
     P --> V40["enp12s0.40 · MTU 9000<br/>10.10.40.111/24 (Ceph)"]
     V20 --> F["flannel.1 / cni0 · MTU 1450"]
@@ -187,13 +187,18 @@ graph LR
 
 #### Cutover runbook (planned outage of pc-node-05, about 10 minutes)
 
+> [!NOTE]
+> **Done 2026-10-19.** pc-node-05 was off the network for about 10 minutes in total, most of it spent finding the right switch port. The node came back about 5 s after the port change was applied, and again about 55 s after the reboot. Results: `enp12s0` 9000, `enp12s0.20` 1500, `enp12s0.40` 9000, `flannel.1`/`cni0` 1450 on all five nodes. An 8972-byte DF ping to 10.10.40.120 passes, and a 1473-byte DF ping on VLAN 20 is refused locally. `HEALTH_OK`, and `CephNodeInconsistentMTU` has cleared.
+>
+> **Gotchas:** the UniFi port names are stale. Ceph-USW-Aggregation Port 2 is named `pc-node-04-2.5G` but connects pc-node-04's onboard NIC (`stor01`), so use the Connection column. Wait for the Ceph/node alerts to resolve before expiring the silences.
+
 > [!WARNING]
 > **Order matters: Talos first, then the switch.** After the sync, the node sends VLAN 20 tagged but the port still delivers it untagged, so pc-node-05 is cut off (from Omni too) until the port change. Changing the switch first would cut it off before Omni could push the config. If it doesn't come back after step 4, use a monitor and keyboard on pc-node-05: the Talos console dashboard shows the link and address state.
 
 1. **Prepare.** Shut down the gaming VM (GPU passthrough means it can't migrate). Then follow steps 1–5 of *Runbook: Taking a Node Offline for Hardware Work* in [[104-phase2-rook-ceph-storage|docs/104]]: pre-checks, alert silences, `ceph osd set-group noout pc-node-05`, pausing the Rook operator (pc-node-05 holds `mon.h`), and the drain. While pc-node-05 is down, `hdd-ec-data-pool` (EC 2+1) runs on 2 of 3 chunks: still writable, but with no redundancy. Keep the window short.
 2. **Review the diff.** Run `omnictl cluster template diff -f talos/cluster-template.yaml`. It should show only pc-node-05's `interfaces` block (checked 2026-10-19), plus any other patch that hasn't been synced since.
 3. **Sync.** Run `omnictl cluster template sync -f talos/cluster-template.yaml`. pc-node-05 drops off the network within seconds.
-4. **Switch.** In the UniFi UI, open USW-Agg #2 Port 1 and set Native VLAN to *None* and tagged VLANs to *Custom: K8S-CONTROL (20), CEPH-STORAGE (40)*. Apply. Within about a minute the node's SideroLink reconnects, and Omni shows it as connected.
+4. **Switch.** In the UniFi UI, open **USW Aggregation** (not Ceph-USW-Aggregation) → Ports → **Port 6** `pc-node-05-2.5G-GPU` (Connection column: pc-node-05) and set Native VLAN to *None* and tagged VLANs to *Custom: K8S-CONTROL (20), CEPH-STORAGE (40)*. Apply. Within about a minute the node's SideroLink reconnects, and Omni shows it as connected.
 5. **Reboot pc-node-05** (Omni UI or `talosctl -n 10.10.20.111 reboot`). This recreates the bridge: an existing `cni0` and its veths keep the old 8950 MTU even after flannel restarts.
 6. **Verify.**
    ```bash
