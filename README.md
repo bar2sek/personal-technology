@@ -57,6 +57,7 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 - [202 - Cloudflare Tunnel & Zero Trust Remote Access](docs/202-cloudflare-tunnel-zero-trust.md)
 - [203 - Tailscale Kubernetes Operator & Mesh VPN](docs/203-tailscale-mesh-vpn.md)
 - [204 - UDM-Pro Network & VLAN Setup Guide (Step-by-Step)](docs/204-udm-pro-network-creation-guide.md)
+- [205 - Split-Horizon DNS: Closing the IPv6 (AAAA) Leak](docs/205-split-horizon-dns-ipv6-leak.md)
 
 ### ⚙️ Section 3: Talos Linux & Cluster Administration
 - [301 - Network PXE Boot & Node Provisioning Instruction Manual](docs/301-pxe-boot-node-provisioning.md)

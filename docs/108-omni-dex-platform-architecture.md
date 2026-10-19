@@ -147,15 +147,6 @@ Both CLIs talk to Omni's API at `https://omni.bar2sek.com/`. Omni serves the `*.
 2. `omnictl config merge ~/Downloads/omniconfig.yaml` (and `talosctl config merge ~/Downloads/talosconfig.yaml`).
 3. Run any command (for example `omnictl get clusters`). The first call opens the browser to sign in and saves a PGP key under `~/.talos/keys/`.
 
-> [!WARNING]
-> **Split-horizon DNS only covers IPv4.** The UDM-Pro answers `A` queries for `*.bar2sek.com` locally (`10.10.10.5`), but forwards `AAAA` queries upstream, which return **Cloudflare** IPv6 addresses. macOS prefers IPv6, so CLI traffic goes to Cloudflare and Access answers `403`. omnictl reports this as `server closed the stream without sending trailers`. Browsers work because they can log in through Access.
->
-> Workstation workaround (both lines are needed, because macOS consults DNS for IPv6 even when `/etc/hosts` has an IPv4 entry):
-> ```bash
-> echo "10.10.10.5 omni.bar2sek.com" | sudo tee -a /etc/hosts
-> echo "::ffff:10.10.10.5 omni.bar2sek.com" | sudo tee -a /etc/hosts
-> sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder
-> curl -sk -o /dev/null -w '%{remote_ip}\n' https://omni.bar2sek.com/   # must not be 2606:4700:…
-> ```
-> Open item: fix the router so local names also get local (or empty) `AAAA` answers. The same leak sends LAN traffic for `grafana.bar2sek.com` through Cloudflare.
+> [!NOTE]
+> **IPv6 DNS leak (fixed 2026-10-19).** The UDM used to answer only `A` for `omni.bar2sek.com` and forward `AAAA` upstream to Cloudflare. macOS preferred that IPv6 address, so CLI traffic hit Cloudflare Access and omnictl failed with `server closed the stream without sending trailers`. `omni.bar2sek.com` is now a local CNAME to `omni.home.arpa`, so `AAAA` comes back empty and the old `/etc/hosts` workaround is no longer needed. If the error comes back, check `dig AAAA omni.bar2sek.com` and stale `/etc/hosts` lines. Details: [[205-split-horizon-dns-ipv6-leak|Split-Horizon DNS IPv6 Leak]].
 

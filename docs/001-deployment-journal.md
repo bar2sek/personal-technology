@@ -854,10 +854,21 @@ The milestone entries below record how each of these got here. The section that 
 
 ---
 
+## 🎯 Milestone 36: Split-Horizon DNS IPv6 Leak Closed (2026-10-19)
+
+- **Problem (from Milestone 33):** the UDM answered only `A` for local overrides and forwarded `AAAA` upstream, so `omni`, `ceph`, `grafana` and `auth` (which also exist publicly in Cloudflare) got Cloudflare IPv6 addresses. IPv6-preferring clients, including Tailscale clients, went out through Cloudflare; `omnictl` needed an `/etc/hosts` workaround.
+- **Fix (`terraform/unifi/dns.tf`):** those four names are now local CNAMEs to local-only `ingress.home.arpa` / `omni.home.arpa` A records (RFC 8375). A CNAME covers every record type, so `AAAA` now returns the CNAME with no address. Proven first with a throwaway `dnstest` pair, then applied with `-target` (2 added, 4 changed in place, 2 test records destroyed).
+- **Verified:** no AAAA on the UDM (IPv4 and IPv6 resolvers) or Tailscale MagicDNS; `curl` lands on `10.10.20.50` / `10.10.10.5`; all Omni machines connected, all nodes Ready. The `/etc/hosts` workaround is no longer needed.
+- **Found:** outbound port-53 DNS is intercepted by the UDM, so `dig @1.1.1.1` returns local answers; use DNS over HTTPS to see public records.
+- **Found (not changed):** drift on K8S-CONTROL: live DHCP pool starts at `.100`, code says `.200`. Excluded from this apply; see backlog.
+- Details: [[205-split-horizon-dns-ipv6-leak|Split-Horizon DNS IPv6 Leak]].
+
+---
+
 ## 🎯 Immediate Next Actions & Infrastructure Backlog
 
 > [!NOTE]
-> The storage reshuffle and /var migration are complete (2026-10-19, Milestone 35; details in [[110-ephemeral-var-migration|/var migration]]). Open items: the split-horizon AAAA DNS leak (Milestone 33), deleting the Synology copies encrypted to the retired age key (Milestone 26).
+> The storage reshuffle and /var migration are complete (2026-10-19, Milestone 35; details in [[110-ephemeral-var-migration|/var migration]]). The split-horizon AAAA DNS leak is fixed (Milestone 36). Open items: reconciling the K8S-CONTROL DHCP pool drift (live start `.100` vs `.200` in `terraform/unifi/main.tf`; decide which is right before a full UniFi apply), deleting the Synology copies encrypted to the retired age key (Milestone 26).
 
 
 1. **GitOps Controller Evaluation (Flux CD)**:
