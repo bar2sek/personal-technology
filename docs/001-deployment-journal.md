@@ -748,7 +748,7 @@ The milestone entries below record how each of these got here. The section that 
 - **Rotation**: a new passphrase-wrapped identity was generated on the admin workstation. The passphrase was saved in the password manager first and then tested with an encrypt/decrypt round trip before the key was used. The new public key was rolled into both `backup-encryption` ConfigMaps (`backups`, `finance`).
 - **Custody is now documented**: see *Key custody* in the backups README.
 - **Verification**: manual runs of all three jobs, then a restore test from S3 on the workstation. The Actual archive listed `server-files/account.sqlite`, the Authentik dump decrypted to a valid `pg_dump`, and the cluster-state archive listed `cluster-scoped/` and `namespaces/`.
-- **Clean-up pending**: undecryptable pre-rotation objects expire from S3 by 2026-11-21; the Synology copies need manual deletion.
+- **Clean-up**: undecryptable pre-rotation objects expire from S3 by 2026-11-21. The Synology pre-rotation copies were deleted by hand on 2026-10-17. A 2026-10-19 listing of the share showed nothing older than 20:09 UTC that day, which is after the new recipient was rolled out.
 
 ---
 
