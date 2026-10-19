@@ -1,6 +1,6 @@
 # ==============================================================================
 # NUT Server (upsd) Daemon for Sidero Omni Seed Host (Dell OptiPlex Micro)
-# Applied via: kubectl --kubeconfig=talos/omni-server/kubeconfig apply -f ...
+# Applied via: just nut-deploy (kubeconfig: ~/.kube/omni-server.kubeconfig)
 # ==============================================================================
 apiVersion: v1
 kind: ConfigMap

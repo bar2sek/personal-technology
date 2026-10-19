@@ -106,7 +106,7 @@ Since the Dell OptiPlex Micro operates as our dedicated seed management node wit
 1. **Physical Attachment**: Connect both UPS USB-B cables to available USB-A ports on the OptiPlex Micro (hot-pluggable anytime without power interruptions).
 2. **Containerized Daemon Deployment**: Deploy the containerized `upsd` server via `kubernetes/infrastructure/nut/nut-server-omni.yaml`:
    ```bash
-   kubectl --kubeconfig=talos/omni-server/kubeconfig apply -f kubernetes/infrastructure/nut/nut-server-omni.yaml
+   kubectl --kubeconfig=~/.kube/omni-server.kubeconfig apply -f kubernetes/infrastructure/nut/nut-server-omni.yaml
    ```
 3. **USB Device Pass-through**: Uses `hostPath: /dev/bus/usb` with `hostNetwork: true`, exposing standard port `3493` on `10.10.10.5` across VLAN 10 (`MGMT-IPMI`).
 4. **Scrape Target**: The main cluster's `nut-exporter` (`kubernetes/infrastructure/nut/nut-exporter.yaml`) queries `10.10.10.5:3493` directly.

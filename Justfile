@@ -100,17 +100,20 @@ grafana-password:
     @echo -n "Grafana Admin Password: "
     @kubectl -n monitoring get secret grafana-admin-credentials -o jsonpath="{.data.admin-password}" | base64 --decode && echo ""
 
+# Admin kubeconfig for the standalone omni-server node. Lives outside the Drive-synced vault (docs/108, Workstation Bootstrap Bundle).
+omni_kubeconfig := env_var_or_default("OMNI_KUBECONFIG", env_var("HOME") / ".kube" / "omni-server.kubeconfig")
+
 # Check status of Network UPS Tools (NUT) stack (omni-server daemon & cluster exporter)
 nut-status:
     @echo "===> NUT Server on omni-server (10.10.10.5):"
-    @kubectl --kubeconfig=talos/omni-server/kubeconfig -n kube-system get pods -l app.kubernetes.io/name=nut-server -o wide 2>/dev/null || echo "Not deployed yet"
+    @kubectl --kubeconfig="{{omni_kubeconfig}}" -n kube-system get pods -l app.kubernetes.io/name=nut-server -o wide 2>/dev/null || echo "Not deployed yet"
     @echo ""
     @echo "===> In-Cluster NUT Exporter (monitoring-ups):"
     @kubectl -n monitoring-ups get pods,svc,servicemonitor,prometheusrule -o wide 2>/dev/null || echo "Not deployed yet"
 
 # Deploy NUT server to omni-server and exporter to homelab-k8s cluster
 nut-deploy:
-    kubectl --kubeconfig=talos/omni-server/kubeconfig apply -f kubernetes/infrastructure/nut/nut-server-omni.yaml
+    kubectl --kubeconfig="{{omni_kubeconfig}}" apply -f kubernetes/infrastructure/nut/nut-server-omni.yaml
     kubectl apply -f kubernetes/infrastructure/nut/namespace.yaml
     kubectl apply -f kubernetes/infrastructure/nut/nut-exporter.yaml
     kubectl apply -f kubernetes/infrastructure/nut/servicemonitor.yaml

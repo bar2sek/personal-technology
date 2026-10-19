@@ -483,6 +483,43 @@ just tf-apply github
 
 ---
 
+## ⚠️ Known Risk: Bootstrap State Lives in the Drive-Synced Vault (accepted 2026-10-19)
+
+The bootstrap roots and `terraform/unifi` run from the workstation and keep **local** state (`terraform.tfstate` plus `.backup`) next to the code. The files are gitignored, but Google Drive syncs them. Terraform stores sensitive attributes in state as plaintext, whether or not they are marked `sensitive`, so anyone who gets into the Drive account can read them.
+
+| Root | Managed instances | What its state exposes |
+|---|---|---|
+| `bootstrap/azure` | 20 | **Highest risk.** Entra client secret, Arc agent TLS private key, storage account access keys and connection strings, Log Analytics shared keys |
+| `bootstrap/github` | 36 | The plaintext value of every GitHub Actions secret it manages (role ARNs, state bucket name) |
+| `bootstrap/aws` | 25 | AWS account ID (in every ARN), alert email address |
+| `terraform/unifi` | 26 | Nothing marked sensitive, but it holds the internal IP plan and client MAC addresses |
+| `bootstrap/aws_organization` | 0 | No state yet. The root has never been applied. |
+
+**Decision:** the risk is accepted for now and the migration is deferred. The vault is a single-user Drive account. The roots are rarely applied, and the migration needs a new bucket, KMS key and policies before any state can move.
+
+### Findings to carry into the fix
+
+1. **Don't use a prefix in the CI state bucket.** The plan role has `ReadOnlyAccess`, and its only object-read limit (`DenyObjectReadsOutsideState`) *allows* every object in the CI state bucket. Every pull-request plan job can therefore read anything stored there. A `bootstrap/` prefix would depend on adding Deny statements to both roles and keeping them correct. If one were missed, PR jobs could read the Azure private key, and the apply role could rewrite the state that defines CI's own permissions.
+2. **A dedicated bucket must not fall under the CI apply role's bucket permissions.** The apply role allows `s3:CreateBucket` and `s3:PutBucket*` on `s3-aws-*` (`ManageWorkloadBucketConfiguration`). A new bucket named by the convention (`s3-aws-...`) would let CI replace its bucket policy and grant itself access. Mirror `ProtectStateBucketConfiguration` with an explicit identity Deny. Also add a bucket policy that denies `s3:*` to every principal except the human admin principals. A resource-policy Deny applies regardless of what any role's identity policy allows, and the account root can still repair the policy, so there is no lockout risk.
+3. **Settings for the fix:**
+   - **Encryption:** SSE-KMS with a dedicated customer-managed key, an admin-only key policy and S3 Bucket Keys enabled (about $1 a month). The key policy is a second gate that S3 permissions can't open on their own, and CloudTrail logs every decrypt.
+   - **Versioning:** on, with a lifecycle rule that expires noncurrent versions so old copies of rotated secrets don't pile up.
+   - **Object Lock:** none. It would stop old versions that hold secrets from being purged.
+   - **Locking:** `use_lockfile = true`.
+   - **Destroy protection:** `prevent_destroy` on the bucket and the key.
+4. **Migration shape:**
+   1. Create the bucket while `bootstrap/aws` state is still local.
+   2. Add partial `backend "s3"` blocks. The bucket name embeds the account ID, so it goes in a gitignored `backend.hcl`, following the infra-cloud-deployments pattern.
+   3. Back up each state file outside Drive.
+   4. Run `just tf <root> init -migrate-state -backend-config=backend.hcl`.
+   5. Point `bootstrap/github`'s `terraform_remote_state` at S3 instead of `../aws/terraform.tfstate`.
+   6. Confirm each root's `plan` shows no changes, then delete the local state files and purge the Drive trash.
+
+> [!TIP] Cheap mitigation in the meantime
+> Rotating the Entra client secret and the storage account keys makes any copies in Drive's version history stale. Drive keeps old file versions.
+
+---
+
 ## 🛠️ Troubleshooting & Gotchas
 
 ### 1. `AADSTS70021: No matching federated identity record found`

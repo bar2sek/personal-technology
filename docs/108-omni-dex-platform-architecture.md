@@ -87,6 +87,27 @@ graph TD
 2. **Embedded Database**: `/var/lib/kubelet/omni-data/_out/sqlite.db` and `/var/lib/kubelet/omni-data/_out/etcd/`.
 3. **CA and TLS Certificates**: Secrets `omni-ca`, `omni-tls`, and `omni-oidc`.
 
+### Workstation Bootstrap Bundle (key custody)
+
+The files generated when the Omni node was first built (`talos/omni-server/` on the admin workstation) are no longer kept in plaintext anywhere. The vault is synced to Google Drive, so a plaintext copy there would turn a cloud-account compromise into control of the Omni node.
+
+| What | Where |
+|---|---|
+| Archive | `omni-server-secrets-<date>.tar.age`, encrypted with `age -p` (passphrase, scrypt). Kept in a recovery folder **outside** the vault and every git repo. Drive syncs it, but only as ciphertext. |
+| Passphrase | Password manager entry **"Homelab Omni secrets archive"**. The entry's notes record the archive's path. |
+| Contents | `omni.asc` (master key), `secrets.yaml` (Talos PKI for the Omni node), `controlplane.yaml`, `.credentials.env` (Omni admin password), `tls/` (CA and server keys and certs), `kubeconfig`, `talosconfig`, `patches/` |
+
+> [!NOTE]
+> The password manager's notes field holds about 4,000 characters, but an armored RSA-4096 key is about 6,700. That's why the bundle is a passphrase-encrypted file and the password manager holds only the passphrase.
+
+Restore (decrypt into a temporary directory outside Drive):
+
+```bash
+T=$(mktemp -d) && age -d omni-server-secrets-<date>.tar.age | tar -C "$T" -xf -
+```
+
+To verify a new archive before deleting the originals, compare with `diff -rq` against the source folder. Never use a plain `diff`, because it prints file contents to the terminal.
+
 ---
 
 ## 🛡️ Disaster Recovery & Backup Runbook
@@ -146,6 +167,15 @@ Both CLIs talk to Omni's API at `https://omni.bar2sek.com/`. Omni serves the `*.
 1. Omni web UI → **Home** → **Download omniconfig** (and **Download talosconfig**).
 2. `omnictl config merge ~/Downloads/omniconfig.yaml` (and `talosctl config merge ~/Downloads/talosconfig.yaml`).
 3. Run any command (for example `omnictl get clusters`). The first call opens the browser to sign in and saves a PGP key under `~/.talos/keys/`.
+
+**The Omni node itself (break-glass, not through Omni):** the standalone `omni-server` Talos node has its own admin configs. They live outside the vault, with mode `0600`:
+
+| File | Use |
+|---|---|
+| `~/.kube/omni-server.kubeconfig` | Kubernetes on the Omni node. The Justfile `nut-*` recipes read it through `omni_kubeconfig`; set `OMNI_KUBECONFIG` to override. |
+| `~/.talos/omni-server.talosconfig` | Talos API on the node (context `omni-seed`, endpoint and node `10.10.10.5`), e.g. `talosctl --talosconfig ~/.talos/omni-server.talosconfig version` |
+
+Both are also in the encrypted bootstrap bundle (see *Workstation Bootstrap Bundle*), so a new workstation restores them from there.
 
 > [!NOTE]
 > **IPv6 DNS leak (fixed 2026-10-19).** The UDM used to answer only `A` for `omni.bar2sek.com` and forward `AAAA` upstream to Cloudflare. macOS preferred that IPv6 address, so CLI traffic hit Cloudflare Access and omnictl failed with `server closed the stream without sending trailers`. `omni.bar2sek.com` is now a local CNAME to `omni.home.arpa`, so `AAAA` comes back empty and the old `/etc/hosts` workaround is no longer needed. If the error comes back, check `dig AAAA omni.bar2sek.com` and stale `/etc/hosts` lines. Details: [[205-split-horizon-dns-ipv6-leak|Split-Horizon DNS IPv6 Leak]].

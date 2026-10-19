@@ -865,14 +865,27 @@ The milestone entries below record how each of these got here. The section that 
 
 ---
 
+## 🎯 Milestone 37: Omni Bootstrap Secrets Out of Drive (2026-10-19)
+
+- **Problem:** `talos/omni-server/` held the Omni master key (`omni.asc`), the Talos PKI for the Omni node (`secrets.yaml`, `controlplane.yaml`), the TLS private keys and the Omni admin password in plaintext. The files were gitignored but synced to Google Drive, so a compromised cloud account would have meant a compromised Omni node.
+- **Fix:** the whole folder was packed into a passphrase-encrypted `age` archive kept outside the vault, with the passphrase in the password manager. The passphrase was saved before encrypting. Then the six DR-only files were deleted, and their Drive trash copies purged by hand. Drive keeps deleted files for 30 days.
+- **Verified:** the archive was decrypted into a temporary directory and compared with `diff -rq`, and every file matched.
+- **Found:** the password manager's notes field cuts text at about 4,000 characters, so an armored RSA-4096 key (about 6,700) can't be stored there. Also, a plain `diff` against a key file prints the key to the terminal, so use `diff -rq`.
+- **Admin configs moved:** the Omni node's `kubeconfig` and `talosconfig` now live at `~/.kube/omni-server.kubeconfig` and `~/.talos/omni-server.talosconfig` (`0600`). The Justfile `nut-*` recipes use the new `omni_kubeconfig` variable, and the talosconfig now has its endpoint saved. Verified: `just nut-status` and `talosctl version` both reach the node.
+- Details: *Workstation Bootstrap Bundle* in [[108-omni-dex-platform-architecture|docs/108]].
+
+---
+
 ## 🎯 Immediate Next Actions & Infrastructure Backlog
 
 > [!NOTE]
-> The storage reshuffle and /var migration are complete (2026-10-19, Milestone 35; details in [[110-ephemeral-var-migration|/var migration]]). The split-horizon AAAA DNS leak is fixed (Milestone 36). The K8S-CONTROL DHCP pool drift is resolved (2026-10-19): the code now matches the live `.100` start, with no network change, and `terraform plan` shows no changes. See *VLAN 20 DHCP Pool* in [[201-unifi-network-topology|docs/201]]. Open items: deleting the Synology copies encrypted to the retired age key (Milestone 26).
+> The storage reshuffle and /var migration are complete (2026-10-19, Milestone 35; details in [[110-ephemeral-var-migration|/var migration]]). The split-horizon AAAA DNS leak is fixed (Milestone 36). The K8S-CONTROL DHCP pool drift is resolved (2026-10-19): the code now matches the live `.100` start, with no network change, and `terraform plan` shows no changes. See *VLAN 20 DHCP Pool* in [[201-unifi-network-topology|docs/201]]. The Synology copies encrypted to the retired age key were already gone (verified 2026-10-19, Milestone 26). The Omni bootstrap secrets are no longer in Drive as plaintext (Milestone 37). The Omni node's admin configs moved out of Drive too.
 
 
 1. **GitOps Controller Evaluation (Flux CD)**:
    - Evaluate deploying Flux CD source and kustomize controllers to enforce declarative reconciliation between GitHub and in-cluster states.
 2. **Ceph Bulk Media Mirroring**:
    - Codify automated rsync / CSI snapshot mirror from Ceph bulk volumes to Synology `bulk-media-mirror`.
+3. **Bootstrap Terraform State to a Remote Backend (deferred, risk accepted 2026-10-19)**:
+   - `bootstrap/{aws,github,azure}` and `terraform/unifi` keep local state in the Drive-synced vault. That state holds plaintext secrets, the worst being the Azure root's private key and client secret. The plan is a dedicated admin-only S3 bucket with SSE-KMS. The CI state bucket must not be reused, because pull-request plan jobs can read every object in it. Findings and the migration plan: *Known Risk: Bootstrap State* in [[409-github-cloud-oidc-gitops|docs/409]].
 
