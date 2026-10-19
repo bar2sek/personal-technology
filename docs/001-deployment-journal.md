@@ -841,11 +841,14 @@ The milestone entries below record how each of these got here. The section that 
 
 ---
 
-## 🎯 Milestone 35: /var off sm-node-03's SuperDOM & Erasure-Coded HDD Tier (2026-10-19)
+## 🎯 Milestone 35: /var off all three SuperDOMs & Erasure-Coded HDD Tier (2026-10-19)
 
 - **Install disks by WWID.** `talos/machine-install-disks.yaml` now selects every node's boot disk with `disk.wwid == …`: Talos reports no SATA serials, and sm-node-03 has two identical SuperDOMs. Disk names moved again during this work; nothing cared.
 - **Wave 4 (sm-node-03):** wiped the MX250 (ZFS labels hidden in its last 512 KiB, invisible to Talos's prober) and a spare SuperDOM with an old ZFS-on-root OS; Omni *Destroy* → re-add; `/var` is now the 250 GB MX500 (was 14 GB). osd.7 re-activated by UUID; the two IronWolfs became osd.15/16.
 - **Found: Rook skips nodes with any untolerated taint**, even `PreferNoSchedule` (`placement settings do not match`). The sm nodes' soft taint blocked new OSDs; fixed with an OSD-only toleration. A placement change restarts every OSD (rolling, ~10 min).
+- **Wave 6 (sm-node-02):** the 2 TB Sabrent NVMe is now split: 250 GiB `/var` + a 1.6 TiB raw partition for a new NVMe OSD (osd.9). Caught before syncing: a `RawVolumeConfig` is provisioned immediately on a running node, so it must be added only after EPHEMERAL exists on the disk; runbook fixed for Wave 7.
+- **Wave 7 (sm-node-01):** same NVMe split (new osd.10). It held monitor mon.i: with the Rook operator paused for the whole window, mon.i was not failed over and rebuilt itself from the other two after the reset. All three control-plane nodes now have 250 GiB `/var` instead of 12.5 GiB.
+- **Wave 8 (cleanup):** soft taint removed (live, no reboots); monitor placement reviewed and left as is; a stale pc-node-05 disk alert traced to a ghost series of the old `/var` and silenced until it ages out. **The /var migration is complete.**
 - **Wave 5:** HDD tier is now erasure coded 2+1 across three hosts (`rook-ceph-hdd-ec`, ~12.7 TiB usable), replacing a 2-copy pool that lived entirely on pc-node-04.
 - Cluster: 20 OSDs, 41 TiB raw, HEALTH_OK. Details: [[110-ephemeral-var-migration|/var migration]] (*Progress*, *Wave 4 lessons*), [[104-phase2-rook-ceph-storage|Rook-Ceph]] (*Accepted Trade-offs*).
 
@@ -854,7 +857,7 @@ The milestone entries below record how each of these got here. The section that 
 ## 🎯 Immediate Next Actions & Infrastructure Backlog
 
 > [!NOTE]
-> The active work queue is the storage reshuffle: Waves 6–8 remain (sm-node-02/01 NVMe split + `/var`, cleanup); see the remaining waves in [[110-ephemeral-var-migration|/var migration]]. Other open items: the split-horizon AAAA DNS leak (Milestone 33), deleting the Synology copies encrypted to the retired age key (Milestone 26), and removing the sm-node soft taint after Waves 4, 6 and 7.
+> The storage reshuffle and /var migration are complete (2026-10-19, Milestone 35; details in [[110-ephemeral-var-migration|/var migration]]). Open items: the split-horizon AAAA DNS leak (Milestone 33), deleting the Synology copies encrypted to the retired age key (Milestone 26).
 
 
 1. **GitOps Controller Evaluation (Flux CD)**:

@@ -81,19 +81,6 @@ patches:
             imageGCHighThresholdPercent: 60
             imageGCLowThresholdPercent: 50
             imageMaximumGCAge: 168h
-  # Every pod pulls its image onto its node's /var. On the SuperDOM nodes that
-  # left sm-node-03 with 7.5 GiB of images on a 12.5 GiB /var and got backups
-  # evicted. Soft-taint them so the scheduler prefers pc-node-04/05 (~72 GiB and
-  # 930 GiB /var) and uses these only when needed. Interim: remove once /var
-  # moves off the SuperDOMs (journal Milestone 32). PreferNoSchedule never evicts; pods
-  # move as they restart. Ceph daemons keep their own placement. A custom key,
-  # because Talos manages node-role.kubernetes.io/control-plane itself
-  # (allowSchedulingOnControlPlanes removes it).
-  - name: controlplane-prefer-no-schedule
-    inline: |-
-      machine:
-        nodeTaints:
-          homelab.bar2sek.com/small-var: "true:PreferNoSchedule"
 
 ---
 kind: Workers
@@ -133,6 +120,31 @@ patches:
                   mtu: 9000
                   addresses:
                     - 10.10.40.199/24
+      ---
+      # Wave 7 (docs/110, 2026-10-19): /var off the 16 GB SuperDOM onto a fixed
+      # 250 GiB slice of the 2 TB Sabrent NVMe (serial: NVMe reports it in
+      # Talos). The RawVolumeConfig "osd-nvme" for the rest of the disk is
+      # added only AFTER the reset, once EPHEMERAL exists (see sm-node-02).
+      apiVersion: v1alpha1
+      kind: VolumeConfig
+      name: EPHEMERAL
+      provisioning:
+        diskSelector:
+          match: disk.serial == "BC7107061E7C02090817"
+        minSize: 250GiB
+        maxSize: 250GiB
+        grow: false
+      ---
+      # Added after the Wave 7 reset, once EPHEMERAL existed on the Sabrent
+      # (a RawVolumeConfig is provisioned immediately; see sm-node-02).
+      apiVersion: v1alpha1
+      kind: RawVolumeConfig
+      name: osd-nvme # partition label r-osd-nvme; must not contain "ceph"
+      provisioning:
+        diskSelector:
+          match: disk.serial == "BC7107061E7C02090817"
+        minSize: 1TiB
+        grow: true
 ---
 kind: Machine
 name: 9983ae00-e364-11ea-8000-3cecef6fd61e
@@ -166,6 +178,36 @@ patches:
                   mtu: 9000
                   addresses:
                     - 10.10.40.120/24
+      ---
+      # Wave 6 (docs/110, 2026-10-19): /var off the 16 GB SuperDOM. The node
+      # has no free SATA port, so the 2 TB Sabrent NVMe is split: a fixed
+      # 250 GiB EPHEMERAL, and the rest as an unformatted partition for a Ceph
+      # OSD (/dev/disk/by-partlabel/r-osd-nvme in cluster.yaml). NVMe reports
+      # its serial in Talos (SATA disks do not), so select by serial. Only
+      # takes effect when the volumes are (re)created after an Omni reset.
+      apiVersion: v1alpha1
+      kind: VolumeConfig
+      name: EPHEMERAL
+      provisioning:
+        diskSelector:
+          match: disk.serial == "F2C10719080B00006324"
+        minSize: 250GiB
+        maxSize: 250GiB
+        grow: false
+      ---
+      # Raw (unformatted) partition in the rest of the Sabrent for the Ceph OSD.
+      # ORDER MATTERS: a RawVolumeConfig is a user volume and is provisioned as
+      # soon as it is synced. Add it only AFTER EPHEMERAL exists on this disk,
+      # or grow: true takes the whole blank disk and EPHEMERAL has no room
+      # after the reset (Wave 6, 2026-10-19).
+      apiVersion: v1alpha1
+      kind: RawVolumeConfig
+      name: osd-nvme # partition label r-osd-nvme; must not contain "ceph"
+      provisioning:
+        diskSelector:
+          match: disk.serial == "F2C10719080B00006324"
+        minSize: 1TiB
+        grow: true
 ---
 kind: Machine
 name: 00000000-0000-0000-0000-3cecef58ed64

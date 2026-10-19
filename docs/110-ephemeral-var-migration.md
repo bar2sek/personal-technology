@@ -171,7 +171,10 @@ Waves 6–7 are independent of the hardware waves and can run before or after th
 > Do it with the **Rook operator scaled to 0**, after deleting the OSD Deployment, so a reconcile cannot re-create the OSD in between.
 
 ### Phase B: add the volume config (Omni template)
-Add to the sm-node-02 `Machine` patches in `talos/cluster-template.yaml`, run `omnictl cluster template diff`, then `sync`. Nothing changes on the running node: its EPHEMERAL already exists.
+Add the **`VolumeConfig` only** to the sm-node-02 `Machine` patches in `talos/cluster-template.yaml`, run `omnictl cluster template diff`, then `sync`. Nothing changes on the running node: its EPHEMERAL already exists. **The `RawVolumeConfig` is added later, in Phase C step 4.**
+
+> [!CAUTION]
+> **Do not sync the `RawVolumeConfig` before the reset.** EPHEMERAL's config is used only when EPHEMERAL is *created*, but a `RawVolumeConfig` is a **user volume**: Talos provisions it **as soon as it is synced** if a matching disk has room. After Phase A the NVMe is blank, so `grow: true` would claim the whole disk on the running node, and since the reset wipes only system volumes, EPHEMERAL would find no room afterwards. Order: EPHEMERAL config → reset/re-add (EPHEMERAL takes its 250 GiB) → raw volume config → sync (fills the rest). Caught before syncing on 2026-10-19 (Wave 6).
 ```yaml
 apiVersion: v1alpha1
 kind: VolumeConfig
@@ -196,7 +199,18 @@ provisioning:
 ### Phase C: re-provision the node
 1. `kubectl -n rook-ceph exec deploy/rook-ceph-tools -- ceph osd set-group noout sm-node-02` (its other OSDs will be down briefly; don't rebalance).
 2. **Remove the machine from the cluster** in Omni (cluster view → machine → *Destroy*). Omni removes the etcd member and resets the machine; it reboots into maintenance mode.
-3. **Re-add it:** `omnictl cluster template sync -f talos/cluster-template.yaml`. The template still lists it, so Omni adds it back with the new patches. Talos installs to the SuperDOM and provisions EPHEMERAL and `r-osd-nvme` on the NVMe.
+3. **Gate, then re-add.** In maintenance mode, confirm `omnictl get machineinstalldiskstatus <id>` names the SuperDOM (by WWID in `talosctl --talosconfig <generic> -n <id> get disks`) and that the NVMe is blank. Then `omnictl cluster template sync -f talos/cluster-template.yaml`: Omni adds it back, Talos installs to the SuperDOM and creates EPHEMERAL (250 GiB) on the NVMe.
+4. **Add the `RawVolumeConfig`** (below) to the same patch and sync again. On the running node Talos creates `r-osd-nvme` in the remaining space (`talosctl get volumestatus r-osd-nvme` → `ready`, ~1.7 TB).
+   ```yaml
+   apiVersion: v1alpha1
+   kind: RawVolumeConfig
+   name: osd-nvme # becomes /dev/disk/by-partlabel/r-osd-nvme; must not contain "ceph"
+   provisioning:
+     diskSelector:
+       match: disk.serial == "<NVMe serial>"
+     minSize: 1TiB
+     grow: true
+   ```
 
 > [!IMPORTANT]
 > **Proven on pc-node-05 in Wave 3b (2026-10-18):**
@@ -230,6 +244,9 @@ Then in `cluster.yaml` set sm-node-02's NVMe entry to `/dev/disk/by-partlabel/r-
 
 ## 📋 Progress
 
+> [!NOTE]
+> **Migration complete (2026-10-19).** Every node's `/var` is off a SuperDOM: sm-node-01/02 on a 250 GiB slice of their Sabrent NVMe (rest = NVMe OSD), sm-node-03 on a 250 GB MX500, pc-node-05 on its Kingston SSD. The HDD tier is erasure coded 2+1 across three hosts. 20 OSDs, 41 TiB raw, HEALTH_OK.
+
 | Wave | Status |
 |---|---|
 | 0 Drain & wipe | **Done 2026-10-18**: 8 OSDs out → backfill (55 GiB to osd.7) → purged; 8 disks wiped. The 3 sm-03 MX500s are clean at every label offset. **The 5 HDDs were not:** backup BlueStore labels survived, and Rook re-activated osd.11/14/15/16/18 (0 PGs, classless). Fixed the same day: operator scaled to 0, the five re-purged, label offsets zeroed and verified (0 non-zero bytes at 0/1/10/100/1000 GiB); back to 13 OSDs, HEALTH_OK |
@@ -239,9 +256,9 @@ Then in `cluster.yaml` set sm-node-02's NVMe entry to `/dev/disk/by-partlabel/r-
 | 3b pc-node-05 boot → Kingston | **Done 2026-10-18**: decided whole Sabrent for gaming, no Ceph OSD (the NVMe pool is nearly empty; a split would add only ~140 GiB usable). VM image backed up and restored (sha256 matched); Talos + 238 GB EPHEMERAL on the Kingston; `gaming-vm` partition volume = whole Sabrent (932 GB). Needed two reset cycles: the first reinstalled onto the Sabrent because `MachineInstallDiskConfig` pinned `/dev/nvme1n1` and Omni's status was stale (see Phase C *Proven* callout). HEALTH_OK, VM + Sunshine back |
 | 4 sm-node-03 window | **Done 2026-10-19** (11:34–11:52 CDT): drained, silenced, `noout`; Omni *Destroy* → maintenance in ~60 s; install disk re-checked in maintenance mode (`machineinstalldiskstatus` = `/dev/sde`, WWID `…9a000069`, fresh status version; STATE/EPHEMERAL gone from the SuperDOM); re-added via a scratch template; node `Ready` ~2 min after the Destroy. **`/var` = MX250 `sdc1`, 250 GB XFS** (was 14 GB). etcd back to 3 members; osd.7 re-activated by UUID within a minute. IronWolfs → **osd.15 (IW-H5S) and osd.16 (IW-RSJ)**, hdd; 20 OSDs, 41 TiB raw, HEALTH_OK. See *Wave 4 lessons* below |
 | 5 HDD pool → EC 2+1 | **Done 2026-10-19**: `hdd-ec-data-pool` (k=2 m=1, host, hdd, `min_size 2`, `bulk`, `ec_overwrites`) + `hdd-ec-meta-pool` (3x SSD) + StorageClass `rook-ceph-hdd-ec`. CRUSH rule `take default~hdd` → `chooseleaf_indep host`. Smoke test: 1 GiB written at ~98 MB/s with fsync, stored 1.0 GiB = used 1.5 GiB; MAX AVAIL 13 TiB; autoscaler grew it to 128+ PGs. Old `hdd-bulk-pool` / `rook-ceph-hdd-bulk` (empty) deleted. Dashboard tooltip updated |
-| 6 sm-node-02 | Planned |
-| 7 sm-node-01 | Planned |
-| 8 Cleanup | Planned |
+| 6 sm-node-02 | **Done 2026-10-19** (12:29–12:43 CDT): osd.9 out → safe-to-destroy → operator 0 → purged; Sabrent wiped (zap + discard; label offsets 0/1/10/100/1000 GiB read back as zeros). `cluster.yaml` entry → `/dev/disk/by-partlabel/r-osd-nvme`. EPHEMERAL `VolumeConfig` synced alone (raw volume held back, see Phase B caution); Destroy → maintenance in 71 s; gate passed (install disk `/dev/sda` = SuperDOM `…0a000103`); re-add → `Ready` in 20 s; **`/var` = `nvme0n1p1` 250 GiB**. Then `RawVolumeConfig` synced → `r-osd-nvme` = `nvme0n1p2` 1.7 TB; operator 1 → new **osd.9** (ID reused) on the partition, 1.575 TiB. HEALTH_OK, 497 PGs clean |
+| 7 sm-node-01 | **Done 2026-10-19** (12:45–12:55 CDT): same as Wave 6 with osd.10. **mon.i:** the operator stayed at 0 from the purge until sm-01 was `Ready` again, so mon.i was never failed over; during the window quorum was f,h. After the reset mon.i rebuilt its store from f and h on the new `/var` and rejoined (monmap still epoch e15: no mon was added or removed). Destroy → maintenance 81 s; gate passed (`/dev/sda` = SuperDOM `…0a000088`); `Ready` under 2 min after the Destroy; `/var` = `nvme0n1p1` 250 GiB; `r-osd-nvme` 1.7 TB → new **osd.10** (1.575 TiB). The drain waited a few seconds on KubeVirt's `virt-exportproxy` PodDisruptionBudget. HEALTH_OK, 497 PGs clean |
+| 8 Cleanup | **Done 2026-10-19** (12:56–13:00 CDT): Omni patch `controlplane-prefer-no-schedule` deleted via template sync → taint `homelab.bar2sek.com/small-var` gone from all sm nodes, applied live (no reboot; uptimes unchanged). OSD toleration for it left in `cluster.yaml` as inert (removing it would roll every OSD). Monitor placement reviewed, unchanged (f/h/i on three nodes). Dead `Error` pods: none left (deleted with the old Node objects during the resets). `CephNodeDiskspaceWarning` on pc-node-05 = ghost series of the pre-Wave-3b `/var` (`nvme1n1p4`) inside `predict_linear[2d]`; narrow silence until 2026-10-22. `controlplane-image-gc` (60/50 %, 7 days) kept: harmless with 250 GiB `/var` |
 
 ### Wave 4 lessons (2026-10-19)
 

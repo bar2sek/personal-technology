@@ -61,11 +61,19 @@ spec:
     # silently skips the node: found 2026-10-19 when sm-node-03's new IronWolfs
     # got no prepare job (Wave 4, docs/110). Only OSDs: mgr/mds keep preferring
     # the PCs. Rook merges these with placement.all's tolerations.
+    # Wave 8 (2026-10-19): the taint itself was removed once all three sm nodes
+    # had a 250 GiB /var, so this toleration is inert. Kept on purpose: any edit
+    # to OSD placement rolls every OSD (~10 min); drop it with the next change
+    # that restarts the OSDs anyway.
     osd:
       tolerations:
         - key: homelab.bar2sek.com/small-var
           operator: Exists
           effect: PreferNoSchedule
+    # Wave 8 review (2026-10-19): every node now has >= 220 GiB of /var (the sm
+    # nodes moved off their SuperDOMs in Waves 4, 6 and 7), so the disk-space
+    # reason below no longer applies. Kept as is: mons f/h/i already sit on three
+    # different nodes, and changing placement would roll-restart them for no gain.
     # Monitors keep their store under dataDirHostPath (/var/lib/rook), on each
     # node's /var. The Supermicro nodes have only 12.5 GiB of /var and keep
     # tripping MON_DISK_LOW (<30% free), so prefer the PCs (72 GiB and 929 GiB).
@@ -119,7 +127,10 @@ spec:
       # (Boot drive /dev/sda SuperDOM is strictly excluded)
       - name: sm-node-01
         devices:
-          - name: "/dev/disk/by-id/nvme-Sabrent_Rocket_Q_BC7107061E7C02090817"
+          # Sabrent Rocket Q 2 TB (BC7107061E7C02090817), split in Wave 7
+          # (docs/110, 2026-10-19): 250 GiB EPHEMERAL (/var) + the rest as the
+          # Talos raw volume "osd-nvme". Was a whole-disk OSD (osd.10) before.
+          - name: "/dev/disk/by-partlabel/r-osd-nvme"
             config:
               deviceType: nvme
           - name: "/dev/disk/by-id/ata-CT2000MX500SSD1_2137E5D2DE18"
@@ -133,7 +144,11 @@ spec:
       # (Boot drive /dev/sda SuperDOM is strictly excluded)
       - name: sm-node-02
         devices:
-          - name: "/dev/disk/by-id/nvme-Sabrent_Rocket_Q_F2C10719080B00006324"
+          # Sabrent Rocket Q 2 TB (F2C10719080B00006324), split in Wave 6
+          # (docs/110, 2026-10-19): 250 GiB EPHEMERAL (/var) + the rest as the
+          # Talos raw volume "osd-nvme" (RawVolumeConfig in the Omni template).
+          # Was a whole-disk OSD (osd.9) before.
+          - name: "/dev/disk/by-partlabel/r-osd-nvme"
             config:
               deviceType: nvme
           - name: "/dev/disk/by-id/ata-CT2000MX500SSD1_2153E5F9EC69"
