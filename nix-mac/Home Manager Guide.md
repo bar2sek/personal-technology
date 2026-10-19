@@ -46,14 +46,11 @@ graph TD
 | Casks, brews, macOS defaults, fonts, firewall, printer, debloat | Machine | nix-darwin |
 | Git identity and defaults | User | home-manager ✅ (milestone 1a) |
 | zsh aliases, plugins, p10k, prompt init | User | home-manager ✅ (milestone 1b) |
-| Ghostty and VS Code config (cask-installed apps) | User | home-manager (later) |
+| Ghostty, VS Code, Roo Code config (cask-installed apps) | User | home-manager ✅ (milestone 2) |
 | Secrets (`~/.zshrc.local`) | User | **Never in Nix.** Stays a gitignored local file |
 
 > [!IMPORTANT]
 > Homebrew still **installs** GUI apps. home-manager only writes their **config files**. Keep that split: casks stay in the nix-darwin `homebrew` block.
-
-> [!WARNING]
-> VS Code writes to its own `settings.json` when you change a setting in the UI. Once that file is a read-only home-manager symlink, UI changes fail to save. Plan for this before moving VS Code settings: make all changes in the flake, or keep VS Code settings mutable. Today the activation script overwrites the file on every switch, so UI changes are already lost silently.
 
 ## Milestone 1a: Git (2026-10-19)
 - `programs.git` writes `~/.config/git/config` with identity (the GitHub noreply email), the `osxkeychain` credential helper, and `fetch.prune = true`.
@@ -130,6 +127,61 @@ Once the new shell works, delete the backups with `rm ~/.*.hm-backup`. The leadi
 ### Gotchas
 - **History:** the same `~/.zsh_history` file, but home-manager keeps 10,000 entries (the system default was 2,000) and shares history across open terminals.
 - **Hand edits to `~/.zshrc` fail.** Installers that append to it (OrbStack, oMLX, IDEs) will fail or print a warning. Add their lines to the flake instead.
+
+## Milestone 2: Ghostty, VS Code, Roo Code (2026-10-19)
+These files used to be rewritten by the activation script on every switch: untracked, never cleaned up, and VS Code UI changes silently reset. Now home-manager owns them, and the script only handles machine-level chores.
+
+| File | Owner now |
+|---|---|
+| `~/.config/ghostty/config` | `programs.ghostty` (`package = null`; the cask installs the app) |
+| `~/Library/Application Support/Code/User/settings.json` | `programs.vscode.profiles.default.userSettings` |
+| `~/.vscode/extensions/` (whole folder, read-only) | `programs.vscode.profiles.default.extensions` |
+| `~/.config/roo-code/settings.json`, Roo `custom_modes.yaml` | `home.file` |
+
+**Extensions come from `nix-vscode-extensions`**, a nix-community flake that mirrors the whole VS Code marketplace as Nix packages and is rebuilt daily. The flake uses its `vscode-marketplace-release` set, which holds stable releases only. nixpkgs was missing three extensions (Antigravity, AWS Toolkit, Azure Resource Groups) and lagged on others.
+
+```mermaid
+graph LR
+  M[VS Code Marketplace] -->|daily mirror| X[nix-vscode-extensions input]
+  X -->|pinned in flake.lock| HM[programs.vscode]
+  HM -->|read-only link| E["~/.vscode/extensions"]
+  Cask[Homebrew cask] --> App[VS Code.app]
+  App --> E
+```
+
+### Design decisions
+- **Fully managed, on purpose.** UI setting changes and Extensions-panel installs fail to save. Every change goes through the flake, so the flake always matches the machine.
+- **Extensions update with `just update`, never on their own.** That's when `flake.lock` moves the marketplace mirror forward. Update notifications are off (`enableExtensionUpdateCheck = false`).
+- **The VS Code app still updates itself.** The cask is marked `auto_updates`, so `brew upgrade` skips it. Turning off VS Code's own updater would freeze the app.
+- **Dependencies must be listed.** VS Code can't fetch them into a read-only folder. `ms-python.python` needs Pylance, debugpy and Python Environments, and `vscode-docker` needs `vscode-containers`.
+- **Ghostty theme fix:** Ghostty 1.3 theme names are case-sensitive. The old `tokyonight` never matched; `TokyoNight` does.
+
+### Verification
+```bash
+# After `just switch`: each path should be a link into /nix/store
+ls -la ~/.config/ghostty/config ~/.vscode/extensions "$HOME/Library/Application Support/Code/User/settings.json"
+```
+
+```bash
+# VS Code sees exactly the declared set (20 extensions)
+code --list-extensions | wc -l
+```
+
+```bash
+# Ghostty accepts the config
+/Applications/Ghostty.app/Contents/MacOS/ghostty +validate-config
+```
+
+Then open Ghostty (the TokyoNight theme should now apply) and VS Code (theme, icons and every extension load). Once all is well, list the backups, then delete them:
+
+```bash
+ls -d ~/.vscode/*.hm-backup ~/.config/ghostty/*.hm-backup ~/.config/roo-code/*.hm-backup "$HOME/Library/Application Support/Code/User/"*.hm-backup "$HOME/Library/Application Support/Code/User/globalStorage/rooveterinaryinc.roo-cline/settings/"*.hm-backup 2>/dev/null
+```
+
+### Gotchas
+- **"Unable to write user settings" or an extension install error in VS Code** is expected. Make the change in the flake.
+- **An extension needs a newer VS Code than you have.** Run `just switch` once so Homebrew/VS Code updates first, or pin through `pkgs.nix-vscode-extensions.forVSCodeVersion`.
+- **Roo Code edits** to modes or profiles in its UI won't persist. Edit the flake instead.
 
 ## Related Notes
 * [[Nix-Darwin Guide]]

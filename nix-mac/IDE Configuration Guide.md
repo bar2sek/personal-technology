@@ -41,30 +41,17 @@ homebrew.casks = [
 
 ## ⚙️ Step 2: Essential Extensions
 
-Extensions are installed declaratively via `templates/flake.nix` on `just switch`:
+Extensions are owned by home-manager (`programs.vscode` in `templates/flake.nix`) and come from the `nix-vscode-extensions` marketplace mirror. The extensions folder is read-only, so only the listed extensions exist. See [[Home Manager Guide]].
 
-```bash
-# Native Antigravity Agent Extension for VS Code
-code --install-extension Google.google-antigravity
+| Group | Extensions |
+|---|---|
+| AI assistants | `google.google-antigravity`, `anthropic.claude-code` (Claude.ai subscription, no per-token charges), `rooveterinaryinc.roo-cline` (Grok, local MLX, AWS Bedrock) |
+| Theme & icons | `enkia.tokyo-night`, `pkief.material-icon-theme` |
+| Infrastructure & cloud | `jnoortheen.nix-ide`, `hashicorp.terraform`, `amazonwebservices.aws-toolkit-vscode`, `ms-azuretools.vscode-azureresourcegroups`, `ms-azuretools.vscode-docker` (+ `vscode-containers`), `ms-kubernetes-tools.vscode-kubernetes-tools`, `redhat.vscode-yaml` |
+| Languages & formatting | `dbaeumer.vscode-eslint`, `esbenp.prettier-vscode`, `golang.go`, `ms-python.python` (+ `vscode-pylance`, `debugpy`, `vscode-python-envs`) |
 
-# Frontier Reasoning (Claude.ai Subscription — Zero per-token charges)
-code --install-extension anthropic.claude-code
-
-# Autonomous Multi-Model Switcher (Grok, Local MLX, AWS Bedrock)
-code --install-extension RooVeterinaryInc.roo-cline
-
-# Aesthetics & Typography
-code --install-extension PKief.material-icon-theme
-code --install-extension enkia.tokyo-night
-
-# Language & Tooling Support
-code --install-extension jnoortheen.nix-ide
-code --install-extension hashicorp.terraform
-code --install-extension amazonwebservices.aws-toolkit-vscode
-code --install-extension ms-azuretools.vscode-azureresourcegroups
-code --install-extension ms-azuretools.vscode-docker
-code --install-extension ms-kubernetes-tools.vscode-kubernetes-tools
-```
+> [!IMPORTANT]
+> **Adding an extension:** add it to the list in the flake, sync, and `just switch`. Installing from the VS Code Extensions panel fails because the folder is read-only. Dependencies are not pulled in automatically, so list them too (that's why Pylance and Containers appear above).
 
 ---
 
@@ -75,7 +62,7 @@ code --install-extension ms-kubernetes-tools.vscode-kubernetes-tools
 >
 > Roo Code is reserved exclusively as a multi-model switchboard for **xAI Grok**, your **local MLX model**, and **AWS Bedrock**.
 
-Roo Code profiles are managed **declaratively** via `~/.config/roo-code/settings.json` and automatically imported into VS Code on startup via `"roo-cline.autoImportSettingsPath"`.
+Roo Code profiles are managed **declaratively** via `~/.config/roo-code/settings.json` (written by home-manager, read-only) and automatically imported into VS Code on startup via `"roo-cline.autoImportSettingsPath"`.
 
 ### Profile 1: Grok (xAI Real-Time & Velocity)
 
@@ -108,7 +95,7 @@ Roo Code profiles are managed **declaratively** via `~/.config/roo-code/settings
 
 ## 🎨 Step 4: Ergonomic Editor Settings
 
-Configure your user settings (`~/Library/Application Support/Code/User/settings.json`) to align with Ghostty and your hardware preferences:
+User settings (`~/Library/Application Support/Code/User/settings.json`) are owned by home-manager (`programs.vscode.profiles.default.userSettings`), so changes go in the flake. Changing a setting in the VS Code UI will fail to save. The key settings:
 
 ```json
 {

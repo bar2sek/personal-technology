@@ -46,7 +46,7 @@ graph TD
 
 ### 2. VS Code Extensions
 
-Declared in the `postActivation` script:
+Declared in home-manager `programs.vscode` (see [[Home Manager Guide]]):
 * `amazonwebservices.aws-toolkit-vscode`: AWS resource explorer, CloudWatch logs viewer, and CDK Explorer.
 * `dbaeumer.vscode-eslint`: Static code analysis and linting for TypeScript constructs.
 * `esbenp.prettier-vscode`: Opinionated code formatting for TypeScript and JSON.

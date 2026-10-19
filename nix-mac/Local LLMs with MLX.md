@@ -86,7 +86,7 @@ uvx --from mlx-lm mlx_lm.generate \
 Roo Code (`RooVeterinaryInc.roo-cline`) inside **VS Code** is pre-configured with the **"Local MLX (Qwen 2.5 Coder 32B)"** provider profile.
 
 ### Configuration Specification
-Declared declaratively in `templates/flake.nix` and written to `~/.config/roo-code/settings.json`:
+Declared in `templates/flake.nix` (home-manager `home.file`) and linked read-only to `~/.config/roo-code/settings.json`:
 
 ```json
 {

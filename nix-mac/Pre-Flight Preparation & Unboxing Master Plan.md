@@ -71,7 +71,7 @@ Located in `templates/bootstrap.sh`, this script executes the entire workstation
 4. **Nix-Darwin System Build:**
    * Installs **Brave Browser, Microsoft Edge, Google Drive, Microsoft OneNote, Keymapp, Obsidian, AppCleaner, Visual Studio Code, Ghostty, and OrbStack**.
    * Installs **JetBrainsMono Nerd Font** system-wide.
-   * **Auto-writes `~/.config/ghostty/config`** with matching fonts, ligatures, and Tokyo Night theme.
+   * **home-manager writes `~/.config/ghostty/config`** with matching fonts, ligatures, and the TokyoNight theme.
    * **Organizes the Dock in your custom 3-section order**:
      * 🌐 **Left (Browsers):** Safari $\rightarrow$ Microsoft Edge $\rightarrow$ Brave Browser
      * 💬 **Middle (Apple Core & OneNote):** Messages $\rightarrow$ Mail $\rightarrow$ Maps $\rightarrow$ Photos $\rightarrow$ FaceTime $\rightarrow$ Calendar $\rightarrow$ Contacts $\rightarrow$ Reminders $\rightarrow$ Notes $\rightarrow$ Microsoft OneNote

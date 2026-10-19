@@ -9,13 +9,19 @@
     # `just switch` applies system and user state together. See "Home Manager Guide.md".
     home-manager.url = "github:nix-community/home-manager";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
+    # The whole VS Code marketplace as Nix packages, rebuilt daily (nix-community).
+    # Lets home-manager own every VS Code extension; `just update` refreshes them.
+    nix-vscode-extensions.url = "github:nix-community/nix-vscode-extensions";
+    nix-vscode-extensions.inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  outputs = inputs@{ self, nix-darwin, nixpkgs, home-manager }:
+  outputs = inputs@{ self, nix-darwin, nixpkgs, home-manager, nix-vscode-extensions }:
   let
     configuration = { pkgs, config, ... }: {
       # Allow unfree packages (e.g., claude-code)
       nixpkgs.config.allowUnfree = true;
+      # Adds pkgs.vscode-marketplace* (all marketplace extensions) to pkgs
+      nixpkgs.overlays = [ nix-vscode-extensions.overlays.default ];
 
       # ----------------------------------------------------------------------
       # 1. System Packages (Managed via Nix)
@@ -368,156 +374,6 @@
           chown -h "$PRIMARY_USER" "$USER_HOME/.local/bin/tailscale" 2>/dev/null || true
         fi
 
-        echo "--> Deploying declarative VS Code & AI configuration..."
-        # Declarative Roo Code multi-model profiles:
-        # - Grok (xAI)
-        # - Local MLX (Qwen 2.5 Coder 32B Instruct on port 8080)
-        # - AWS Bedrock (Hosted LLM / Bedrock IAM)
-        # Note: Claude is handled via the official Claude Code extension using a Claude.ai subscription.
-        mkdir -p "$USER_HOME/.config/roo-code"
-        cat << 'EOF' > "$USER_HOME/.config/roo-code/settings.json"
-{
-  "providerProfiles": {
-    "currentApiConfigName": "Grok (xAI)",
-    "apiConfigs": {
-      "Grok (xAI)": {
-        "id": "grok-xai",
-        "apiProvider": "xai",
-        "apiKey": "",
-        "apiModelId": "grok-2"
-      },
-      "Local MLX (Qwen 2.5 Coder 32B)": {
-        "id": "local-mlx-qwen-32b",
-        "apiProvider": "openai",
-        "openAiBaseUrl": "http://localhost:8080/v1",
-        "openAiApiKey": "local",
-        "openAiModelId": "mlx-community/Qwen2.5-Coder-32B-Instruct-4bit",
-        "openAiCustomModelInfo": {
-          "contextWindow": 32768,
-          "maxTokens": 8192,
-          "supportsImages": false,
-          "supportsPromptCache": false
-        }
-      },
-      "AWS Bedrock": {
-        "id": "bedrock-hosted-llm",
-        "apiProvider": "bedrock",
-        "apiModelId": "anthropic.claude-3-5-sonnet-20241022-v2:0",
-        "awsRegion": "us-east-2"
-      }
-    }
-  },
-  "globalSettings": {}
-}
-EOF
-        chown -R "$PRIMARY_USER" "$USER_HOME/.config/roo-code"
-
-        # Deploy declarative Roo Code custom modes (pure Chat mode with zero tools for local LLMs)
-        mkdir -p "$USER_HOME/Library/Application Support/Code/User/globalStorage/rooveterinaryinc.roo-cline/settings"
-        cat << 'EOF' > "$USER_HOME/Library/Application Support/Code/User/globalStorage/rooveterinaryinc.roo-cline/settings/custom_modes.yaml"
-customModes:
-  - slug: "chat"
-    name: "💬 Chat / Pair Programmer"
-    roleDefinition: "You are an expert pair programmer and software architect. Answer questions, provide clear explanations, and write clean, idiomatic code without executing tools."
-    groups: []
-    customInstructions: "Answer all questions directly in clear markdown with code blocks. Do not attempt to invoke tools or execute terminal commands."
-EOF
-
-        # Apply settings to Visual Studio Code
-        settings_dir="$USER_HOME/Library/Application Support/Code/User"
-        mkdir -p "$settings_dir"
-        cat << 'EOF' > "$settings_dir/settings.json"
-{
-  "editor.fontFamily": "'JetBrainsMono Nerd Font', Menlo, Monaco, 'Courier New', monospace",
-  "editor.fontSize": 14,
-  "editor.fontLigatures": true,
-  "editor.lineNumbers": "on",
-  "editor.minimap.enabled": true,
-  "editor.formatOnSave": true,
-  "[nix]": {
-    "editor.formatOnSave": false
-  },
-  "workbench.colorTheme": "Tokyo Night",
-  "workbench.iconTheme": "material-icon-theme",
-  "telemetry.telemetryLevel": "off",
-  "update.mode": "default",
-  "git.enableSmartCommit": true,
-  "git.confirmSync": false,
-  "git.autorefresh": true,
-  "git.autoRepositoryDetection": true,
-  "git.repositoryScanMaxDepth": 2,
-  "scm.repositories.visible": 10,
-  "scm.repositories.selectionMode": "multiple",
-  "git.scanRepositories": [
-    "food-diet-nutrition",
-    "home-projects",
-    "homelab-ops",
-    "infra-cloud-deployments",
-    "personal-technology",
-    "professional-technology"
-  ],
-  "roo-cline.autoImportSettingsPath": "~/Library/Application Support/Code/User/globalStorage/rooveterinaryinc.roo-cline/settings/roo-settings.json",
-  "files.watcherExclude": {
-    "**/.git/objects/**": true,
-    "**/.git/subtree-cache/**": true,
-    "**/node_modules/**": true,
-    "**/.direnv/**": true,
-    "**/.trash/**": true,
-    "**/.obsidian/cache/**": true
-  }
-}
-EOF
-        chown -R "$PRIMARY_USER" "$USER_HOME/Library/Application Support/Code"
-
-        echo "--> Installing declarative VS Code extensions..."
-        for ide_bin in \
-          "/opt/homebrew/bin/code" \
-          "/usr/local/bin/code" \
-          "/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code"; do
-          if [ -x "$ide_bin" ]; then
-            for ext in \
-              "Google.google-antigravity" \
-              "anthropic.claude-code" \
-              "RooVeterinaryInc.roo-cline" \
-              "enkia.tokyo-night" \
-              "PKief.material-icon-theme" \
-              "jnoortheen.nix-ide" \
-              "hashicorp.terraform" \
-              "amazonwebservices.aws-toolkit-vscode" \
-              "dbaeumer.vscode-eslint" \
-              "esbenp.prettier-vscode" \
-              "ms-azuretools.vscode-azureresourcegroups" \
-              "ms-azuretools.vscode-docker" \
-              "ms-kubernetes-tools.vscode-kubernetes-tools" \
-              "ms-python.python" \
-              "golang.go" \
-              "redhat.vscode-yaml"; do
-              sudo -H -u "$PRIMARY_USER" env HOME="$USER_HOME" "$ide_bin" --install-extension "$ext" --force 2>/dev/null || true
-            done
-          fi
-        done
-
-        echo "--> Deploying declarative Ghostty configuration..."
-        mkdir -p "$USER_HOME/.config/ghostty"
-        cat << 'EOF' > "$USER_HOME/.config/ghostty/config"
-# Font & Typography
-font-family = "JetBrainsMono Nerd Font"
-font-size = 14
-font-feature = ["calt", "liga"]
-
-# Theme & Appearance
-theme = "tokyonight"
-background-opacity = 0.95
-background-blur-radius = 20
-macos-titlebar-style = "tabs"
-
-# Performance & Cursor
-cursor-style = "block"
-cursor-style-blink = false
-macos-option-as-alt = true
-EOF
-        chown -R "$PRIMARY_USER" "$USER_HOME/.config/ghostty"
-
         # Declarative Network Printer: Brother DCP-7065DN via Homelab CUPS Bridge
         echo "--> Configuring declarative network printer (Brother DCP-7065DN)..."
         lpadmin -p "Brother_DCP_7065DN" \
@@ -658,6 +514,163 @@ EOF
 
           # Smarter cd (`z <dir>`); home-manager adds the init line to ~/.zshrc
           programs.zoxide.enable = true;
+
+          # Ghostty: the cask installs the app; home-manager owns ~/.config/ghostty/config.
+          programs.ghostty = {
+            enable = true;
+            package = null; # Installed by the Homebrew cask, not Nix
+            settings = {
+              # Font & Typography
+              font-family = "JetBrainsMono Nerd Font";
+              font-size = 14;
+              font-feature = [ "calt" "liga" ]; # Written as one `font-feature =` line each
+
+              # Theme & Appearance (Ghostty 1.3 theme names are case-sensitive)
+              theme = "TokyoNight";
+              background-opacity = 0.95;
+              background-blur-radius = 20;
+              macos-titlebar-style = "tabs";
+
+              # Performance & Cursor
+              cursor-style = "block";
+              cursor-style-blink = false;
+              macos-option-as-alt = true;
+            };
+          };
+
+          # VS Code: the cask installs the app; home-manager owns settings.json and the
+          # extensions dir (read-only). UI setting changes and in-app extension installs
+          # will not stick: change them here. Extensions come from the marketplace
+          # mirror (nix-vscode-extensions); `just update` moves them to newer versions.
+          programs.vscode = {
+            enable = true;
+            package = null;              # Installed by the Homebrew cask, not Nix
+            mutableExtensionsDir = false; # Only the extensions listed below exist
+
+            profiles.default = {
+              enableExtensionUpdateCheck = false; # Extension updates come from `just update`
+
+              extensions = with pkgs.vscode-marketplace-release; [
+                # AI assistants
+                google.google-antigravity
+                anthropic.claude-code
+                rooveterinaryinc.roo-cline
+
+                # Theme & icons
+                enkia.tokyo-night
+                pkief.material-icon-theme
+
+                # Infrastructure & cloud
+                jnoortheen.nix-ide
+                hashicorp.terraform
+                amazonwebservices.aws-toolkit-vscode
+                ms-azuretools.vscode-azureresourcegroups
+                ms-azuretools.vscode-docker
+                ms-azuretools.vscode-containers # Required by vscode-docker
+                ms-kubernetes-tools.vscode-kubernetes-tools
+                redhat.vscode-yaml
+
+                # Languages & formatting
+                dbaeumer.vscode-eslint
+                esbenp.prettier-vscode
+                golang.go
+                ms-python.python
+                ms-python.vscode-pylance     # Required by ms-python.python
+                ms-python.debugpy            # Required by ms-python.python
+                ms-python.vscode-python-envs # Required by ms-python.python
+              ];
+
+              userSettings = {
+                "editor.fontFamily" = "'JetBrainsMono Nerd Font', Menlo, Monaco, 'Courier New', monospace";
+                "editor.fontSize" = 14;
+                "editor.fontLigatures" = true;
+                "editor.lineNumbers" = "on";
+                "editor.minimap.enabled" = true;
+                "editor.formatOnSave" = true;
+                "[nix]" = {
+                  "editor.formatOnSave" = false;
+                };
+                "workbench.colorTheme" = "Tokyo Night";
+                "workbench.iconTheme" = "material-icon-theme";
+                "telemetry.telemetryLevel" = "off";
+                "update.mode" = "default"; # VS Code updates itself (the cask is auto_updates, so brew skips it)
+                "git.enableSmartCommit" = true;
+                "git.confirmSync" = false;
+                "git.autorefresh" = true;
+                "git.autoRepositoryDetection" = true;
+                "git.repositoryScanMaxDepth" = 2;
+                "scm.repositories.visible" = 10;
+                "scm.repositories.selectionMode" = "multiple";
+                "git.scanRepositories" = [
+                  "food-diet-nutrition"
+                  "home-projects"
+                  "homelab-ops"
+                  "infra-cloud-deployments"
+                  "personal-technology"
+                  "professional-technology"
+                ];
+                "roo-cline.autoImportSettingsPath" = "~/Library/Application Support/Code/User/globalStorage/rooveterinaryinc.roo-cline/settings/roo-settings.json";
+                "files.watcherExclude" = {
+                  "**/.git/objects/**" = true;
+                  "**/.git/subtree-cache/**" = true;
+                  "**/node_modules/**" = true;
+                  "**/.direnv/**" = true;
+                  "**/.trash/**" = true;
+                  "**/.obsidian/cache/**" = true;
+                };
+              };
+            };
+          };
+
+          # Roo Code multi-model profiles: Grok (xAI), local MLX (Qwen 2.5 Coder 32B on
+          # port 8080), AWS Bedrock. Claude runs through the Claude Code extension instead.
+          # No API keys here: anything in Nix is readable by every user via /nix/store.
+          home.file.".config/roo-code/settings.json".text = ''
+            {
+              "providerProfiles": {
+                "currentApiConfigName": "Grok (xAI)",
+                "apiConfigs": {
+                  "Grok (xAI)": {
+                    "id": "grok-xai",
+                    "apiProvider": "xai",
+                    "apiKey": "",
+                    "apiModelId": "grok-2"
+                  },
+                  "Local MLX (Qwen 2.5 Coder 32B)": {
+                    "id": "local-mlx-qwen-32b",
+                    "apiProvider": "openai",
+                    "openAiBaseUrl": "http://localhost:8080/v1",
+                    "openAiApiKey": "local",
+                    "openAiModelId": "mlx-community/Qwen2.5-Coder-32B-Instruct-4bit",
+                    "openAiCustomModelInfo": {
+                      "contextWindow": 32768,
+                      "maxTokens": 8192,
+                      "supportsImages": false,
+                      "supportsPromptCache": false
+                    }
+                  },
+                  "AWS Bedrock": {
+                    "id": "bedrock-hosted-llm",
+                    "apiProvider": "bedrock",
+                    "apiModelId": "anthropic.claude-3-5-sonnet-20241022-v2:0",
+                    "awsRegion": "us-east-2"
+                  }
+                }
+              },
+              "globalSettings": {}
+            }
+          '';
+
+          # Roo Code custom modes: a pure Chat mode with zero tools, for local LLMs.
+          # Read-only: edit modes here, not in Roo's UI.
+          home.file."Library/Application Support/Code/User/globalStorage/rooveterinaryinc.roo-cline/settings/custom_modes.yaml".text = ''
+            customModes:
+              - slug: "chat"
+                name: "💬 Chat / Pair Programmer"
+                roleDefinition: "You are an expert pair programmer and software architect. Answer questions, provide clear explanations, and write clean, idiomatic code without executing tools."
+                groups: []
+                customInstructions: "Answer all questions directly in clear markdown with code blocks. Do not attempt to invoke tools or execute terminal commands."
+          '';
         };
       };
     };
