@@ -457,18 +457,14 @@ graph LR
 #    oidc-cdk-gateway.tf creates the diff and deploy roles.
 #    On a fresh account, remove the `import` block in cdk-bootstrap.tf first:
 #    there is no existing stack to adopt.
-cd bootstrap/aws
-eval "$(aws configure export-credentials --format env)"
-export TF_DATA_DIR=~/.terraform-data/bootstrap-aws
-terraform init && terraform plan && terraform apply
+eval "$(aws configure export-credentials --format env)"   # from the repo root
+just tf-apply aws          # TF_DATA_DIR outside the vault; auto-inits
 
 # 3. GitHub side (bootstrap/github/bedrock-ai-gateway.tf). Reads the role ARNs from
 #    bootstrap/aws state, so step 2 must be applied first.
 #    Expect "1 to import" the first time.
-cd ../github
-export TF_DATA_DIR=~/.terraform-data/bootstrap-github
 export GITHUB_TOKEN="$(gh auth token)"
-terraform init && terraform plan && terraform apply
+just tf-apply github
 
 # 4. The workflow must arrive through a pull request (enforce_admins blocks direct pushes).
 #    The PR runs `verify`; merging runs `deploy` after reviewer approval.

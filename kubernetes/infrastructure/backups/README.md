@@ -140,11 +140,8 @@ Secrets are excluded from cluster-state on purpose: their real values live in th
 ### 1. Guardrails and uploader identity (administrator, locally)
 
 ```bash
-cd bootstrap/aws
 eval "$(aws configure export-credentials --format env)"   # bridges `aws login` to Terraform
-export TF_DATA_DIR=$(mktemp -d)                            # keeps provider binaries out of Google Drive
-terraform init -lockfile=readonly
-terraform apply
+just tf-apply aws    # from the repo root; TF_DATA_DIR stays outside Google Drive
 ```
 
 The bucket itself must already exist (created by `infra-cloud-deployments` CI). Versioning must be enabled before Object Lock can be.

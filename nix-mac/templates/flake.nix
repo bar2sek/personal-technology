@@ -58,6 +58,11 @@
         pkgs.granted
       ];
 
+      # Terraform provider binaries are shared across every root and repo from one
+      # cache outside the Google Drive–synced vault. Per-root .terraform data dirs
+      # are moved out of the vault by each repo's Justfile (TF_DATA_DIR).
+      environment.variables.TF_PLUGIN_CACHE_DIR = "$HOME/.terraform.d/plugin-cache";
+
       # Shell Aliases (Modern, Colorized with Nerd Font Icons)
       environment.shellAliases = {
         # Kubernetes & Homelab Shortcuts

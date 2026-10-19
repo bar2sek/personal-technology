@@ -176,70 +176,90 @@ gha-runners-status:
 # 3. Terraform Infrastructure as Code
 # ------------------------------------------------------------------------------
 
-# Plan all On-Prem & Cloud Bootstrap roots
-tf-plan-all:
-    @echo "===> Planning UniFi Network (On-Prem Terraform)..."
-    cd terraform/unifi && terraform plan -parallelism=1
-    @echo "===> Planning GitHub Multi-Cloud GitOps (Bootstrap)..."
-    cd bootstrap/github && terraform plan
-    @echo "===> Planning AWS OIDC & State Storage (Bootstrap)..."
-    cd bootstrap/aws && terraform plan
-    @echo "===> Planning AWS Organization & Accounts (Bootstrap)..."
-    cd bootstrap/aws_organization && terraform plan
-    @echo "===> Planning Azure Infrastructure & Entra ID (Bootstrap)..."
-    cd bootstrap/azure && terraform plan
+# Every recipe below runs Terraform through `_tf`, which keeps `.terraform/`
+# out of the Google Drive–synced vault (AGENTS.md §6):
+#   * TF_DATA_DIR  -> ~/.terraform-data/personal-technology/<terraform|bootstrap>-<dir>
+#                     (one per root: it also holds the backend/module metadata)
+#   * TF_PLUGIN_CACHE_DIR -> ~/.terraform.d/plugin-cache, shared by all roots,
+#                     so a re-init links the cached binary instead of downloading
+#   * auto-runs `terraform init` when the root's data dir has no providers yet
+# Local state (terraform.tfstate) is unaffected and stays next to the code.
+tf_data_root := env_var_or_default("TF_DATA_ROOT", env_var("HOME") / ".terraform-data") / "personal-technology"
+
+[private]
+[positional-arguments]
+_tf dir cmd *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    dir="$1" cmd="$2"; shift 2
+    if [ -d "terraform/$dir" ]; then root="terraform/$dir"
+    elif [ -d "bootstrap/$dir" ]; then root="bootstrap/$dir"
+    else echo "Error: Directory terraform/$dir or bootstrap/$dir not found" >&2; exit 1; fi
+    export TF_DATA_DIR="{{ tf_data_root }}/${root//\//-}"
+    export TF_PLUGIN_CACHE_DIR="${TF_PLUGIN_CACHE_DIR:-$HOME/.terraform.d/plugin-cache}"
+    # Same default as the nix-mac `terraform` alias (shell aliases don't apply inside just).
+    export AWS_PROFILE="${AWS_PROFILE:-terraform}"
+    mkdir -p "$TF_DATA_DIR" "$TF_PLUGIN_CACHE_DIR"
+    cd "$root"
+    if [ "$cmd" != "init" ] && [ ! -d "$TF_DATA_DIR/providers" ]; then
+        echo "===> $root: no provider cache in $TF_DATA_DIR, running terraform init"
+        terraform init -input=false
+    fi
+    # UniFi provider crashes on concurrent refresh (see deployment journal): run it serially.
+    if [ "$dir" = "unifi" ] && [[ "$cmd" =~ ^(plan|apply|destroy|refresh)$ ]]; then
+        set -- -parallelism=1 "$@"
+    fi
+    terraform "$cmd" "$@"
+
+# Initialise a root outside the vault (usage: just tf-init unifi, just tf-init aws -upgrade)
+[positional-arguments]
+tf-init dir *args:
+    @d="$1"; shift; {{ just_executable() }} _tf "$d" init "$@"
 
 # Run Terraform plan in a specific directory (usage: just tf-plan unifi or just tf-plan azure)
-tf-plan dir:
-    @if [ -d "terraform/{{ dir }}" ]; then \
-        cd terraform/{{ dir }} && terraform plan {{ if dir == "unifi" { "-parallelism=1" } else { "" } }}; \
-    elif [ -d "bootstrap/{{ dir }}" ]; then \
-        cd bootstrap/{{ dir }} && terraform plan; \
-    else \
-        echo "Error: Directory terraform/{{ dir }} or bootstrap/{{ dir }} not found"; exit 1; \
-    fi
+[positional-arguments]
+tf-plan dir *args:
+    @d="$1"; shift; {{ just_executable() }} _tf "$d" plan "$@"
 
 # Run Terraform apply in a specific directory (usage: just tf-apply unifi or just tf-apply azure)
-tf-apply dir:
-    @if [ -d "terraform/{{ dir }}" ]; then \
-        cd terraform/{{ dir }} && terraform apply {{ if dir == "unifi" { "-parallelism=1" } else { "" } }}; \
-    elif [ -d "bootstrap/{{ dir }}" ]; then \
-        cd bootstrap/{{ dir }} && terraform apply; \
-    else \
-        echo "Error: Directory terraform/{{ dir }} or bootstrap/{{ dir }} not found"; exit 1; \
-    fi
+[positional-arguments]
+tf-apply dir *args:
+    @d="$1"; shift; {{ just_executable() }} _tf "$d" apply "$@"
+
+# Run any other Terraform subcommand in a root (usage: just tf unifi state list)
+[positional-arguments]
+tf dir cmd *args:
+    @{{ just_executable() }} _tf "$@"
+
+# Print where a root's provider cache lives (usage: just tf-data-dir unifi)
+tf-data-dir dir:
+    @if [ -d "terraform/{{ dir }}" ]; then echo "{{ tf_data_root }}/terraform-{{ dir }}"; \
+    else echo "{{ tf_data_root }}/bootstrap-{{ dir }}"; fi
+
+# Plan all On-Prem & Cloud Bootstrap roots
+tf-plan-all: (tf-plan "unifi") (tf-plan "github") (tf-plan "aws") (tf-plan "aws_organization") (tf-plan "azure")
 
 # Quick shortcuts for On-Premise Homelab roots
-tf-plan-unifi:
-    cd terraform/unifi && terraform plan -parallelism=1
+tf-plan-unifi: (tf-plan "unifi")
 
-tf-apply-unifi:
-    cd terraform/unifi && terraform apply -parallelism=1
+tf-apply-unifi: (tf-apply "unifi")
 
 # Quick shortcuts for Day-0 Cloud & CI/CD Bootstrap roots
-tf-plan-github:
-    cd bootstrap/github && terraform plan
+tf-plan-github: (tf-plan "github")
 
-tf-apply-github:
-    cd bootstrap/github && terraform apply
+tf-apply-github: (tf-apply "github")
 
-tf-plan-aws:
-    cd bootstrap/aws && terraform plan
+tf-plan-aws: (tf-plan "aws")
 
-tf-apply-aws:
-    cd bootstrap/aws && terraform apply
+tf-apply-aws: (tf-apply "aws")
 
-tf-plan-aws-org:
-    cd bootstrap/aws_organization && terraform plan
+tf-plan-aws-org: (tf-plan "aws_organization")
 
-tf-apply-aws-org:
-    cd bootstrap/aws_organization && terraform apply
+tf-apply-aws-org: (tf-apply "aws_organization")
 
-tf-plan-azure:
-    cd bootstrap/azure && terraform plan
+tf-plan-azure: (tf-plan "azure")
 
-tf-apply-azure:
-    cd bootstrap/azure && terraform apply
+tf-apply-azure: (tf-apply "azure")
 
 # Generate live UniFi network & VLAN topology diagrams (SVG + PNG)
 unifi-diagram:

@@ -156,3 +156,13 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
         ├── storage-worker.yaml# pc-node-04 storage worker
         └── gpu-worker.yaml    # pc-node-05 AM5 Ryzen 7600 + RTX 4070 VFIO passthrough
 ```
+---
+
+## 🧰 Running Terraform Locally
+
+Always go through the Justfile (`just tf-plan <dir>`, `just tf-apply <dir>`, `just tf-init <dir> [-upgrade]`, or `just tf <dir> <subcommand>`), where `<dir>` is a root under `terraform/` or `bootstrap/` (e.g. `unifi`, `aws`, `github`). The recipes set `TF_DATA_DIR` to `~/.terraform-data/personal-technology/<terraform|bootstrap>-<dir>` and share provider binaries via `TF_PLUGIN_CACHE_DIR` (`~/.terraform.d/plugin-cache`), so **no `.terraform/` directory is ever created inside the Google Drive–synced vault**. A missing cache is not an error: the first run auto-runs `terraform init` (offline from the shared cache when the provider is already there).
+
+- **Verify:** `find . -name .terraform` from the repo root prints nothing.
+- **Where's my cache?** `just tf-data-dir unifi`. Delete it freely; the next run re-inits.
+- **Lock file changed** (provider upgrade from another clone): `just tf-init <dir>` (or `-upgrade` to bump it yourself).
+- **Gotcha:** a bare `terraform` run from a root directory bypasses this and recreates `.terraform/` in the vault. Use `just tf <dir> ...` instead.

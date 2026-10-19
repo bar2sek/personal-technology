@@ -103,7 +103,7 @@ Results on 2026-10-19: all four names returned CNAME + private IP for `A` and no
 - **Stale answers:** records have a 300 s TTL. On macOS flush with `sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder`.
 - **`/etc/hosts` overrides win:** if a name still resolves oddly on one machine, check `/etc/hosts` for old workaround lines.
 - **Apply with `-target` while unrelated drift exists.** On 2026-10-19 the full plan also wanted to change the K8S-CONTROL DHCP pool start (`.100` live vs `.200` in code); that was excluded and is tracked separately in the [[001-deployment-journal|journal]] backlog.
-- **Provider cache outside Drive:** `TF_DATA_DIR=~/.terraform-data/unifi terraform -chdir=terraform/unifi ...` keeps the provider binary out of the synced vault.
+- **Provider cache outside Drive:** run it as `just tf unifi apply -target=...` (or `just tf-plan unifi`); the Justfile sets `TF_DATA_DIR` outside the synced vault and re-inits automatically if the cache is gone.
 
 ## Related
 
