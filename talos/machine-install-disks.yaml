@@ -35,10 +35,16 @@ metadata:
 spec:
   disk: /dev/sdc
 ---
-# pc-node-05 (GPU Worker): 1TB Sabrent Rocket 4.0 NVMe (preserves 1TB Crucial P3 for Ceph)
+# pc-node-05 (GPU Worker): 240GB Kingston SQ500S3 SATA SSD (since 2026-10-18,
+# Wave 3b in docs/110; before that the 1TB Sabrent NVMe). Selected by WWID, not
+# /dev/sdX: device names shift when disks are added (the Kingston has no serial
+# in Talos). The Sabrent holds only the gaming VM disk; the Crucial P3 is Ceph.
+# Omni writes the chosen disk into machine.install.disk, which takes precedence
+# over any install.diskSelector in the cluster template, so pin it here.
 metadata:
   namespace: default
   type: MachineInstallDiskConfigs.omni.sidero.dev
   id: 7a7d25b8-0dfc-c810-a348-047c1680b262
 spec:
-  disk: /dev/nvme1n1
+  disk: ""
+  diskselector: 'disk.wwid == "naa.50026b768322ebd7"'

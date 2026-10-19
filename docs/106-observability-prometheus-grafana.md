@@ -194,9 +194,9 @@ graph LR
 
 **Test end to end** (should arrive loud within a minute, then a RESOLVED message):
 ```bash
-AM="kubectl -n monitoring exec alertmanager-kube-prometheus-stack-alertmanager-0 -c alertmanager -- amtool --alertmanager.url=http://localhost:9093"
-$AM alert add HomelabTestAlert severity=critical namespace=monitoring --annotation=summary="test"
-$AM alert add HomelabTestAlert severity=critical namespace=monitoring --end="$(date -u +%Y-%m-%dT%H:%M:%SZ)"   # resolve
+am() { kubectl -n monitoring exec alertmanager-kube-prometheus-stack-alertmanager-0 -c alertmanager -- amtool --alertmanager.url=http://localhost:9093 "$@"; }   # function: zsh does not word-split "$AM"
+am alert add HomelabTestAlert severity=critical namespace=monitoring --annotation=summary="test"
+am alert add HomelabTestAlert severity=critical namespace=monitoring --end="$(date -u +%Y-%m-%dT%H:%M:%SZ)"   # resolve
 ```
 
 **Gotchas from the build:**

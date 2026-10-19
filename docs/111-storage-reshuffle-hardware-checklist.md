@@ -56,25 +56,47 @@ Which IronWolf goes where does not matter technically (all four are equivalent);
 
 ## Wave 1: pull three MX500s from sm-node-03 (running, hot-swap)
 
-**Before (terminal):** Wave 0 done (osd.12/13/4 purged and their disks wiped); `ceph status` HEALTH_OK; `ceph osd tree` shows **only osd.7** under sm-node-03.
+**Before (terminal):** Wave 0 done (done 2026-10-18: osd.12/13/4 purged and their disks wiped); `ceph status` HEALTH_OK; `ceph osd tree` shows **only osd.7** under sm-node-03. As a precaution (in case the wrong bay is pulled), silence and set `noout` for sm-node-03:
+```bash
+kubectl -n rook-ceph exec deploy/rook-ceph-tools -- ceph osd set-group noout sm-node-03
+```
 
-**How to find the right bay:** for each drive in turn, the terminal starts a continuous read of that one disk (a debug pod running `dd` from its `/dev/disk/by-id/…` path). Its bay's activity LED goes **solid or flickers constantly**; the other bays only blink with normal background I/O.
+**How to find the right bay:** a continuous read of one disk keeps **its** bay's activity LED lit; the other bays only blink with normal background I/O.
 
-**Hands-on, once per drive (MX-DE1D, then MX-DE26, then MX-684D):**
-1. Terminal: start the read loop on that serial; tell the terminal which bay lights up.
-2. Terminal: stop the read loop and **detach the disk from Linux** (`echo 1 > /sys/block/sdX/device/delete`), so the kernel is not surprised by the pull.
+**Hands-on, once per drive: MX-DE1D (`2137E5D2DE1D`), then MX-DE26 (`2137E5D2DE26`), then MX-684D (`2253E698684D`).** Set `ID` to that drive first:
+```bash
+ID=ata-CT2000MX500SSD1_2137E5D2DE1D    # then …2137E5D2DE26, then …2253E698684D
+```
+1. **Light its LED** (runs until Ctrl-C):
+   ```bash
+   kubectl debug node/sm-node-03 -n kube-system --profile=sysadmin -it --image=alpine:3.24 -- sh -c \
+     "D=\$(readlink -f /host/dev/disk/by-id/$ID); echo Reading \$D - watch for the steady LED, Ctrl-C to stop; \
+      while true; do dd if=\$D of=/dev/null bs=1M count=2000 iflag=direct status=none; done"
+   ```
+   Note which bay is lit, then press **Ctrl-C**.
+2. **Detach it from Linux** (so the kernel is not surprised by the pull):
+   ```bash
+   kubectl debug node/sm-node-03 -n kube-system --profile=sysadmin -it --image=alpine:3.24 -- sh -c \
+     "D=\$(readlink -f /host/dev/disk/by-id/$ID); N=\$(basename \$D); echo 1 > /host/sys/block/\$N/device/delete && echo detached \$N"
+   ```
+   Expect `detached sdX`. The bay's LED goes dark.
 3. At the rack: press the caddy release on **that bay only**, pull the caddy out.
-4. Read the serial on the drive label through the caddy. **If it is not the expected serial, stop:** slide it back in and tell the terminal.
-5. Label it with tape (e.g. "MX-DE1D → pc-04"). Leave the drive in its caddy for now, or remove it and keep the 2.5" adapter.
-6. Terminal confirms: sm-node-03 still `Ready`, `HEALTH_OK`, osd.7 still `up`.
+4. Read the serial on the drive label. **If it is not the expected serial, stop:** slide it back in and check at the terminal (`ceph osd tree`, `talosctl -n sm-node-03 get disks`).
+5. Label it with tape (e.g. "MX-DE1D → pc-04").
+6. Check: `kubectl get node sm-node-03` → `Ready`; `ceph osd tree` → osd.7 `up`.
 
-**After:** one caddy (MX-6843) still in sm-node-03, three empty bays. Take the three MX500s out of their caddies (4 screws each); **keep at least one 2.5" adapter** for MX250.
+Clean up the debug pods afterwards: `kubectl -n kube-system get pods -o name | grep node-debugger | xargs kubectl -n kube-system delete`.
+
+> [!TIP]
+> **If no LED lights** (some backplanes do not show SSD activity): detach all three drives first (step 2 for each), then watch the bays: the one that **still** blinks holds osd.7 (MX-6843) and stays. Pull the other three and confirm each label.
+
+**After:** one caddy (MX-6843) still in sm-node-03, three empty bays. `ceph osd unset-group noout sm-node-03`. Take the three MX500s out of their caddies (4 screws each); **keep at least one 2.5" adapter** for MX250.
 
 ---
 
 ## Wave 2: pc-node-04 window (about 30 minutes)
 
-**Before (terminal):** silence + pause Rook operator + `noout` for pc-node-04 + `kubectl drain` + `talosctl shutdown`. Wait for the terminal's "powered off" checkpoint, then switch the PSU off and unplug.
+**Before (terminal):** (done 2026-10-18) osd.11/14/15/16/18 re-purged and their **label offsets zeroed and verified** (they had been re-activated from backup BlueStore labels after Wave 0; see [[110-ephemeral-var-migration|docs/110]] Phase A caution). Then silence + pause Rook operator + `noout` for pc-node-04 + `kubectl drain` + `talosctl shutdown`. Wait for the terminal's "powered off" checkpoint, then switch the PSU off and unplug.
 
 **Hands-on:**
 1. **Out**, labelling each as it comes out (models are printed on the labels, so there is no ambiguity):
@@ -106,7 +128,10 @@ Which IronWolf goes where does not matter technically (all four are equivalent);
 
 ## Wave 4: sm-node-03 disks in + `/var` re-provision (about 1 hour)
 
-**Before (terminal):** Omni patch for EPHEMERAL on MX250 synced; silence; `noout` for sm-node-03.
+**Before (terminal):** Omni patch for EPHEMERAL on MX250 synced; silence; `noout` for sm-node-03. The MX250 still carries a `zfs_member` signature from pc-node-04: wipe it (`sgdisk --zap-all` + `wipefs -a` + `blkdiscard` from a debug pod) while sm-node-03 runs, before the Omni *Destroy*.
+
+> [!NOTE]
+> 2026-10-18: the MX250 and IW-H5S / IW-RSJ were hot-inserted into sm-node-03 right after Wave 2, ahead of the rest of this wave. Talos sees them; they are unused until the steps below.
 
 **Hands-on (sm-node-03 may stay powered on; the bays are hot-swap):**
 1. **MX250** into a 2.5"→3.5" adapter, into a caddy (2.5" screws through the adapter), into a free bay.

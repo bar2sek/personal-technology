@@ -25,7 +25,8 @@ graph TD
     subgraph Host ["pc-node-05 (Talos Linux Bare-Metal)"]
         Kernel["Talos Linux Kernel 6.18+ (amd_iommu=on, vfio-pci)"]
         GPU_HW["NVIDIA GeForce RTX 4070 (12GB VRAM, Ada Lovelace)"]
-        NVMe_HW["1TB Sabrent Rocket NVMe (Talos system + gaming-vm directory volume)"]
+        Boot_HW["240GB Kingston SQ500S3 SATA SSD (Talos system + /var)"]
+        NVMe_HW["1TB Sabrent Rocket NVMe (gaming-vm partition, whole disk)"]
         KubeVirt["KubeVirt v1.9.0 Operator & virt-handler"]
     end
 
@@ -329,6 +330,8 @@ To play Blizzard titles (Diablo IV, World of Warcraft, Overwatch 2) directly ins
 ### Why local storage
 The VM can only run on pc-node-05 (GPU passthrough), and game files do not need replication. Its old disk was a 1000 GiB RBD image in the 3x-replicated Ceph NVMe pool (576 GiB used, about 1.7 TB raw). It now lives on pc-node-05's own Sabrent NVMe: lower latency, and the Ceph capacity comes back. If that drive dies, reinstall and re-download; there are no backups by design.
 
+Since the Wave 3b reinstall (2026-10-18, [[110-ephemeral-var-migration|docs/110]]) Talos and `/var` run from a 240 GB Kingston SATA SSD, and **the whole Sabrent is the VM's partition** (932 GB), no longer shared with `/var`.
+
 ### Retiring the old Ceph disk (done 2026-10-18)
 The old claim `vms/windows-gaming-nvme-pvc` was deleted once the VM was running from the local disk. The `bazzite-nvidia-iso` claim stays, because the install patch uses it.
 
@@ -344,15 +347,28 @@ Ceph-CSI moves the image to the RBD trash, and the manager then purges it in the
 ### Storage layout
 | Piece | Where |
 |---|---|
-| Talos directory user volume `gaming-vm` → `/var/mnt/gaming-vm` | Omni patch `gpu-worker-volumes` (`talos/cluster-template.yaml`, pc-node-05 only) |
+| Talos **partition** user volume `gaming-vm` → `/var/mnt/gaming-vm`, the whole Sabrent (selected by serial `03850709175D88299755`; `nvme0n1`/`nvme1n1` swap between boots) | Omni patch `gpu-worker-volumes` (`talos/cluster-template.yaml`, pc-node-05 only) |
 | StorageClass `local-gaming-vm`, PV `gaming-vm-local-pv` (750Gi, `claimRef`, node affinity), PVC `vms/bazzite-local-rootdisk` | `kubernetes/infrastructure/kubevirt/gaming-vm-local-storage.yaml` |
 | VM disk image | KubeVirt creates a sparse `disk.img` sized to the claim on first boot |
 
-> [!WARNING]
-> **A directory volume has no hard size limit.** It shares pc-node-05's ~930 GiB `/var` with container images and logs. The 750 GiB disk image leaves about 150 GiB of headroom. A separate partition is not possible without wiping EPHEMERAL, and Omni rejects `talosctl reset` (`PermissionDenied`). Watch pc-node-05 on the Homelab Overview *System disk used* panel.
+### Growing the VM disk (done 2026-10-18: 750 → 840 GiB)
+The xfs partition holds 868 GiB. Keep `disk.img` below that with some headroom: it is sparse, so an image larger than the partition would only fail once games fill it, and a full host filesystem pauses the VM.
+1. `virtctl stop bazzite-gaming-vm -n vms`.
+2. **Kubernetes:** set the new size in both the PV and the PVC in `gaming-vm-local-storage.yaml`. A static local PV cannot be resized (`only dynamically provisioned pvc can be resized`), so `kubectl delete` the PVC and PV, then `kubectl apply` the file. Deleting a local PV never touches the files.
+3. **Image:** a one-off Job on pc-node-05 mounting the claim runs `truncate -s 840G /d/disk.img` (instant; KubeVirt's `ExpandDisks` feature gate is off here). Start the VM; `lsblk` in the guest shows the new `vda` size.
+4. **Inside Bazzite** (sudo asks for the password, so run it in an SSH session):
+   ```bash
+   echo ', +' | sudo sfdisk --no-reread -N 3 /dev/vda   # vda3 (btrfs) is the last partition; "busy" re-read warning is expected
+   sudo partx -u /dev/vda                               # kernel picks up the new partition size
+   sudo btrfs filesystem resize max /var/home           # live; any read-write mount of the filesystem works
+   ```
+   On Fedora Atomic, `/` is a composefs image (`not a btrfs filesystem`) and `/sysroot` is mounted read-only, so resize through `/var/home`. Result: 839G, 801G free.
 
 > [!NOTE]
-> Changing an existing user volume from `partition` to `directory` left Talos reporting the old type. Removing the patch, syncing, and re-adding it cleared the state.
+> Until 2026-10-18 this was a `directory` volume inside EPHEMERAL on the Sabrent. Changing an existing user volume between `partition` and `directory` leaves Talos reporting the old type; removing the patch, syncing, and re-adding it clears the state.
+
+### Moving the disk image (backup and restore)
+Used for the Wave 3b reinstall, which wiped the Sabrent. Stop the VM, then copy `disk.img` into a temporary 800Gi `rook-ceph-block` claim with a Job pinned to pc-node-05 that mounts both claims and runs `cp --sparse=always`, then `sha256sum` on both files. Restore is the same Job in reverse. `--sparse=always` keeps the 750 GiB image at its real size (37 GiB on 2026-10-18); each copy plus checksum took about 20 minutes. Delete the temporary claim afterwards the `Retain` way (patch its PV to `Delete` first, see above).
 
 ### Rebuild procedure
 1. **Install mode** (adds the ISO as a CD-ROM and a VNC display, and **detaches the GPU**, because with the GPU attached the NVIDIA installer opens its UI on the 4070's monitor output instead of VNC):

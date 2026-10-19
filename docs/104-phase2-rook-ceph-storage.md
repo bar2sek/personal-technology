@@ -183,10 +183,11 @@ Used on 2026-10-17 to reseat a disk in `sm-node-02` (a control-plane node holdin
 1. **Pre-checks (read-only):** `ceph pg stat` shows all PGs `active+clean`; `ceph mon stat` shows the other monitors can still form a quorum without this node; at least two other control-plane nodes are Ready (`talosctl -n <other cp> etcd members`). **Never take two control-plane nodes down at once:** etcd loses quorum and the Kubernetes API stops. `kubectl get pdb -A` should show no budget with 0 allowed disruptions, or the drain hangs.
 2. **Silence the expected alerts.** A planned outage still fires `CephOSDDownHigh` (critical, immediately, once ≥10% of OSDs are down), then OSD/host-down and node-unreachable warnings. Silence alerts for that node for the expected duration:
    ```bash
-   AM="kubectl -n monitoring exec alertmanager-kube-prometheus-stack-alertmanager-0 -c alertmanager -- amtool --alertmanager.url=http://localhost:9093"
-   $AM silence add --duration=2h --comment="sm-node-02 maintenance" 'alertname=~"Ceph(OSDDown|OSDDownHigh|OSDHostDown|HealthWarning|PGsUnclean)"'
-   $AM silence add --duration=2h --comment="sm-node-02 maintenance" 'alertname=~"KubeNode.*|KubeletInstanceUnreachable|TargetDown|KubeDaemonSet.*|KubeDeploymentReplicasMismatch|KubePodNotReady"'
-   $AM silence query          # expire early with: $AM silence expire <id>
+   # a function, not AM="…": zsh does not word-split "$AM", so the variable form fails with "no such file or directory"
+   am() { kubectl -n monitoring exec alertmanager-kube-prometheus-stack-alertmanager-0 -c alertmanager -- amtool --alertmanager.url=http://localhost:9093 "$@"; }
+   am silence add --duration=2h --comment="sm-node-02 maintenance" 'alertname=~"Ceph(OSDDown|OSDDownHigh|OSDHostDown|HealthWarning|PGsUnclean)"'
+   am silence add --duration=2h --comment="sm-node-02 maintenance" 'alertname=~"KubeNode.*|KubeletInstanceUnreachable|TargetDown|KubeDaemonSet.*|KubeDeploymentReplicasMismatch|KubePodNotReady"'
+   am silence query          # expire early with: am silence expire <id>
    ```
    Keep `CephHealthError` and `CephPGsInactive` unsilenced: they mean data actually went offline.
 3. **`ceph osd set-group noout <node>`:** the node's OSDs going down must not trigger a rebalance of their data. (Cluster-wide `ceph osd set noout` also works, but the per-host flag cannot be forgotten on unrelated OSDs.)

@@ -247,6 +247,9 @@ patches:
       ---
       machine:
         install:
+          # Install disk (the Kingston SSD) is pinned per machine in
+          # talos/machine-install-disks.yaml, not here: Omni writes its choice
+          # into install.disk, which overrides an install.diskSelector.
           extraKernelArgs:
             - amd_iommu=on
             - iommu=pt
@@ -283,16 +286,21 @@ patches:
         nodeLabels:
           node.kubernetes.io/role: gpu-worker
           nvidia.com/gpu.present: "true"
-  # Local storage for the gaming VM's disk (/var/mnt/gaming-vm). The VM is
-  # pinned here by GPU passthrough anyway, and its disk does not need Ceph
-  # replication. A directory volume on EPHEMERAL, not a separate partition:
-  # EPHEMERAL already fills the Sabrent NVMe and can only be shrunk by wiping
-  # it, which Omni does not allow through talosctl. No hard size limit, so the
-  # VM disk has a fixed size that leaves headroom for /var. See docs/104.
+  # Local storage for the gaming VM's disk, mounted at /var/mnt/gaming-vm. The
+  # VM is pinned here by GPU passthrough anyway, and game files do not need
+  # Ceph replication. Since Wave 3b (2026-10-18, docs/110) Talos boots from the
+  # Kingston SSD, so the whole Sabrent NVMe is this one partition. Matched by
+  # serial: nvme0n1/nvme1n1 swap between boots on this board.
   - name: gpu-worker-volumes
     inline: |-
       apiVersion: v1alpha1
       kind: UserVolumeConfig
       name: gaming-vm
-      volumeType: directory
+      provisioning:
+        diskSelector:
+          match: disk.serial == "03850709175D88299755"
+        minSize: 900GiB
+        grow: true
+      filesystem:
+        type: xfs
 

@@ -5,11 +5,13 @@
 # replication, so its disk lives on the node's own NVMe instead of the 3x
 # replicated Ceph NVMe pool: lower latency, and ~1.7 TB of Ceph capacity back.
 #
-# /var/mnt/gaming-vm is a Talos directory user volume on pc-node-05's EPHEMERAL
-# partition (Omni patch `gpu-worker-volumes` in talos/cluster-template.yaml).
-# A directory volume has no hard size limit: the 750Gi below is what KubeVirt
-# sizes the VM disk image to, leaving ~150 GiB of the ~930 GiB /var for images
-# and logs. Watch pc-node-05 on the Homelab Overview "System disk used" panel.
+# /var/mnt/gaming-vm is a Talos partition user volume filling pc-node-05's
+# Sabrent NVMe (932 GB; Omni patch `gpu-worker-volumes` in
+# talos/cluster-template.yaml). Talos itself boots from a separate Kingston SSD
+# since 2026-10-18 (docs/110 Wave 3b). The 840Gi below is the VM disk size
+# (disk.img): the xfs partition holds 868 GiB, and the sparse image must never
+# claim more than that, or a full host disk would freeze the VM. A static local
+# PV cannot be expanded in place; see docs/303 for the resize procedure.
 #
 # No backups: if the Sabrent NVMe fails, reinstall Bazzite and re-download games.
 apiVersion: storage.k8s.io/v1
@@ -26,7 +28,7 @@ metadata:
   name: gaming-vm-local-pv
 spec:
   capacity:
-    storage: 750Gi
+    storage: 840Gi
   volumeMode: Filesystem
   accessModes:
     - ReadWriteOnce
@@ -59,4 +61,4 @@ spec:
   volumeName: gaming-vm-local-pv
   resources:
     requests:
-      storage: 750Gi
+      storage: 840Gi

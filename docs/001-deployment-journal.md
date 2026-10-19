@@ -819,6 +819,16 @@ Any AI agent or human operator can review this document to pick up exactly where
 
 ---
 
+## 🎯 Milestone 21: Storage Reshuffle Waves 0–3b (2026-10-18)
+
+- **Waves 0–2:** 8 OSDs drained and purged; the three sm-node-03 MX500s hot-pulled and moved to pc-node-04, which is now a fourth SSD host (osd.4/11/12). The SSD pool rebalanced in about 6 minutes.
+- **Found: purged HDD OSDs came back.** Ceph Squid writes backup BlueStore labels at 1/10/100/1000 GiB. HDDs cannot `blkdiscard`, so the 100 MiB wipe left them, and Rook's prepare job (which scans every disk on the node) re-activated osd.11/14/15/16/18 with their old IDs. They held no data. Fixed by zeroing every label offset; the wipe procedure now includes that.
+- **Wave 3:** pc-node-05 re-cased with two IronWolf 4 TB (osd.13/14, memory capped at 2 GiB through the new `spec.cephConfig` in `cluster.yaml`). The HDD tier now spans three hosts.
+- **Wave 3b:** a spare Kingston 240 GB SSD became pc-node-05's Talos boot disk and `/var`; the whole Sabrent NVMe is now the gaming VM's partition. The VM image was backed up to Ceph and restored, checksums matched, and Moonlight works. First full Omni remove/re-add: the monitor and OSDs survived it, and the install disk turned out to be pinned per machine in `talos/machine-install-disks.yaml` (now WWID-based for pc-node-05).
+- Details: [[110-ephemeral-var-migration|/var migration]] (*Progress*, Phase A caution, Phase C *Proven*), [[111-storage-reshuffle-hardware-checklist|hardware checklist]], [[303-kubevirt-bazzite-gpu-vm|Gaming VM]].
+
+---
+
 ## 🎯 Immediate Next Actions & Infrastructure Backlog
 
 1. **GitOps Controller Evaluation (Flux CD)**:

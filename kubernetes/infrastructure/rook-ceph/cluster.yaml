@@ -8,6 +8,14 @@ spec:
     image: quay.io/ceph/ceph:v19.2.1
     allowUnsupported: false
   dataDirHostPath: /var/lib/rook
+  # Ceph options Rook writes to the mon config database (`ceph config dump`).
+  # pc-node-05 has 32 GB shared with the gaming VM, so its two IronWolf OSDs
+  # get 2 GiB instead of the 4 GiB default (Wave 3, docs/110).
+  cephConfig:
+    osd.13:
+      osd_memory_target: "2147483648"
+    osd.14:
+      osd_memory_target: "2147483648"
   skipUpgradeChecks: false
   continueUpgradeAfterChecksEvenIfNotHealthy: false
   mon:
@@ -139,12 +147,22 @@ spec:
       #  Scratch drives /dev/sdf, /dev/sdg, /dev/sdm are strictly excluded)
       # Storage reshuffle (docs/110, docs/111): the four IronWolf ST4000VN008
       # (to sm-node-03 and pc-node-05) and the failing WD15EADS (retired)
-      # removed 2026-10-18. Three MX500 2 TB from sm-node-03 are added in Wave 2.
+      # removed 2026-10-18. Three MX500 2 TB from sm-node-03 added in Wave 2,
+      # making pc-node-04 the fourth SSD host.
       - name: pc-node-04
         devices:
           - name: "/dev/disk/by-id/nvme-CT1000P3PSSD8_24024637AFE2"
             config:
               deviceType: nvme
+          - name: "/dev/disk/by-id/ata-CT2000MX500SSD1_2137E5D2DE1D"
+            config:
+              deviceType: ssd
+          - name: "/dev/disk/by-id/ata-CT2000MX500SSD1_2137E5D2DE26"
+            config:
+              deviceType: ssd
+          - name: "/dev/disk/by-id/ata-CT2000MX500SSD1_2253E698684D"
+            config:
+              deviceType: ssd
           - name: "/dev/disk/by-id/ata-ST2000NM0033-9ZM175_Z1X6R0DV"
             config:
               deviceType: hdd
@@ -160,8 +178,16 @@ spec:
 
       # Tier 1 (NVMe) on GPU Worker Node 05
       # (Boot drive /dev/nvme1n1 Sabrent Rocket is strictly excluded)
+      # Storage reshuffle Wave 3 (2026-10-18): re-cased with two IronWolf 4 TB
+      # from pc-node-04, making it the third HDD host for the EC 2+1 pool.
       - name: pc-node-05
         devices:
           - name: "/dev/disk/by-id/nvme-CT1000P3SSD8_2248E68D1159"
             config:
               deviceType: nvme
+          - name: "/dev/disk/by-id/ata-ST4000VN008-2DR166_ZGY9165H"
+            config:
+              deviceType: hdd
+          - name: "/dev/disk/by-id/ata-ST4000VN008-2DR166_ZGY91889"
+            config:
+              deviceType: hdd
