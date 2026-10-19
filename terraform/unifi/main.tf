@@ -23,9 +23,12 @@ resource "unifi_network" "k8s_control" {
   setting_preference = "manual"
   multicast_dns      = false
 
+  # .10-.99 is the static carve-out: Talos VIP (.10), pc-node-04 (.20), MetalLB VIPs (.50-.60).
+  # Node IPs .111/.120/.131/.199 sit inside the pool but are fixed-IP reservations (unifi_client
+  # below), so the UDM never hands them out. Decision 2026-10-19: docs/201 "VLAN 20 DHCP Pool".
   dhcp_server = {
     enabled = true
-    start   = "10.10.20.200" # 10.10.20.10-199 reserved for static node IPs (.20, .111, .120, .131, .199) and MetalLB VIPs (.50-.60)
+    start   = "10.10.20.100"
     stop    = "10.10.20.254"
   }
 }

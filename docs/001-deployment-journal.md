@@ -868,7 +868,7 @@ The milestone entries below record how each of these got here. The section that 
 ## 🎯 Immediate Next Actions & Infrastructure Backlog
 
 > [!NOTE]
-> The storage reshuffle and /var migration are complete (2026-10-19, Milestone 35; details in [[110-ephemeral-var-migration|/var migration]]). The split-horizon AAAA DNS leak is fixed (Milestone 36). Open items: reconciling the K8S-CONTROL DHCP pool drift (live start `.100` vs `.200` in `terraform/unifi/main.tf`; decide which is right before a full UniFi apply), deleting the Synology copies encrypted to the retired age key (Milestone 26).
+> The storage reshuffle and /var migration are complete (2026-10-19, Milestone 35; details in [[110-ephemeral-var-migration|/var migration]]). The split-horizon AAAA DNS leak is fixed (Milestone 36). The K8S-CONTROL DHCP pool drift is resolved (2026-10-19): the code now matches the live `.100` start, with no network change, and `terraform plan` shows no changes. See *VLAN 20 DHCP Pool* in [[201-unifi-network-topology|docs/201]]. Open items: deleting the Synology copies encrypted to the retired age key (Milestone 26).
 
 
 1. **GitOps Controller Evaluation (Flux CD)**:

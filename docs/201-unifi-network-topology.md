@@ -208,6 +208,34 @@ graph LR
    Then confirm jumbo frames still pass on VLAN 40 using the DF ping in [[104-phase2-rook-ceph-storage|docs/104]], with `nodeName: pc-node-05`.
 7. **Restore.** Follow step 7 of the docs/104 runbook: uncordon, scale the operator back to 1, `ceph osd unset-group noout pc-node-05`, wait for `HEALTH_OK`, and expire the silences. Then start the gaming VM and check that `CephNodeInconsistentMTU` has cleared in Alertmanager.
 
+### VLAN 20 DHCP Pool
+
+**Decision (2026-10-19):** the K8S-CONTROL dynamic pool is `10.10.20.100 – .254`, matching what the UDM has been running. `terraform/unifi/main.tf` was changed to match the live pool. The UDM was not changed.
+
+| Range | Use |
+|---|---|
+| `.1` | UDM gateway |
+| `.5` | omni-server (iPXE provisioning) |
+| `.10` | Talos control-plane VIP |
+| `.20` | pc-node-04 (fixed-IP reservation) |
+| `.50 – .60` | MetalLB `homelab-pool` (ingress `.50`, gaming VM `.52`) |
+| `.100 – .254` | Dynamic pool. It also contains the node reservations `.111` (pc-node-05), `.120` (sm-node-02), `.131` (sm-node-03), `.199` (sm-node-01). |
+
+**Why the reservations can sit inside the pool:** a UniFi fixed-IP client is a per-MAC reservation in the UDM's DHCP server. The UDM never gives that address to any other client, so it doesn't need to be outside the pool. The static carve-out `.10 – .99` only matters for addresses that are *not* handed out by DHCP: the VIPs (Talos and MetalLB).
+
+**Why we didn't shrink the pool to `.200`:** Milestone 21 (2026-10-04) changed the code to `.200` but never applied it, so the code and the live UDM disagreed. An audit of `.100 – .199` found three dynamic leases. Each is on the untagged parent of a storage NIC, whose `.40` sub-interface needs `dhcp: true` on the parent (see [[104-phase2-rook-ceph-storage|docs/104]]):
+
+| IP | Node | Interface |
+|---|---|---|
+| `.121` | sm-node-02 | `eno8np3` |
+| `.133` | sm-node-03 | `ens6f1` |
+| `.162` | pc-node-04 | `enp43s0f1` |
+
+Shrinking the pool would make the UDM refuse those leases at renewal and renumber live interfaces on a running cluster. Nothing would be gained, since the reservations already protect the node IPs. No VIP, reservation or Ceph mon address (mons are on `.199`, `.20`, `.111`) conflicts with the `.100` pool.
+
+> [!TIP]
+> To check this again, run `talosctl -n <node> get addresses` on each node and ping-sweep `10.10.20.100-199`. Every live address should be either a node reservation or a storage-NIC parent lease.
+
 ---
 
 ## 🤖 Infrastructure as Code (Terraform UniFi Provider)
