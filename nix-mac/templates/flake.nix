@@ -69,86 +69,13 @@
 
       # Git config is user-scope and lives in home-manager (section 9 below).
 
-      # Shell Aliases (Modern, Colorized with Nerd Font Icons)
-      environment.shellAliases = {
-        # Kubernetes & Homelab Shortcuts
-        k = "kubectl";
-        kc = "kubectl";
-        k9 = "k9s";
-        talos = "talosctl";
-        tf = "terraform";
-        # Terraform can't read `aws login` sessions, so it uses the
-        # [profile terraform] in ~/.aws/config, whose credential_process
-        # fetches fresh credentials on every run. Scoped to terraform only:
-        # a global AWS_PROFILE would point `aws login` at that profile and fail.
-        terraform = "AWS_PROFILE=\${AWS_PROFILE:-terraform} terraform";
-        ts = "tailscale";
-
-        # AWS & Cloud Development Kit (CDK) Shortcuts
-        assume = "source assume";
-        cdks = "cdk synth";
-        cdkd = "cdk diff";
-        cdkl = "cdk list";
-        cdkw = "cdk watch";
-
-        # Modern Eza Listing (Colors + File Icons + Git status)
-        ls = "eza --icons --group-directories-first";
-        ll = "eza -lah --icons --group-directories-first --git";
-        la = "eza -a --icons --group-directories-first";
-        l = "eza -lh --icons --group-directories-first";
-        tree = "eza --tree --icons";
-
-        # Modern Bat Syntax-Highlighted File Viewing
-        cat = "bat --paging=never --style=plain";
-        preview = "bat --style=numbers,changes,header";
-
-        # Navigation
-        ".." = "cd ..";
-        "..." = "cd ../..";
-        "...." = "cd ../../..";
-        "~" = "cd ~";
-        md = "mkdir -p";
-        c = "clear";
-
-        # Git Essentials
-        g = "git";
-        gs = "git status -sb";
-        ga = "git add";
-        gaa = "git add -A";
-        gc = "git commit -m";
-        gca = "git commit -am";
-        gp = "git push";
-        gpl = "git pull --rebase";
-        gco = "git checkout";
-        gb = "git branch";
-        gd = "git diff";
-        gl = "git log --oneline --graph --decorate -n 20";
-
-        # System & Network
-        reload = "exec zsh";
-        flushdns = "sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder";
-        myip = "curl -s https://ipinfo.io/ip";
-        localip = "ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1";
-        agy-awake = "caffeinate -s";
-      };
-
-      # Zsh Shell with Powerlevel10k, Auto-suggestions, Zoxide & FZF
+      # Zsh: the system layer only hooks Nix into /etc/zshrc (PATH, fpath for
+      # system completions). Prompt, plugins, aliases and compinit live in
+      # home-manager (section 9) so nothing loads twice.
       programs.zsh = {
         enable = true;
-        enableAutosuggestions = true;
-        enableSyntaxHighlighting = true;
-        promptInit = ''
-          # Load uncommitted local secrets (API keys, private tokens)
-          [[ ! -f ~/.zshrc.local ]] || source ~/.zshrc.local
-
-          if [ -x "/opt/homebrew/bin/brew" ]; then
-            eval "$(/opt/homebrew/bin/brew shellenv)"
-          fi
-          export PATH="$HOME/.local/bin:$PATH"
-          source ${pkgs.zsh-powerlevel10k}/share/zsh-powerlevel10k/powerlevel10k.zsh-theme
-          [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
-          eval "$(${pkgs.zoxide}/bin/zoxide init zsh)"
-        '';
+        enableCompletion = false; # home-manager runs compinit once, in ~/.zshrc
+        promptInit = "";          # No system prompt; Powerlevel10k is set per user
       };
 
       # ----------------------------------------------------------------------
@@ -591,9 +518,6 @@ macos-option-as-alt = true
 EOF
         chown -R "$PRIMARY_USER" "$USER_HOME/.config/ghostty"
 
-        # Ensure ~/.p10k.zsh is owned by the user
-        [ ! -f "$USER_HOME/.p10k.zsh" ] || chown "$PRIMARY_USER" "$USER_HOME/.p10k.zsh"
-
         # Declarative Network Printer: Brother DCP-7065DN via Homelab CUPS Bridge
         echo "--> Configuring declarative network printer (Brother DCP-7065DN)..."
         lpadmin -p "Brother_DCP_7065DN" \
@@ -621,7 +545,7 @@ EOF
         # An unmanaged file in the way is renamed to *.hm-backup instead of failing the switch.
         backupFileExtension = "hm-backup";
 
-        users.${config.system.primaryUser} = { ... }: {
+        users.${config.system.primaryUser} = { pkgs, ... }: {
           home.stateVersion = "26.11"; # Set once at adoption; never bump casually
 
           # Writes ~/.config/git/config, which both Apple's /usr/bin/git and the Nix git
@@ -637,6 +561,103 @@ EOF
               fetch.prune = true;
             };
           };
+
+          # Zsh: home-manager writes ~/.zshenv, ~/.zprofile and ~/.zshrc.
+          programs.zsh = {
+            enable = true;
+            enableCompletion = true;
+            autosuggestion.enable = true;
+            syntaxHighlighting.enable = true;
+
+            # Login shells only (runs before ~/.zshrc)
+            profileExtra = ''
+              # OrbStack: docker/orb CLIs and shell integration
+              source ~/.orbstack/shell/init.zsh 2>/dev/null || :
+            '';
+
+            initContent = ''
+              # Load uncommitted local secrets (API keys, private tokens). Never in Nix.
+              [[ ! -f ~/.zshrc.local ]] || source ~/.zshrc.local
+
+              if [ -x "/opt/homebrew/bin/brew" ]; then
+                eval "$(/opt/homebrew/bin/brew shellenv)"
+              fi
+              export PATH="$HOME/.local/bin:$HOME/.omlx/bin:$PATH"
+
+              source ${pkgs.zsh-powerlevel10k}/share/zsh-powerlevel10k/powerlevel10k.zsh-theme
+              [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+            '';
+
+            # Shell Aliases (Modern, Colorized with Nerd Font Icons)
+            shellAliases = {
+              # Kubernetes & Homelab Shortcuts
+              k = "kubectl";
+              kc = "kubectl";
+              k9 = "k9s";
+              talos = "talosctl";
+              tf = "terraform";
+              # Terraform can't read `aws login` sessions, so it uses the
+              # [profile terraform] in ~/.aws/config, whose credential_process
+              # fetches fresh credentials on every run. Scoped to terraform only:
+              # a global AWS_PROFILE would point `aws login` at that profile and fail.
+              terraform = "AWS_PROFILE=\${AWS_PROFILE:-terraform} terraform";
+              ts = "tailscale";
+
+              # AWS & Cloud Development Kit (CDK) Shortcuts
+              assume = "source assume";
+              cdks = "cdk synth";
+              cdkd = "cdk diff";
+              cdkl = "cdk list";
+              cdkw = "cdk watch";
+
+              # Modern Eza Listing (Colors + File Icons + Git status)
+              ls = "eza --icons --group-directories-first";
+              ll = "eza -lah --icons --group-directories-first --git";
+              la = "eza -a --icons --group-directories-first";
+              l = "eza -lh --icons --group-directories-first";
+              tree = "eza --tree --icons";
+
+              # Modern Bat Syntax-Highlighted File Viewing
+              cat = "bat --paging=never --style=plain";
+              preview = "bat --style=numbers,changes,header";
+
+              # Navigation
+              ".." = "cd ..";
+              "..." = "cd ../..";
+              "...." = "cd ../../..";
+              "~" = "cd ~";
+              md = "mkdir -p";
+              c = "clear";
+
+              # Git Essentials
+              g = "git";
+              gs = "git status -sb";
+              ga = "git add";
+              gaa = "git add -A";
+              gc = "git commit -m";
+              gca = "git commit -am";
+              gp = "git push";
+              gpl = "git pull --rebase";
+              gco = "git checkout";
+              gb = "git branch";
+              gd = "git diff";
+              gl = "git log --oneline --graph --decorate -n 20";
+
+              # System & Network
+              reload = "exec zsh";
+              flushdns = "sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder";
+              myip = "curl -s https://ipinfo.io/ip";
+              localip = "ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1";
+              agy-awake = "caffeinate -s";
+            };
+          };
+
+          # Powerlevel10k layout. `p10k configure` cannot write this read-only link:
+          # run it, then copy its output over templates/p10k.zsh and switch.
+          home.file.".p10k.zsh".source = ./p10k.zsh;
+
+          # Smarter cd (`z <dir>`); home-manager adds the init line to ~/.zshrc
+          programs.zoxide.enable = true;
         };
       };
     };

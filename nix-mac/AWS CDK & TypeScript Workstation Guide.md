@@ -51,7 +51,7 @@ Declared in the `postActivation` script:
 * `dbaeumer.vscode-eslint`: Static code analysis and linting for TypeScript constructs.
 * `esbenp.prettier-vscode`: Opinionated code formatting for TypeScript and JSON.
 
-### 3. Shell Aliases (`environment.shellAliases`)
+### 3. Shell Aliases (home-manager `programs.zsh.shellAliases`)
 
 | Shortcut | Expanded Command | Purpose |
 | :--- | :--- | :--- |
@@ -102,7 +102,7 @@ Human access uses `aws login --remote` on the `[default]` profile (passkey on th
 | Tool | How | Setup |
 |---|---|---|
 | AWS CLI, CDK CLI | Read the `aws login` session natively | none |
-| Terraform | `[profile terraform]`, whose `credential_process` fetches fresh credentials from the login session on every run | `terraform` shell alias (flake `environment.shellAliases`) sets `AWS_PROFILE=terraform` for Terraform only |
+| Terraform | `[profile terraform]`, whose `credential_process` fetches fresh credentials from the login session on every run | `terraform` shell alias (home-manager `programs.zsh.shellAliases` in the flake) sets `AWS_PROFILE=terraform` for Terraform only |
 
 The profile is the one imperative piece, because `~/.aws/config` isn't managed by nix-darwin:
 

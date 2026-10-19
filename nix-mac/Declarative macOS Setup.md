@@ -63,6 +63,9 @@ mas "Magnet", id: 441529406
 ---
 
 ## Pillar 2: Dotfiles as Code (`chezmoi`)
+> [!NOTE]
+> This workstation uses **home-manager** (a nix-darwin module) instead of chezmoi for git and zsh. See [[Home Manager Guide]]. chezmoi stays documented here as the non-Nix alternative.
+
 Instead of manually managing `~/.zshrc`, `~/.gitconfig`, or editor settings, use **[`chezmoi`](https://www.chezmoi.io/)**:
 * Keeps your dotfiles in a secure Git repository.
 * Automatically creates symlinks/templates across machines.

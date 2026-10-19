@@ -58,7 +58,7 @@ CURRENT_USER="$(id -un)"
 
 sed "s/system\.primaryUser = .*/system.primaryUser = \"$CURRENT_USER\";/g" "$SCRIPT_DIR/flake.nix" > "$HOME/.config/nix-darwin/flake.nix"
 cp "$SCRIPT_DIR/Justfile" "$HOME/Justfile"
-cp "$SCRIPT_DIR/p10k.zsh" "$HOME/.p10k.zsh"
+cp "$SCRIPT_DIR/p10k.zsh" "$HOME/.config/nix-darwin/p10k.zsh" # home-manager links it to ~/.p10k.zsh
 
 # 5. Build and Apply Nix-Darwin System
 HOSTNAME_TARGET="$(scutil --get LocalHostName 2>/dev/null || hostname -s 2>/dev/null || echo 'MacBook-Pro')"

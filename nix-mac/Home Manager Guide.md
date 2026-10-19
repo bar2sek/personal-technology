@@ -23,7 +23,7 @@ graph TD
   F --> H[home-manager module: user scope]
   D --> E["/etc, system packages, defaults, fonts, firewall"]
   D --> B[Homebrew: casks and brews installed]
-  H --> U["~/.config/git/config and future dotfiles"]
+  H --> U["~/.config/git/config, ~/.zshrc, ~/.zshenv, ~/.zprofile, ~/.p10k.zsh"]
   B -. app installed by cask, configured by HM .-> U
 ```
 
@@ -45,7 +45,7 @@ graph TD
 |---|---|---|
 | Casks, brews, macOS defaults, fonts, firewall, printer, debloat | Machine | nix-darwin |
 | Git identity and defaults | User | home-manager ✅ (milestone 1a) |
-| zsh aliases, plugins, p10k, prompt init | User | home-manager (next) |
+| zsh aliases, plugins, p10k, prompt init | User | home-manager ✅ (milestone 1b) |
 | Ghostty and VS Code config (cask-installed apps) | User | home-manager (later) |
 | Secrets (`~/.zshrc.local`) | User | **Never in Nix.** Stays a gitignored local file |
 
@@ -85,6 +85,51 @@ rm ~/.gitconfig
 - **`home.stateVersion`** records the home-manager release whose defaults you adopted. It is set once and is not a version to upgrade. Bumping it can silently change defaults.
 - **Rollback:** `sudo darwin-rebuild --rollback` restores the previous generation, user files included.
 - **"would be clobbered" or `*.hm-backup` files** mean an unmanaged file was in the way. Merge anything you need from the backup into the flake, then delete the backup.
+
+## Milestone 1b: Zsh (2026-10-19)
+home-manager now writes `~/.zshenv`, `~/.zprofile`, `~/.zshrc` and `~/.p10k.zsh`.
+
+| Piece | Before | Now |
+|---|---|---|
+| Aliases | `environment.shellAliases` (system-wide, every user and shell) | `programs.zsh.shellAliases` (your zsh only) |
+| Autosuggestions, syntax highlighting, compinit | nix-darwin `/etc/zshrc` | home-manager `~/.zshrc` |
+| Powerlevel10k + zoxide init | nix-darwin `promptInit` | `initContent` + `programs.zoxide` |
+| `~/.p10k.zsh` | Unmanaged copy | Link to `templates/p10k.zsh` |
+| OrbStack init | Hand-added `~/.zprofile` | `profileExtra` |
+| `~/.local/bin`, `~/.omlx/bin` on PATH | Hand-edited `~/.zshrc` | `initContent` |
+| Secrets | `~/.zshrc.local` | Unchanged: sourced, never in Nix |
+
+**What the system layer still does.** nix-darwin keeps `programs.zsh.enable` so `/etc/zshenv` puts Nix tools and their completions on the path. It turns off its own compinit and prompt so nothing loads twice.
+
+**Dropped as stale or duplicate:** the Antigravity IDE PATH line (the IDE was removed), the second `~/.local/bin` export, and the `assume` alias in `~/.zshenv` (the flake already defines it).
+
+> [!IMPORTANT]
+> **Flake Sync now covers two files.** The flake references `./p10k.zsh`, so syncing means copying both `templates/flake.nix` and `templates/p10k.zsh` to `~/.config/nix-darwin/`. `bootstrap.sh` does this on a fresh Mac.
+
+> [!TIP]
+> **Changing the prompt.** `p10k configure` cannot write the read-only `~/.p10k.zsh`. Remove the link, run the wizard, copy the new file over `templates/p10k.zsh`, sync, and `just switch`. The switch restores the link.
+
+### Verification
+```bash
+# After `just switch`: old hand-made files were moved aside
+ls -la ~/.zshrc ~/.zshenv ~/.zprofile ~/.p10k.zsh ~/.*.hm-backup
+```
+
+```bash
+# New terminal: prompt renders, then spot-check an alias, zoxide, and that ~/.zshrc.local is wired in
+alias ll && type z && grep -c zshrc.local ~/.zshrc
+```
+
+```bash
+# Startup time sanity check (should be well under a second)
+time zsh -i -c exit
+```
+
+Once the new shell works, delete the backups with `rm ~/.*.hm-backup`. The leading dot matters, because zsh's `*` skips hidden files.
+
+### Gotchas
+- **History:** the same `~/.zsh_history` file, but home-manager keeps 10,000 entries (the system default was 2,000) and shares history across open terminals.
+- **Hand edits to `~/.zshrc` fail.** Installers that append to it (OrbStack, oMLX, IDEs) will fail or print a warning. Add their lines to the flake instead.
 
 ## Related Notes
 * [[Nix-Darwin Guide]]

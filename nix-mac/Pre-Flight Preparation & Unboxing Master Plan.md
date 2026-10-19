@@ -53,7 +53,7 @@ Before the delivery truck arrives, ensure you have:
 │                              │                              │
 │ 4. EXPORT AI PROVIDER API KEYS (1 min)                      │
 │    • ANTHROPIC_API_KEY · GEMINI_API_KEY · XAI_API_KEY       │
-│    • Add to ~/.zshrc (never commit them)                    │
+│    • Add to ~/.zshrc.local (never commit them)              │
 │                              │                              │
 │ 5. START CODING IN VS CODE & ANTIGRAVITY 🎉                 │
 └─────────────────────────────────────────────────────────────┘
@@ -93,7 +93,7 @@ cd ~/Downloads
 # 2. Run the 1-click bootstrap installer
 bash "Mac AI Workstation/templates/bootstrap.sh"
 
-# 3. Export your AI provider keys (add these to ~/.zshrc to persist)
+# 3. Export your AI provider keys (add these to ~/.zshrc.local to persist; ~/.zshrc is read-only, managed by home-manager)
 export ANTHROPIC_API_KEY="..."
 export GEMINI_API_KEY="..."
 export XAI_API_KEY="..."
