@@ -5,9 +5,13 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     nix-darwin.url = "github:LnL7/nix-darwin";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
+    # User-scope config (dotfiles in ~). Runs as a nix-darwin module, so one
+    # `just switch` applies system and user state together. See "Home Manager Guide.md".
+    home-manager.url = "github:nix-community/home-manager";
+    home-manager.inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  outputs = inputs@{ self, nix-darwin, nixpkgs }:
+  outputs = inputs@{ self, nix-darwin, nixpkgs, home-manager }:
   let
     configuration = { pkgs, config, ... }: {
       # Allow unfree packages (e.g., claude-code)
@@ -63,19 +67,7 @@
       # are moved out of the vault by each repo's Justfile (TF_DATA_DIR).
       environment.variables.TF_PLUGIN_CACHE_DIR = "$HOME/.terraform.d/plugin-cache";
 
-      # System-wide git defaults. Apple's /usr/bin/git reads /etc/gitconfig natively;
-      # the Nix git reads only its own read-only store gitconfig, so GIT_CONFIG_SYSTEM
-      # points it here too. That replaces the store file, so its osxkeychain
-      # credential helper is carried over. Identity (user.name/email) stays in ~/.gitconfig.
-      environment.etc."gitconfig".text = ''
-        [credential]
-          helper = osxkeychain
-        [fetch]
-          # Drop origin/* refs for branches deleted on GitHub (e.g. after a PR merges),
-          # so a merged branch shows "upstream gone" instead of looking pushable.
-          prune = true
-      '';
-      environment.variables.GIT_CONFIG_SYSTEM = "/etc/gitconfig";
+      # Git config is user-scope and lives in home-manager (section 9 below).
 
       # Shell Aliases (Modern, Colorized with Nerd Font Icons)
       environment.shellAliases = {
@@ -616,15 +608,46 @@ EOF
         sudo -u "$PRIMARY_USER" osascript -e 'tell application "System Events" to tell appearance preferences to set dark mode to true' 2>/dev/null || true
         killall Dock 2>/dev/null || true
       '';
+
+      # ----------------------------------------------------------------------
+      # 9. User Scope (home-manager): dotfiles in ~ for the primary user
+      # ----------------------------------------------------------------------
+      # home-manager needs to know where the user's home is.
+      users.users.${config.system.primaryUser}.home = "/Users/${config.system.primaryUser}";
+
+      home-manager = {
+        useGlobalPkgs = true;   # Same nixpkgs (and allowUnfree) as the system
+        useUserPackages = true; # User packages land in /etc/profiles/per-user/<user>
+        # An unmanaged file in the way is renamed to *.hm-backup instead of failing the switch.
+        backupFileExtension = "hm-backup";
+
+        users.${config.system.primaryUser} = { ... }: {
+          home.stateVersion = "26.11"; # Set once at adoption; never bump casually
+
+          # Writes ~/.config/git/config, which both Apple's /usr/bin/git and the Nix git
+          # read, so no /etc/gitconfig + GIT_CONFIG_SYSTEM workaround is needed.
+          programs.git = {
+            enable = true;
+            settings = {
+              user.name = "Ryan Bartusek";
+              user.email = "bar2sek@users.noreply.github.com"; # GitHub noreply; never a personal address
+              credential.helper = "osxkeychain";
+              # Drop origin/* refs for branches deleted on GitHub (e.g. after a PR merges),
+              # so a merged branch shows "upstream gone" instead of looking pushable.
+              fetch.prune = true;
+            };
+          };
+        };
+      };
     };
   in
   {
     darwinConfigurations = {
       "MacBook-Pro" = nix-darwin.lib.darwinSystem {
-        modules = [ configuration ];
+        modules = [ configuration home-manager.darwinModules.home-manager ];
       };
       "default" = nix-darwin.lib.darwinSystem {
-        modules = [ configuration ];
+        modules = [ configuration home-manager.darwinModules.home-manager ];
       };
     };
   };

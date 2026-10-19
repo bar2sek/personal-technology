@@ -167,16 +167,13 @@ nix-collect-garbage -d
 
 ---
 
-## 🔧 System-Wide Git Defaults
-There is no home-manager here, so machine-wide git settings live in `environment.etc."gitconfig"` in [[templates/flake.nix|flake.nix]] (currently `fetch.prune = true` plus the `osxkeychain` credential helper). Identity (`user.name`, `user.email`) stays in `~/.gitconfig`.
-
-- **Why `GIT_CONFIG_SYSTEM`:** Apple's `/usr/bin/git` reads `/etc/gitconfig`, but the Nix git (first on `PATH`) reads only its own read-only `/nix/store/...-git/etc/gitconfig`. The flake exports `GIT_CONFIG_SYSTEM=/etc/gitconfig` so both gits use the same file. That file *replaces* the store one, which is why the credential helper is repeated in it.
-- **Verify** (new terminal after `just switch`): `git config --system --list --show-origin` shows `file:/etc/gitconfig  fetch.prune=true`.
-- **Gotcha:** GUI apps launched from the Dock don't inherit shell variables. If one of them runs the Nix git, it won't see these defaults. Apple git always does.
+## 🔧 Git Configuration
+Git config is user-scope, so it lives in home-manager (`programs.git` in [[templates/flake.nix|flake.nix]]), which writes `~/.config/git/config`. Apple's `/usr/bin/git` and the Nix git both read that file, so the earlier `/etc/gitconfig` + `GIT_CONFIG_SYSTEM` workaround is gone. See [[Home Manager Guide]] for the design, verification, and gotchas.
 
 ---
 
 ## Related Notes
+* [[Home Manager Guide]]
 * [[Declarative macOS Setup]]
 * [[Mac Cleanliness & Anti-Bloat Guide]]
 * [[Setup Checklist]]
