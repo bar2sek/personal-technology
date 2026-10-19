@@ -63,6 +63,20 @@
       # are moved out of the vault by each repo's Justfile (TF_DATA_DIR).
       environment.variables.TF_PLUGIN_CACHE_DIR = "$HOME/.terraform.d/plugin-cache";
 
+      # System-wide git defaults. Apple's /usr/bin/git reads /etc/gitconfig natively;
+      # the Nix git reads only its own read-only store gitconfig, so GIT_CONFIG_SYSTEM
+      # points it here too. That replaces the store file, so its osxkeychain
+      # credential helper is carried over. Identity (user.name/email) stays in ~/.gitconfig.
+      environment.etc."gitconfig".text = ''
+        [credential]
+          helper = osxkeychain
+        [fetch]
+          # Drop origin/* refs for branches deleted on GitHub (e.g. after a PR merges),
+          # so a merged branch shows "upstream gone" instead of looking pushable.
+          prune = true
+      '';
+      environment.variables.GIT_CONFIG_SYSTEM = "/etc/gitconfig";
+
       # Shell Aliases (Modern, Colorized with Nerd Font Icons)
       environment.shellAliases = {
         # Kubernetes & Homelab Shortcuts
