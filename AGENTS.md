@@ -117,8 +117,8 @@ To maximize knowledge transfer and keep the user actively engaged without causin
 ## 🎯 Domain-Specific Standards & Playbooks
 
 ### A. Workstation Architecture (`nix-mac`)
-* **Declarative System Invariant**: Zero ad-hoc imperative changes (`brew install`, manual config edits). All system states must be declared in `flake.nix` and applied via `just switch`.
-* **Flake Sync Protocol**: Update canonical template `templates/flake.nix` first, synchronize to active `~/.config/nix-darwin/flake.nix`, test via `nix eval`, then prompt user to switch.
+* **Declarative System Invariant**: Zero ad-hoc imperative changes (`brew install`, manual config edits). All system states must be declared in `templates/{flake.nix,darwin.nix,home.nix}` and applied via `just switch`.
+* **Flake Sync Protocol**: Update canonical templates in `templates/` (`flake.nix`, `darwin.nix`, `home.nix`, `Justfile`, `p10k.zsh`) first, synchronize to active `~/.config/nix-darwin/` via `just sync`, test via `nix build --dry-run` / `nix eval`, then prompt user to run `just switch` (which auto-runs `just sync`).
 
 ### B. Enterprise Hybrid Homelab & Personal Tech (`personal-technology`)
 * **Declarative Infrastructure Invariant**: Code first across Kubernetes platform services (`infrastructure/`), user apps (`apps/`), Talos machine patches (`talos/patches/`), Terraform modules (`terraform/`), and Ansible playbooks (`ansible/`).

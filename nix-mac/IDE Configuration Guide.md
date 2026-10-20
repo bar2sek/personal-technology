@@ -24,7 +24,7 @@ aliases: []
 
 ## 🛠️ Step 1: Install Visual Studio Code & Antigravity via `nix-darwin`
 
-Visual Studio Code and the Antigravity Desktop 2.0 orchestrator are declared directly in your `templates/flake.nix` under `homebrew.casks`:
+Visual Studio Code and the Antigravity Desktop 2.0 orchestrator are declared directly in your `templates/darwin.nix` under `homebrew.casks`:
 
 ```nix
 homebrew.casks = [
@@ -41,7 +41,7 @@ homebrew.casks = [
 
 ## ⚙️ Step 2: Essential Extensions
 
-Extensions are owned by home-manager (`programs.vscode` in `templates/flake.nix`) and come from the `nix-vscode-extensions` marketplace mirror. The extensions folder is read-only, so only the listed extensions exist. See [[Home Manager Guide]].
+Extensions are owned by home-manager (`programs.vscode` in `templates/home.nix`) and come from the `nix-vscode-extensions` marketplace mirror. The extensions folder is read-only, so only the listed extensions exist. See [[Home Manager Guide]].
 
 | Group | Extensions |
 |---|---|

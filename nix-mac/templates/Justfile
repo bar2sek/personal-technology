@@ -7,17 +7,42 @@ default:
     @just --list
 
 # ------------------------------------------------------------------------------
-# Nix-Darwin System Management
+# Nix-Darwin & Home Manager System Management
 # ------------------------------------------------------------------------------
 
-# Rebuild and apply the nix-darwin configuration
-switch:
+# Sync canonical templates from the Second Brain vault into ~/.config/nix-darwin
+sync:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    shopt -s nullglob
+    Matches=("$HOME"/Library/CloudStorage/GoogleDrive-*/"My Drive"/second-brain/personal-technology/nix-mac/templates)
+    shopt -u nullglob
+    if [ ${#Matches[@]} -gt 0 ] && [ -d "${Matches[0]}" ]; then
+      TPL="${Matches[0]}"
+      mkdir -p "$HOME/.config/nix-darwin"
+      cp "$TPL/flake.nix" "$TPL/darwin.nix" "$TPL/home.nix" "$TPL/Justfile" "$TPL/p10k.zsh" "$TPL/flake.lock" "$HOME/.config/nix-darwin/"
+      echo "✅ Synced nix-mac templates -> ~/.config/nix-darwin/"
+    else
+      echo "ℹ️  Vault templates directory not found; using existing ~/.config/nix-darwin/"
+    fi
+
+# Sync templates, rebuild, and apply the nix-darwin + home-manager configuration
+switch: sync
     sudo -H darwin-rebuild switch --flake ~/.config/nix-darwin#MacBook-Pro
 
-# Update nix flake lockfile to latest package versions
-update:
-    nix flake update --flake ~/.config/nix-darwin
-    sudo -H darwin-rebuild switch --flake ~/.config/nix-darwin#MacBook-Pro
+# Update nix flake lockfile, sync it back to the vault repo, and apply
+update: sync
+    #!/usr/bin/env bash
+    set -euo pipefail
+    nix flake update --flake "$HOME/.config/nix-darwin"
+    shopt -s nullglob
+    Matches=("$HOME"/Library/CloudStorage/GoogleDrive-*/"My Drive"/second-brain/personal-technology/nix-mac/templates)
+    shopt -u nullglob
+    if [ ${#Matches[@]} -gt 0 ] && [ -d "${Matches[0]}" ]; then
+      cp "$HOME/.config/nix-darwin/flake.lock" "${Matches[0]}/flake.lock"
+      echo "✅ Synced updated flake.lock -> nix-mac/templates/flake.lock"
+    fi
+    sudo -H darwin-rebuild switch --flake "$HOME/.config/nix-darwin#MacBook-Pro"
 
 # Garbage collect old Nix generations to free disk space
 gc:
@@ -70,11 +95,13 @@ prune-all:
     brew cleanup --prune=all
     @if command -v docker > /dev/null; then docker system prune -a --volumes -f; fi
 
-# Explicitly purge heavy Apple consumer apps and audio libraries (~5-8GB)
+# Explicitly purge heavy Apple consumer apps, audio libraries (~5-8GB), and thin APFS snapshots
 debloat:
-    @echo "Purging GarageBand, iMovie, and sound libraries..."
+    @echo "Purging GarageBand, iMovie, sound libraries, and diagnostic logs..."
     @sudo rm -rf /Applications/GarageBand.app /Applications/iMovie.app 2>/dev/null || true
     @sudo rm -rf "/Library/Application Support/GarageBand" "/Library/Application Support/Logic" "/Library/Audio/Apple Loops" 2>/dev/null || true
+    @rm -rf "$HOME/Library/Logs/DiagnosticReports"/* 2>/dev/null || true
+    @sudo tmutil thinlocalsnapshots / 9999999999 4 2>/dev/null || true
     @echo "Done! Disk space reclaimed."
 
 # ------------------------------------------------------------------------------
@@ -96,4 +123,3 @@ k8s-nodes:
 # Check all running pods across all namespaces
 k8s-pods:
     kubectl get pods -A -o wide
-

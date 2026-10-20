@@ -167,8 +167,13 @@ nix-collect-garbage -d
 
 ---
 
-## 🔧 Git Configuration
-Git config is user-scope, so it lives in home-manager (`programs.git` in [[templates/flake.nix|flake.nix]]), which writes `~/.config/git/config`. Apple's `/usr/bin/git` and the Nix git both read that file, so the earlier `/etc/gitconfig` + `GIT_CONFIG_SYSTEM` workaround is gone. See [[Home Manager Guide]] for the design, verification, and gotchas.
+## 🔧 Modular 3-File Structure (`flake.nix`, `darwin.nix`, `home.nix`)
+The live workstation configuration in `templates/` is split into three focused files:
+- [[templates/flake.nix|flake.nix]] — Flake inputs (`nixpkgs`, `nix-darwin`, `home-manager`, `nix-vscode-extensions`) and system output wiring.
+- [[templates/darwin.nix|darwin.nix]] — Machine-scope configuration (Homebrew casks/brews, `system.defaults`, firewall, fonts, ZSA Voyager HID mapping, network printer).
+- [[templates/home.nix|home.nix]] — User-scope configuration (`home.packages`, Git, GitHub CLI, SSH, Zsh, `fzf`, `eza`, `bat`, `zoxide`, `direnv`, Ghostty, VS Code, and Roo Code).
+
+Running `just switch` automatically syncs all files from `templates/` into `~/.config/nix-darwin/` and activates both layers together. See [[Home Manager Guide]] for full details, verification steps, and gotchas.
 
 ---
 

@@ -50,15 +50,14 @@ else
   echo "✅ Nix package manager already installed."
 fi
 
-# 4. Deploy flake.nix and Justfile
+# 4. Deploy flake.nix, darwin.nix, home.nix, Justfile, and p10k.zsh
 echo "--> Deploying declarative configuration..."
 mkdir -p "$HOME/.config/nix-darwin"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CURRENT_USER="$(id -un)"
 
-sed "s/system\.primaryUser = .*/system.primaryUser = \"$CURRENT_USER\";/g" "$SCRIPT_DIR/flake.nix" > "$HOME/.config/nix-darwin/flake.nix"
-cp "$SCRIPT_DIR/Justfile" "$HOME/Justfile"
-cp "$SCRIPT_DIR/p10k.zsh" "$HOME/.config/nix-darwin/p10k.zsh" # home-manager links it to ~/.p10k.zsh
+cp "$SCRIPT_DIR/flake.nix" "$SCRIPT_DIR/home.nix" "$SCRIPT_DIR/Justfile" "$SCRIPT_DIR/p10k.zsh" "$SCRIPT_DIR/flake.lock" "$HOME/.config/nix-darwin/"
+sed "s/system\.primaryUser = .*/system.primaryUser = \"$CURRENT_USER\";/g" "$SCRIPT_DIR/darwin.nix" > "$HOME/.config/nix-darwin/darwin.nix"
 
 # 5. Build and Apply Nix-Darwin System
 HOSTNAME_TARGET="$(scutil --get LocalHostName 2>/dev/null || hostname -s 2>/dev/null || echo 'MacBook-Pro')"
