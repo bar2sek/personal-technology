@@ -278,6 +278,14 @@ unifi-diagram:
 bazzite-setup:
     cd ansible && ansible-playbook -i inventory/hosts.ini playbooks/configure-bazzite-vm.yml --ask-become-pass
 
+# Queue the Steam games listed in the playbook's steam_apps (no OS upgrade or reboot)
+bazzite-steam-games:
+    cd ansible && ansible-playbook -i inventory/hosts.ini playbooks/configure-bazzite-vm.yml --tags steam-games
+
+# Battle.net bootstrap / Blizzard game shortcuts in Steam (no OS upgrade or reboot)
+bazzite-blizzard:
+    cd ansible && ansible-playbook -i inventory/hosts.ini playbooks/configure-bazzite-vm.yml --tags blizzard --ask-become-pass
+
 # Ping Bazzite Gaming VM over SSH
 bazzite-ping:
     cd ansible && ansible -i inventory/hosts.ini gaming_vms -m ping

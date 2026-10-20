@@ -277,6 +277,9 @@ just bazzite-ping
 # Run automated post-install configuration & status check
 just bazzite-setup
 
+# Queue only the Steam games in `steam_apps` (no OS upgrade, no reboot)
+just bazzite-steam-games
+
 # Force reboot / restart the VM if frozen (via Justfile shortcut or virtctl)
 just bazzite-restart
 virtctl restart --force --grace-period=0 bazzite-gaming-vm -n vms
@@ -290,37 +293,98 @@ virtctl ssh bazzite@vmi/bazzite-gaming-vm -n vms --identity-file ~/.ssh/id_ed255
 
 ---
 
-## 🎮 Step 6: Non-Steam Blizzard / Battle.net Setup (GE-Proton)
+## 🎮 Step 6: Declarative Steam Game Installs
 
-To play Blizzard titles (Diablo IV, World of Warcraft, Overwatch 2) directly inside Steam without third-party launcher bloat:
+The playbook's `steam_apps` var lists the Steam games the VM should have, by store app ID (the number in `store.steampowered.com/app/<id>`). `just bazzite-steam-games` (or a full `just bazzite-setup`) queues any that are missing, and the logged-in Steam client downloads them.
 
-1. **Automated Prerequisites via Ansible**:
-   Running `just bazzite-setup` automatically:
-   * Downloads and installs the latest stable **GE-Proton** (`GE-Proton10-34`) into `/home/bazzite/.local/share/Steam/compatibilitytools.d/`.
-   * Pre-stages the official `Battle.net-Setup.exe` into `/home/bazzite/Downloads/`.
-2. **Initial Setup in Steam (via Moonlight)**:
-   * Restart Steam so it detects the newly placed `GE-Proton10-34` runner in `compatibilitytools.d`.
-   * In the top menu, select **Games** $\rightarrow$ **Add a Non-Steam Game to My Library...**
-   * Click **Browse...**, select `/home/bazzite/Downloads/Battle.net-Setup.exe`, and click **Add Selected Programs**.
-   * In your Steam Library, right-click `Battle.net-Setup.exe` $\rightarrow$ **Properties** $\rightarrow$ **Compatibility**:
-     * Check **Force the use of a specific Steam Play compatibility tool**.
-     * Select **GE-Proton10-34** from the dropdown.
-   * Click **Play** to run the Blizzard installer and complete the setup wizard.
-3. **Switch Shortcut to Battle.net Launcher**:
-   * Once installation finishes, right-click the shortcut in Steam $\rightarrow$ **Properties**:
-     * Name: `Battle.net`
-     * Target: `"/home/bazzite/.local/share/Steam/steamapps/compatdata/<compat_id>/pfx/drive_c/Program Files (x86)/Battle.net/Battle.net Launcher.exe"`
-     * Start In: `"/home/bazzite/.local/share/Steam/steamapps/compatdata/<compat_id>/pfx/drive_c/Program Files (x86)/Battle.net/"`
-     * Launch Options: `DXVK_NVAPI_DRIVER_VERSION=59571 %command%`
-4. **Automated Steam Library Integration (`sync-steam-shortcuts.py`)**:
-   * Running `just bazzite-setup` automatically discovers installed Blizzard games in the Battle.net prefix and registers distinct, first-class Steam shortcuts for them:
-     * **Diablo IV** (`--exec="launch Fen"`)
-     * **StarCraft II** (`--exec="launch S2"`)
-     * **Warcraft III** (`--exec="launch W3"`)
-   * **Seamless Authentication & Zero Overhead**:
-     * Automatically assigns **GE-Proton10-34** via `config.vdf`.
-     * Symlinks each game's `compatdata/<appid>` to the primary Battle.net prefix (`3234450451`) to share DirectX shaders, settings, and credentials without duplicating storage.
-     * Tunes `Battle.net.config` with `"GameLaunchWindowBehavior": "2"` (exits Battle.net completely once the game starts) and `"HardwareAcceleration": "false"` (prevents CEF interface deadlocks).
+**How it works:** no `steamcmd`, which would need the Steam password and a Steam Guard code inside Ansible. Instead, the playbook writes a stub `steamapps/appmanifest_<appid>.acf` with `StateFlags "1026"` ("update required"). Steam reads manifests at startup, treats the game as installed-but-outdated, and downloads it with the session that is already logged in. Steam then replaces the stub with the real manifest, and the task (`force: false`) never touches it again.
+
+```mermaid
+graph LR
+    A[steam_apps var] --> B{appmanifest exists?}
+    B -- yes --> Z[skip: Steam owns it]
+    B -- no --> C[stop app-steam@autostart.service]
+    C --> D[write stub manifest StateFlags 1026]
+    D --> E[start Steam]
+    E --> F[Steam downloads game, writes real manifest]
+```
+
+* Steam runs as the KDE autostart user unit `app-steam@autostart.service`. It is stopped while stubs are written (Steam rewrites `steamapps/` on exit) and only when something new is queued, so a normal re-run never interrupts a game.
+* **Install-only:** removing an entry does not uninstall the game. Uninstall from Steam.
+* **Verify:** downloads show in Steam's Downloads page (via Moonlight), or from the Mac: `ssh bazzite@10.10.20.52 'grep -H StateFlags ~/.local/share/Steam/steamapps/appmanifest_*.acf'` (`4` = fully installed).
+* **Gotchas:** an app ID the account does not own just sits there and never downloads. Some titles have several store entries (Horizon Zero Dawn Complete Edition `1151640` vs Remastered `2561580`); use the one the account owns. Steam must be logged in, or the stubs wait until it is.
+
+---
+
+## 🎮 Step 7: Blizzard Games in Steam (Battle.net under GE-Proton)
+
+Battle.net, Diablo IV, StarCraft II, Diablo II: Resurrected and Warcraft III run as non-Steam shortcuts in Steam's library, all sharing **one** GE-Proton Wine prefix (`compatdata/3234450451`). One prefix means one Battle.net install, one login, and shared shader caches and settings, with no duplicated storage.
+
+Managed by `ansible/files/sync_steam_shortcuts.py`, deployed and run by the playbook (`just bazzite-blizzard`, or as part of `just bazzite-setup`). The script works in two phases and decides which one applies on each run:
+
+```mermaid
+graph TD
+    A[just bazzite-blizzard] --> B[script --check: dry run]
+    B -- UP_TO_DATE --> Z[done, Steam untouched]
+    B -- CHANGES_PENDING --> C[stop app-steam@autostart.service]
+    C --> D{Battle.net Launcher.exe in prefix?}
+    D -- no: bootstrap --> E[Battle.net shortcut -> ~/Downloads/Battle.net-Setup.exe<br/>AppID 3234450451, GE-Proton]
+    D -- yes: sync --> F[Battle.net shortcut -> Launcher.exe<br/>+ one shortcut per installed game<br/>+ compatdata symlinks + Battle.net.config]
+    E --> G[start Steam]
+    F --> G
+```
+
+### Procedure (fresh VM)
+
+1. **Bootstrap:** `just bazzite-blizzard`. The **Battle.net** entry in Steam now runs the installer.
+2. **In Steam (via Moonlight):** press **Play** on **Battle.net**, finish the installer, log in (2FA), and install the games from inside Battle.net. Installs must use the default location (`C:\Program Files (x86)\<Game>`), which is where the script looks.
+3. **Sync:** `just bazzite-blizzard` again. The same shortcut switches to the launcher, and each installed game gets its own shortcut. Re-run it whenever a game is added.
+
+Battle.net login and game installs stay manual: there is no supported CLI for them (Battle.net's `--exec` only does `launch`), and the login needs 2FA.
+
+### What the script manages
+
+| Item | Detail |
+|---|---|
+| Battle.net shortcut | Fixed AppID `3234450451`, so the installer creates the prefix that the launcher and games use. Same AppID in both phases. |
+| Game shortcuts | Added only if the game's folder exists in the prefix. Launch options `DXVK_NVAPI_DRIVER_VERSION=59571 %command% --exec="launch <code>"`: Diablo IV `Fen`, StarCraft II `S2`, Diablo II: Resurrected `OSI`, Warcraft III `W3`, StarCraft Remastered `S1`, Diablo `D1`. To find a new game's code, grep Battle.net's log for `productCode=` (`users/steamuser/AppData/Local/Battle.net/Logs/` in the prefix): the code is the part before `_retail` (`D1_retail` → `D1`). The product IDs in `product.db` / `aggregate.json` (`fenris`, `drtl`) are **not** launch codes: `--exec="launch DRTL"` just opens Battle.net. AppID = CRC32(Exe + name), as Steam computes it. |
+| `config.vdf` `CompatToolMapping` | Every Proton shortcut forced to `GE-Proton10-34` (creates the block on a fresh install, where Steam has not written it yet). **No global default** (`"0"`): Steam also applies it to unmapped non-Steam shortcuts, so it ran the native DevilutionX shortcut inside Wine. The script removes a `"0"` → `GE-Proton10-34` entry left by older versions and leaves any other `"0"` choice alone. |
+| `compatdata/<game appid>` | Symlink to `3234450451` (the shared prefix). |
+| `Battle.net.config` | `GameLaunchWindowBehavior: 2` (Battle.net exits when a game starts), `HardwareAcceleration: false` (avoids CEF UI deadlocks), Diablo IV `-bypassgpudrivercheck`. Written by Battle.net on first login, so this applies from the sync phase. |
+
+Only the shortcut fields above are managed. Steam's own fields (play time, collections, hidden flag) and any other non-Steam shortcuts are preserved, and an unreadable `shortcuts.vdf` aborts the run instead of being recreated.
+
+> [!IMPORTANT]
+> Steam reads `shortcuts.vdf` only at startup and rewrites `config.vdf` when it exits, so the files are only edited with Steam stopped. The playbook stops the unit only when the dry run reports `CHANGES_PENDING`, so a no-op re-run does not interrupt downloads. Stopping the unit also stops Battle.net and any running game (same cgroup); Steam downloads resume when it starts again.
+
+> [!NOTE]
+> `59571` is deliberate, not stale: Blizzard requires Windows driver 595.71 or later, and DXVK-NVAPI would otherwise report the Linux driver (see *Graphics Drivers Out of Date* below).
+
+### Diablo via DevilutionX (native)
+
+The 1996 Diablo runs under Proton, but its menus render as a blank white screen: it draws through 8-bit palettized DirectDraw, which Wine handles poorly (the intro video uses a different path and plays fine). [DevilutionX](https://github.com/diasurgical/devilutionX) is an open-source native Linux port of the engine that plays the original data files, with widescreen, controller support and Hellfire. It is the recommended way to play Diablo here. The Proton **Diablo** shortcut stays, but only reaches Battle.net's Diablo page.
+
+When the Battle.net Diablo install exists, `just bazzite-blizzard` (which now prompts for the sudo password):
+
+1. Installs the `org.diasurgical.DevilutionX` Flatpak system-wide (Flathub).
+2. **Hardlinks** `DIABDAT.MPQ` and the four Hellfire MPQs (`hellfire`, `hfmonk`, `hfmusic`, `hfvoice`) from the Wine prefix into `~/.var/app/org.diasurgical.DevilutionX/data/diasurgical/devilution/`. The Flatpak sandbox can only read its own data directory, and a hardlink is a second name for the same file (same btrfs filesystem), so the sandbox can read it at no extra disk cost. Names are lowercase, as DevilutionX expects on Linux.
+3. Adds a native **Diablo (DevilutionX)** Steam shortcut (`/usr/bin/flatpak run org.diasurgical.DevilutionX`, Flatpak icon) with **no** Proton mapping and no prefix symlink.
+
+> [!WARNING]
+> A native shortcut must not get a compatibility tool, and neither must the global default. If DevilutionX "launches" and quits within a second, check Steam's `logs/console-linux.txt`: `Proton: Upgrading prefix ... compatdata/<its appid>` means Steam started `flatpak` under Proton. Remove the mapping (or the Properties → Compatibility override) and delete that stray `compatdata/<appid>` prefix.
+
+> [!TIP]
+> With the Hellfire files present, DevilutionX asks at startup whether to play Diablo or Hellfire. Saves and settings live in the same data directory.
+
+**Gotcha:** if Battle.net repairs or patches the MPQs by replacing the files, the hardlinks keep pointing at the old copies, which is harmless (the data does not change). Delete them and re-run to re-link.
+
+**Verify:** dry-run on the VM without changing anything:
+
+```bash
+ssh bazzite@10.10.20.52 python3 ~/.local/bin/sync-steam-shortcuts.py --check
+```
+
+`UP_TO_DATE` means Steam matches. Each write keeps a `.bak` of the previous file next to it.
 
 
 ---

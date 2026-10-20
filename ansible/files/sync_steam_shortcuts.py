@@ -1,63 +1,90 @@
 #!/usr/bin/env python3
 """
 sync_steam_shortcuts.py
-Synchronizes installed Blizzard games directly into Steam shortcuts.vdf,
-assigns GE-Proton compatibility mapping in config.vdf, symlinks compatdata
-prefixes to the primary Battle.net prefix, and tunes Battle.net.config.
+Puts Battle.net and the installed Blizzard games into Steam as non-Steam
+shortcuts, all sharing one GE-Proton prefix (compatdata/3234450451).
+
+Two phases, same script (run by the Bazzite playbook):
+  * Bootstrap: Battle.net is not installed yet. Creates a "Battle.net" shortcut
+    with the fixed AppID that runs ~/Downloads/Battle.net-Setup.exe, so pressing
+    Play installs Battle.net into the right prefix.
+  * Sync: Battle.net is installed. Repoints that shortcut at the launcher, adds
+    a shortcut for each Blizzard game found in the prefix, symlinks each game's
+    compatdata to the shared prefix, and tunes Battle.net.config.
+Either way, installed native Flatpak games (NATIVE_FLATPAKS, e.g. DevilutionX)
+get a plain shortcut with no Proton mapping.
+
+Steam reads shortcuts.vdf only at startup and rewrites config.vdf on exit, so
+Steam must be stopped before a real run. `--check` changes nothing and prints
+CHANGES_PENDING or UP_TO_DATE, so the playbook only stops Steam when needed.
 """
 
 import os
+import re
 import sys
 import glob
 import json
 import zlib
 import struct
 import shutil
-import subprocess
 
-STEAM_DIR = os.path.expanduser("~/.local/share/Steam")
+STEAM_DIR = os.environ.get("STEAM_DIR", os.path.expanduser("~/.local/share/Steam"))
+PROTON_TOOL = "GE-Proton10-34"
 COMPAT_PREFIX_ID = "3234450451"
 PRIMARY_PREFIX = os.path.join(STEAM_DIR, "steamapps/compatdata", COMPAT_PREFIX_ID)
-BNET_EXE = os.path.join(
-    PRIMARY_PREFIX,
-    "pfx/drive_c/Program Files (x86)/Battle.net/Battle.net Launcher.exe"
-)
-BNET_START_DIR = os.path.join(
-    PRIMARY_PREFIX,
-    "pfx/drive_c/Program Files (x86)/Battle.net"
-)
-ICON_BASE = os.path.join(
-    PRIMARY_PREFIX,
-    "pfx/drive_c/proton_shortcuts/icons/256x256/apps"
-)
+PROGRAM_FILES = os.path.join(PRIMARY_PREFIX, "pfx/drive_c/Program Files (x86)")
+BNET_START_DIR = os.path.join(PROGRAM_FILES, "Battle.net")
+BNET_EXE = os.path.join(BNET_START_DIR, "Battle.net Launcher.exe")
+BNET_SETUP = os.environ.get("BNET_SETUP", os.path.expanduser("~/Downloads/Battle.net-Setup.exe"))
+ICON_BASE = os.path.join(PRIMARY_PREFIX, "pfx/drive_c/proton_shortcuts/icons/256x256/apps")
 BNET_CONFIG_PATH = os.path.join(
     PRIMARY_PREFIX,
     "pfx/drive_c/users/steamuser/AppData/Roaming/Battle.net/Battle.net.config"
 )
 
+# Blizzard checks for a Windows NVIDIA driver >= 595.71. DXVK-NVAPI reports the
+# Linux driver (e.g. 580.x), so this deliberately reports a newer version.
+NVAPI = "DXVK_NVAPI_DRIVER_VERSION=59571"
+
+BATTLENET = {
+    "name": "Battle.net",
+    "fixed_appid": int(COMPAT_PREFIX_ID),
+    "launch_options": f"{NVAPI} %command%",
+    "icon": "1AC2_Battle.net Launcher.0.png",
+}
+
+# install_dir: Battle.net's default folder under Program Files (x86); a shortcut
+# is only added once that folder exists. launch: Battle.net's product code.
 GAMES = [
-    {
-        "name": "Battle.net",
-        "fixed_appid": 3234450451,
-        "launch_options": "DXVK_NVAPI_DRIVER_VERSION=59571 %command%",
-        "icon": os.path.join(ICON_BASE, "1AC2_Battle.net Launcher.0.png"),
-    },
-    {
-        "name": "Diablo IV",
-        "launch_options": 'DXVK_NVAPI_DRIVER_VERSION=59571 %command% --exec="launch Fen"',
-        "icon": os.path.join(ICON_BASE, "B790_Diablo IV Launcher.0.png"),
-    },
-    {
-        "name": "StarCraft II",
-        "launch_options": 'DXVK_NVAPI_DRIVER_VERSION=59571 %command% --exec="launch S2"',
-        "icon": os.path.join(ICON_BASE, "5F50_StarCraft II.0.png"),
-    },
-    {
-        "name": "Warcraft III",
-        "launch_options": 'DXVK_NVAPI_DRIVER_VERSION=59571 %command% --exec="launch W3"',
-        "icon": os.path.join(ICON_BASE, "23A7_Warcraft III Launcher.0.png"),
-    },
+    {"name": "Diablo IV", "install_dir": "Diablo IV", "launch": "Fen",
+     "icon": "B790_Diablo IV Launcher.0.png"},
+    {"name": "StarCraft II", "install_dir": "StarCraft II", "launch": "S2",
+     "icon": "5F50_StarCraft II.0.png"},
+    {"name": "Diablo II: Resurrected", "install_dir": "Diablo II Resurrected", "launch": "OSI",
+     "icon": "B271_Diablo II Resurrected Launcher.0.png"},
+    {"name": "Warcraft III", "install_dir": "Warcraft III", "launch": "W3",
+     "icon": "23A7_Warcraft III Launcher.0.png"},
+    {"name": "StarCraft", "install_dir": "StarCraft", "launch": "S1", "icon": ""},
+    # Not "DRTL" (its product_id): launch codes are the prefix of the
+    # productCode Battle.net logs at startup, here "D1_retail".
+    {"name": "Diablo", "install_dir": "Diablo", "launch": "D1", "icon": ""},
 ]
+
+# Native Linux games installed as system Flatpaks (by the playbook). They get a
+# plain shortcut, no Proton mapping and no shared prefix. Added once installed.
+FLATPAK_ROOT = os.environ.get("FLATPAK_ROOT", "/var/lib/flatpak")
+NATIVE_FLATPAKS = [
+    {"name": "Diablo (DevilutionX)", "app_id": "org.diasurgical.DevilutionX"},
+]
+
+# The script owns only the keys of the entries it builds; everything else in an
+# existing shortcut (play time, collections, hidden flag) is Steam's and is left
+# alone. These defaults fill in the rest of a newly added shortcut.
+NEW_SHORTCUT_DEFAULTS = {
+    "ShortcutPath": "", "IsHidden": 0, "AllowDesktopConfig": 1, "AllowOverlay": 1,
+    "OpenVR": 0, "Devkit": 0, "DevkitGameID": "", "DevkitOverrideAppID": 0,
+    "LastPlayTime": 0, "FlatpakAppID": "", "sortas": "", "tags": {},
+}
 
 
 def parse_bin_vdf(data: bytes):
@@ -68,7 +95,7 @@ def parse_bin_vdf(data: bytes):
         end = data.find(b"\x00", pos)
         if end == -1:
             raise ValueError("Unterminated string in binary VDF")
-        s = data[pos:end].decode("utf-8", "ignore")
+        s = data[pos:end].decode("utf-8")
         pos = end + 1
         return s
 
@@ -79,16 +106,18 @@ def parse_bin_vdf(data: bytes):
             t = data[pos:pos+1]
             pos += 1
             if t == b"\x08":
-                break
+                return res
             key = read_str()
             if t == b"\x00":
                 res[key] = parse_dict()
             elif t == b"\x01":
                 res[key] = read_str()
             elif t == b"\x02":
-                val = struct.unpack("<I", data[pos:pos+4])[0]
+                res[key] = struct.unpack("<I", data[pos:pos+4])[0]
                 pos += 4
-                res[key] = val
+            else:
+                # Unknown type: refuse rather than misread and rewrite the file.
+                raise ValueError(f"Unsupported binary VDF type {t!r} at key {key!r}")
         return res
 
     return parse_dict()
@@ -113,107 +142,125 @@ def encode_bin_vdf(d: dict) -> bytes:
     return bytes(res)
 
 
-def update_shortcuts_vdf(shortcuts_path: str):
-    print(f"[*] Processing shortcuts file: {shortcuts_path}")
+def quoted(path: str) -> str:
+    return f'"{path}"'
+
+
+def desired_shortcuts(bnet_installed: bool):
+    """Return the shortcut entries (managed fields only) that should exist."""
+    icon = lambda f: (p if f and os.path.exists(p := os.path.join(ICON_BASE, f)) else "")
+    if not bnet_installed:
+        # Bootstrap: same name and AppID as the final launcher shortcut, so the
+        # installer creates the prefix the launcher and games will use.
+        return [{
+            "appid": BATTLENET["fixed_appid"],
+            "AppName": BATTLENET["name"],
+            "Exe": quoted(BNET_SETUP),
+            "StartDir": quoted(os.path.dirname(BNET_SETUP) + "/"),
+            "icon": "",
+            "LaunchOptions": "",
+        }]
+
+    exe, start_dir = quoted(BNET_EXE), quoted(BNET_START_DIR + "/")
+    entries = [{
+        "appid": BATTLENET["fixed_appid"],
+        "AppName": BATTLENET["name"],
+        "Exe": exe,
+        "StartDir": start_dir,
+        "icon": icon(BATTLENET["icon"]),
+        "LaunchOptions": BATTLENET["launch_options"],
+    }]
+    for g in GAMES:
+        if not os.path.isdir(os.path.join(PROGRAM_FILES, g["install_dir"])):
+            continue
+        # Steam derives a non-Steam AppID from Exe + AppName; computing it the
+        # same way keeps it stable across runs (and matches Steam's own value).
+        appid = (zlib.crc32((exe + g["name"]).encode("utf-8")) & 0xFFFFFFFF) | 0x80000000
+        entries.append({
+            "appid": appid,
+            "AppName": g["name"],
+            "Exe": exe,
+            "StartDir": start_dir,
+            "icon": icon(g["icon"]),
+            "LaunchOptions": f'{NVAPI} %command% --exec="launch {g["launch"]}"',
+        })
+    return entries
+
+
+def native_shortcuts():
+    """Shortcut entries for the installed native Flatpak games."""
+    exe = quoted("/usr/bin/flatpak")
+    entries = []
+    for g in NATIVE_FLATPAKS:
+        if not os.path.isdir(os.path.join(FLATPAK_ROOT, "app", g["app_id"])):
+            continue
+        # Largest exported icon, e.g. .../hicolor/512x512/apps/<app_id>.png
+        icons = glob.glob(os.path.join(
+            FLATPAK_ROOT, "exports/share/icons/hicolor/*/apps", g["app_id"] + ".png"))
+        icons.sort(key=lambda p: int(re.match(r"\d+", p.split("/")[-3]).group())
+                   if re.match(r"\d+", p.split("/")[-3]) else 0)
+        entries.append({
+            "appid": (zlib.crc32((exe + g["name"]).encode("utf-8")) & 0xFFFFFFFF) | 0x80000000,
+            "AppName": g["name"],
+            "Exe": exe,
+            "StartDir": quoted("/usr/bin/"),
+            "icon": icons[-1] if icons else "",
+            "LaunchOptions": f"run {g['app_id']}",
+            "FlatpakAppID": g["app_id"],
+        })
+    return entries
+
+
+def plan_shortcuts(shortcuts_path: str, entries: list):
+    """Return (new_file_bytes or None, change descriptions)."""
     if os.path.exists(shortcuts_path):
         with open(shortcuts_path, "rb") as f:
-            data = f.read()
-        try:
-            parsed = parse_bin_vdf(data)
-        except Exception as e:
-            print(f"[-] Warning: Failed to parse existing shortcuts.vdf ({e}), creating fresh.")
-            parsed = {"shortcuts": {}}
+            parsed = parse_bin_vdf(f.read())  # raises: never clobber other shortcuts
     else:
         parsed = {"shortcuts": {}}
 
-    existing_shortcuts = parsed.get("shortcuts", {})
-    by_name = {}
-    for k, v in existing_shortcuts.items():
-        if isinstance(v, dict) and "AppName" in v:
-            by_name[v["AppName"]] = (k, v)
-
-    if os.path.exists(shortcuts_path):
-        shutil.copy2(shortcuts_path, shortcuts_path + ".bak")
-
-    exe_quoted = f'"{BNET_EXE}"'
-    start_dir_quoted = f'"{BNET_START_DIR}/"'
-
-    appids = []
-    for g in GAMES:
-        name = g["name"]
-        appid = g.get("fixed_appid")
-        if not appid:
-            crc = zlib.crc32((exe_quoted + name).encode("utf-8"))
-            appid = (crc & 0xFFFFFFFF) | 0x80000000
-        appids.append((str(appid), name))
-
-        icon_path = g.get("icon", "")
-        if not os.path.exists(icon_path):
-            icon_path = ""
-
-        entry = {
-            "appid": appid,
-            "AppName": name,
-            "Exe": exe_quoted,
-            "StartDir": start_dir_quoted,
-            "icon": icon_path,
-            "ShortcutPath": "",
-            "LaunchOptions": g.get("launch_options", ""),
-            "IsHidden": 0,
-            "AllowDesktopConfig": 1,
-            "AllowOverlay": 1,
-            "OpenVR": 0,
-            "Devkit": 0,
-            "DevkitGameID": "",
-            "DevkitOverrideAppID": 0,
-            "LastPlayTime": 0,
-            "FlatpakAppID": "",
-            "sortas": "",
-            "tags": {},
-        }
-
-        if name in by_name:
-            key, existing = by_name[name]
+    shortcuts = parsed.setdefault("shortcuts", {})
+    by_name = {v["AppName"]: v for v in shortcuts.values()
+               if isinstance(v, dict) and "AppName" in v}
+    changes = []
+    for entry in entries:
+        existing = by_name.get(entry["AppName"])
+        if existing is None:
+            new = {**NEW_SHORTCUT_DEFAULTS, **entry}
+            shortcuts[str(len(shortcuts))] = new
+            by_name[entry["AppName"]] = new
+            changes.append(f"add shortcut {entry['AppName']} (AppID {entry['appid']})")
+        elif any(existing.get(k) != v for k, v in entry.items()):
             existing.update(entry)
-            print(f"  [+] Updated shortcut: {name} (AppID: {appid})")
-        else:
-            new_idx = str(len(existing_shortcuts))
-            existing_shortcuts[new_idx] = entry
-            by_name[name] = (new_idx, entry)
-            print(f"  [+] Added new shortcut: {name} (AppID: {appid})")
-
-    parsed["shortcuts"] = existing_shortcuts
-    with open(shortcuts_path, "wb") as f:
-        f.write(encode_bin_vdf(parsed))
-    print(f"[✔] Successfully saved: {shortcuts_path}")
-    return appids
+            changes.append(f"update shortcut {entry['AppName']} (AppID {entry['appid']})")
+    return (encode_bin_vdf(parsed) if changes else None), changes
 
 
-PROTON_TOOL = "GE-Proton10-34"
+def plan_config_vdf(config_path: str, appids: list):
+    """Map every Proton shortcut AppID to PROTON_TOOL.
 
-
-def update_config_vdf(config_path: str, appids: list):
+    Deliberately no global default ("0"): Steam applies it to every unmapped
+    non-Steam shortcut too, which would run native games (DevilutionX's
+    /usr/bin/flatpak) inside Wine. Older versions of this script set "0" to
+    PROTON_TOOL, so that entry is removed; any other "0" choice is left alone.
+    """
     if not os.path.exists(config_path):
-        print(f"[-] config.vdf not found at {config_path}")
-        return
-
-    print(f"[*] Updating Proton mapping in: {config_path}")
+        raise FileNotFoundError(f"config.vdf not found at {config_path}")
     with open(config_path, "r", encoding="utf-8", errors="ignore") as f:
         content = f.read()
 
-    shutil.copy2(config_path, config_path + ".bak")
-
     idx = content.find('"CompatToolMapping"')
     if idx == -1:
-        print("[-] Could not find CompatToolMapping block in config.vdf")
-        return
-
+        # Steam only writes the block once some compatibility tool is chosen,
+        # so a fresh install has none: add an empty one to Software/Valve/Steam.
+        steam = re.search(r'"Software"\s*\{\s*"Valve"\s*\{\s*"Steam"\s*\{\n', content, re.IGNORECASE)
+        if not steam:
+            raise ValueError("No Software/Valve/Steam section in config.vdf (start Steam once first)")
+        content = (content[:steam.end()] + '\t\t\t\t"CompatToolMapping"\n\t\t\t\t{\n\t\t\t\t}\n'
+                   + content[steam.end():])
+        idx = content.find('"CompatToolMapping"')
     brace_start = content.find("{", idx)
-    if brace_start == -1:
-        return
-
-    depth = 1
-    pos = brace_start + 1
+    depth, pos = 1, brace_start + 1
     while pos < len(content) and depth > 0:
         if content[pos] == "{":
             depth += 1
@@ -221,25 +268,21 @@ def update_config_vdf(config_path: str, appids: list):
             depth -= 1
         pos += 1
 
-    compat_block = content[brace_start:pos]
-    updated_block = compat_block
+    block = content[brace_start:pos]
+    changes = []
+    legacy_default = re.search(
+        rf'\n\s*"0"\s*\{{[^}}]*"name"\s*"{re.escape(PROTON_TOOL)}"[^}}]*\}}', block)
+    if legacy_default:
+        block = block.replace(legacy_default.group(0), "")
+        changes.append(f"remove global default (0) -> {PROTON_TOOL}")
 
-    import re
-    # Map global default ("0") + every game AppID
-    targets = [("0", "Global Default")] + [
-        (str(aid), name) for aid, name in appids
-    ]
-
-    for aid, name in targets:
-        aid_pattern = re.compile(rf'"{aid}"\s*\{{[^}}]*"name"\s*"([^"]+)"[^}}]*\}}', re.DOTALL)
-        match = aid_pattern.search(updated_block)
+    for aid, name in appids:
+        match = re.search(rf'"{aid}"\s*\{{[^}}]*"name"\s*"([^"]*)"[^}}]*\}}', block, re.DOTALL)
         if match:
-            current_tool = match.group(1)
-            if current_tool != PROTON_TOOL:
-                old_sub = match.group(0)
-                new_sub = old_sub.replace(f'"{current_tool}"', f'"{PROTON_TOOL}"')
-                updated_block = updated_block.replace(old_sub, new_sub)
-                print(f"  [+] Updated {name} (AppID: {aid}) from {current_tool} to {PROTON_TOOL}")
+            if match.group(1) != PROTON_TOOL:
+                block = block.replace(match.group(0),
+                                      match.group(0).replace(f'"{match.group(1)}"', f'"{PROTON_TOOL}"'))
+                changes.append(f"map {name} ({aid}) {match.group(1) or 'default'} -> {PROTON_TOOL}")
         else:
             new_entry = (
                 f'\n\t\t\t\t\t"{aid}"\n'
@@ -249,97 +292,99 @@ def update_config_vdf(config_path: str, appids: list):
                 f'\t\t\t\t\t\t"priority"\t\t"250"\n'
                 f'\t\t\t\t\t}}'
             )
-            last_brace = updated_block.rfind("}")
-            if last_brace != -1:
-                updated_block = updated_block[:last_brace] + new_entry + "\n\t\t\t\t" + updated_block[last_brace:]
-                print(f"  [+] Mapped {name} (AppID: {aid}) to {PROTON_TOOL}")
+            last = block.rfind("}")
+            block = block[:last] + new_entry + "\n\t\t\t\t" + block[last:]
+            changes.append(f"map {name} ({aid}) -> {PROTON_TOOL}")
 
-    if updated_block != compat_block:
-        content = content[:brace_start] + updated_block + content[pos:]
-        with open(config_path, "w", encoding="utf-8") as f:
-            f.write(content)
-        print(f"[✔] Successfully updated {config_path}")
-    else:
-        print(f"[*] All games already mapped to {PROTON_TOOL} in CompatToolMapping")
+    new_content = content[:brace_start] + block + content[pos:] if changes else None
+    return new_content, changes
 
 
-def update_compatdata_symlinks(appids: list):
-    compatdata_dir = os.path.join(STEAM_DIR, "steamapps/compatdata")
-    if not os.path.exists(compatdata_dir):
-        return
-
-    for appid, name in appids:
-        if appid == COMPAT_PREFIX_ID:
-            continue
-        target_link = os.path.join(compatdata_dir, appid)
-        if not os.path.exists(target_link):
-            try:
-                os.symlink(COMPAT_PREFIX_ID, target_link)
-                print(f"  [+] Symlinked compatdata/{appid} -> {COMPAT_PREFIX_ID} for {name}")
-            except Exception as e:
-                print(f"  [-] Failed to symlink {target_link}: {e}")
+def plan_symlinks(appids: list):
+    """Each game's compatdata/<appid> points at the shared Battle.net prefix."""
+    compatdata = os.path.join(STEAM_DIR, "steamapps/compatdata")
+    return [(os.path.join(compatdata, aid), name) for aid, name in appids
+            if aid != COMPAT_PREFIX_ID and not os.path.lexists(os.path.join(compatdata, aid))]
 
 
-def tune_battlenet_config():
+def plan_battlenet_config():
+    """Battle.net closes when a game starts; CEF GPU acceleration off (deadlocks)."""
     if not os.path.exists(BNET_CONFIG_PATH):
-        print(f"[-] Battle.net.config not found at {BNET_CONFIG_PATH}")
-        return
+        return None, []  # written by Battle.net on first login
+    with open(BNET_CONFIG_PATH, "r", encoding="utf-8") as f:
+        cfg = json.load(f)
+    wanted = [
+        (("Client", "GameLaunchWindowBehavior"), "2", "Battle.net exits on game launch"),
+        (("Client", "HardwareAcceleration"), "false", "Battle.net browser GPU acceleration off"),
+        (("Games", "fenris", "AdditionalLaunchArguments"), "-bypassgpudrivercheck",
+         "Diablo IV -bypassgpudrivercheck"),
+    ]
+    changes = []
+    for path, value, desc in wanted:
+        node = cfg
+        for key in path[:-1]:
+            node = node.setdefault(key, {})
+        if node.get(path[-1]) != value:
+            node[path[-1]] = value
+            changes.append(desc)
+    return (cfg if changes else None), changes
 
-    try:
-        with open(BNET_CONFIG_PATH, "r", encoding="utf-8") as f:
-            cfg = json.load(f)
 
-        changed = False
-        client_cfg = cfg.setdefault("Client", {})
-        if client_cfg.get("GameLaunchWindowBehavior") != "2":
-            client_cfg["GameLaunchWindowBehavior"] = "2"
-            changed = True
-            print("  [+] Configured Battle.net to exit automatically on game launch")
-
-        if client_cfg.get("HardwareAcceleration") != "false":
-            client_cfg["HardwareAcceleration"] = "false"
-            changed = True
-            print("  [+] Disabled browser hardware acceleration in Battle.net")
-
-        games_cfg = cfg.setdefault("Games", {})
-        fenris_cfg = games_cfg.setdefault("fenris", {})
-        if fenris_cfg.get("AdditionalLaunchArguments") != "-bypassgpudrivercheck":
-            fenris_cfg["AdditionalLaunchArguments"] = "-bypassgpudrivercheck"
-            changed = True
-            print("  [+] Configured -bypassgpudrivercheck for Diablo IV")
-
-        if changed:
-            shutil.copy2(BNET_CONFIG_PATH, BNET_CONFIG_PATH + ".bak")
-            with open(BNET_CONFIG_PATH, "w", encoding="utf-8") as f:
-                json.dump(cfg, f, indent=4)
-            print("[✔] Battle.net.config successfully tuned!")
-    except Exception as e:
-        print(f"[-] Failed to tune Battle.net.config: {e}")
+def write_with_backup(path: str, data, mode: str):
+    if os.path.exists(path):
+        shutil.copy2(path, path + ".bak")
+    with open(path, mode, **({} if "b" in mode else {"encoding": "utf-8"})) as f:
+        f.write(data)
 
 
 def main():
-    if not os.path.exists(BNET_EXE):
-        print(f"[!] Battle.net launcher executable not found at {BNET_EXE}")
-        print("    Ensure Battle.net has been installed first.")
-        sys.exit(1)
+    check = "--check" in sys.argv[1:]
+    bnet_installed = os.path.exists(BNET_EXE)
+    if not bnet_installed and not os.path.exists(BNET_SETUP):
+        sys.exit(f"[!] Neither the Battle.net launcher nor {BNET_SETUP} exists")
 
-    # Find all shortcuts.vdf files under userdata/*/config/
-    shortcuts_pattern = os.path.join(STEAM_DIR, "userdata/*/config/shortcuts.vdf")
-    matched_files = glob.glob(shortcuts_pattern)
+    user_configs = glob.glob(os.path.join(STEAM_DIR, "userdata/*/config"))
+    if not user_configs:
+        sys.exit("[!] No Steam userdata found: log in to Steam once first")
 
-    if not matched_files:
-        print(f"[-] No shortcuts.vdf found under {shortcuts_pattern}")
-        sys.exit(1)
+    print(f"[*] Phase: {'sync' if bnet_installed else 'bootstrap (Battle.net not installed yet)'}")
+    proton_entries = desired_shortcuts(bnet_installed)
+    # Only the Proton shortcuts get a compat tool mapping and prefix symlink.
+    appids = [(str(e["appid"]), e["AppName"]) for e in proton_entries]
+    entries = proton_entries + native_shortcuts()
 
-    appids = []
-    for sf in matched_files:
-        appids = update_shortcuts_vdf(sf)
+    writes, changes = [], []
+    for cfg_dir in user_configs:
+        path = os.path.join(cfg_dir, "shortcuts.vdf")
+        data, c = plan_shortcuts(path, entries)
+        if data is not None:
+            writes.append(lambda p=path, d=data: write_with_backup(p, d, "wb"))
+        changes += c
 
     config_path = os.path.join(STEAM_DIR, "config/config.vdf")
-    update_config_vdf(config_path, appids)
-    update_compatdata_symlinks(appids)
-    tune_battlenet_config()
-    print("\n[🎉] All Blizzard games are now registered directly in Steam!")
+    content, c = plan_config_vdf(config_path, appids)
+    if content is not None:
+        writes.append(lambda: write_with_backup(config_path, content, "w"))
+    changes += c
+
+    links = plan_symlinks(appids)
+    for link, name in links:
+        writes.append(lambda l=link: os.symlink(COMPAT_PREFIX_ID, l))
+        changes.append(f"symlink compatdata/{os.path.basename(link)} -> {COMPAT_PREFIX_ID} ({name})")
+
+    bnet_cfg, c = plan_battlenet_config()
+    if bnet_cfg is not None:
+        writes.append(lambda: write_with_backup(BNET_CONFIG_PATH, json.dumps(bnet_cfg, indent=4), "w"))
+    changes += c
+
+    for c in changes:
+        print(f"  [{'~' if check else '+'}] {c}")
+    if check:
+        print("CHANGES_PENDING" if changes else "UP_TO_DATE")
+        return
+    for w in writes:
+        w()
+    print(f"[✔] Applied {len(changes)} change(s)" if changes else "[*] Already up to date")
 
 
 if __name__ == "__main__":

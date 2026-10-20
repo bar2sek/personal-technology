@@ -23,6 +23,15 @@
   vars:
     ge_proton_version: GE-Proton10-34
     sunshine_files: /var/lib/flatpak/app/dev.lizardbyte.app.Sunshine/current/active/files
+    steam_library: /home/bazzite/.local/share/Steam/steamapps
+    bnet_program_files: "{{ steam_library }}/compatdata/3234450451/pfx/drive_c/Program Files (x86)"
+    devilutionx_data: /home/bazzite/.var/app/org.diasurgical.DevilutionX/data/diasurgical/devilution
+    # Steam games to install, by store app ID (the number in the store URL).
+    # Install-only: removing an entry does not uninstall the game.
+    steam_apps:
+      - { appid: 1151640, name: "Horizon Zero Dawn Complete Edition" }
+      - { appid: 1659420, name: "UNCHARTED Legacy of Thieves Collection" }
+      - { appid: 1888930, name: "The Last of Us Part I" }
   tasks:
     # The install ISO can be months old. Bazzite also auto-updates, but bring a
     # fresh install current before configuring it.
@@ -268,6 +277,7 @@
         owner: bazzite
         group: bazzite
         mode: '0755'
+      tags: [blizzard]
 
     - name: Pre-stage official Battle.net setup installer
       ansible.builtin.get_url:
@@ -276,6 +286,7 @@
         owner: bazzite
         group: bazzite
         mode: '0755'
+      tags: [blizzard]
 
     - name: Ensure Steam compatibilitytools.d directory exists
       ansible.builtin.file:
@@ -284,6 +295,7 @@
         owner: bazzite
         group: bazzite
         mode: '0755'
+      tags: [blizzard]
 
     - name: Download and install latest stable GE-Proton compatibility runner
       ansible.builtin.unarchive:
@@ -293,6 +305,7 @@
         creates: /home/bazzite/.local/share/Steam/compatibilitytools.d/{{ ge_proton_version }}
         owner: bazzite
         group: bazzite
+      tags: [blizzard]
 
     - name: Verify installed Steam compatibility tools
       ansible.builtin.command: ls -la /home/bazzite/.local/share/Steam/compatibilitytools.d/
@@ -303,6 +316,59 @@
       ansible.builtin.debug:
         var: compat_tools.stdout_lines
 
+    # Steam games: no steamcmd (it would need the Steam password and a Steam
+    # Guard code). Instead, drop a stub appmanifest per game with StateFlags
+    # 1026 ("update required"); on its next start the logged-in client treats
+    # the game as installed-but-outdated and downloads it. Steam overwrites the
+    # stub with the real manifest, and `force: false` never touches it again.
+    - name: Check which Steam games already have an app manifest
+      ansible.builtin.stat:
+        path: "{{ steam_library }}/appmanifest_{{ item.appid }}.acf"
+      loop: "{{ steam_apps }}"
+      loop_control:
+        label: "{{ item.name }}"
+      register: steam_manifests
+      tags: [steam-games]
+
+    # Steam rewrites steamapps/ on exit, so it must be stopped while stubs are
+    # written. It runs as the KDE autostart unit of the desktop session.
+    - name: Stop Steam before queueing new installs
+      ansible.builtin.systemd_service:
+        name: app-steam@autostart.service
+        scope: user
+        state: stopped
+      when: steam_manifests.results | rejectattr('stat.exists') | list | length > 0
+      register: steam_stopped
+      tags: [steam-games]
+
+    - name: Queue Steam game installs with stub app manifests
+      ansible.builtin.copy:
+        dest: "{{ steam_library }}/appmanifest_{{ item.item.appid }}.acf"
+        content: |
+          "AppState"
+          {
+          	"appid"		"{{ item.item.appid }}"
+          	"Universe"		"1"
+          	"name"		"{{ item.item.name }}"
+          	"StateFlags"		"1026"
+          	"installdir"		"{{ item.item.name }}"
+          }
+        force: false
+        mode: '0644'
+      loop: "{{ steam_manifests.results }}"
+      loop_control:
+        label: "{{ item.item.name }}"
+      when: not item.stat.exists
+      tags: [steam-games]
+
+    - name: Start Steam so it picks up the queued installs
+      ansible.builtin.systemd_service:
+        name: app-steam@autostart.service
+        scope: user
+        state: started
+      when: steam_stopped is changed
+      tags: [steam-games]
+
     - name: Ensure user local bin directory exists
       ansible.builtin.file:
         path: /home/bazzite/.local/bin
@@ -310,6 +376,7 @@
         owner: bazzite
         group: bazzite
         mode: '0755'
+      tags: [blizzard]
 
     - name: Deploy Steam shortcut synchronization script
       ansible.builtin.copy:
@@ -318,16 +385,91 @@
         owner: bazzite
         group: bazzite
         mode: '0755'
+      tags: [blizzard]
 
-    - name: Synchronize installed Blizzard games into Steam shortcuts
-      ansible.builtin.command: python3 /home/bazzite/.local/bin/sync-steam-shortcuts.py
-      register: sync_shortcuts_out
-      changed_when: "'[✔]' in sync_shortcuts_out.stdout"
-      failed_when: false
+    # DevilutionX: native Linux port of Diablo/Hellfire, playing the data files
+    # from the Battle.net install (the 1996 game's menus render white under
+    # Wine). The Flatpak sandbox only sees its own data dir, so the MPQs are
+    # hardlinked in: same file on disk, no extra space, readable in the sandbox.
+    - name: Check for the Battle.net Diablo install
+      ansible.builtin.stat:
+        path: "{{ bnet_program_files }}/Diablo/DIABDAT.MPQ"
+      register: diablo_data
+      tags: [blizzard]
 
-    - name: Display Steam Shortcut Sync Results
+    - name: Install the DevilutionX Flatpak (system-wide)
+      become: true
+      community.general.flatpak:
+        name: org.diasurgical.DevilutionX
+        method: system
+        state: present
+      when: diablo_data.stat.exists
+      tags: [blizzard]
+
+    - name: Ensure the DevilutionX data directory exists
+      ansible.builtin.file:
+        path: "{{ devilutionx_data }}"
+        state: directory
+        mode: '0755'
+      when: diablo_data.stat.exists
+      tags: [blizzard]
+
+    - name: Hardlink the Diablo and Hellfire MPQs into DevilutionX's data dir
+      ansible.builtin.file:
+        src: "{{ bnet_program_files }}/Diablo/{{ item.src }}"
+        dest: "{{ devilutionx_data }}/{{ item.dest }}"
+        state: hard
+      loop:
+        - { src: DIABDAT.MPQ, dest: diabdat.mpq }
+        - { src: HELLFIRE/hellfire.mpq, dest: hellfire.mpq }
+        - { src: HELLFIRE/hfmonk.mpq, dest: hfmonk.mpq }
+        - { src: HELLFIRE/hfmusic.mpq, dest: hfmusic.mpq }
+        - { src: HELLFIRE/hfvoice.mpq, dest: hfvoice.mpq }
+      loop_control:
+        label: "{{ item.dest }}"
+      when: diablo_data.stat.exists
+      tags: [blizzard]
+
+    # Two passes (see the script's docstring and docs/303 Step 7). Before
+    # Battle.net is installed this creates a "Battle.net" shortcut that runs the
+    # setup exe in the shared prefix; after, it adds one shortcut per installed
+    # Blizzard game. A dry run decides whether Steam has to be stopped.
+    - name: Check whether Battle.net / Blizzard shortcuts need changes
+      ansible.builtin.command: python3 /home/bazzite/.local/bin/sync-steam-shortcuts.py --check
+      register: bnet_check
+      changed_when: false
+      tags: [blizzard]
+
+    - name: Show pending Battle.net / Blizzard shortcut changes
       ansible.builtin.debug:
-        var: sync_shortcuts_out.stdout_lines
-      when: sync_shortcuts_out.stdout_lines is defined
+        var: bnet_check.stdout_lines
+      tags: [blizzard]
+
+    - name: Apply Battle.net / Blizzard shortcuts with Steam stopped
+      when: "'CHANGES_PENDING' in bnet_check.stdout"
+      tags: [blizzard]
+      block:
+        # Stopping the unit also stops Battle.net and any game Steam launched
+        # (same cgroup), so their config files are not rewritten underneath us.
+        - name: Stop Steam before editing its shortcuts and config
+          ansible.builtin.systemd_service:
+            name: app-steam@autostart.service
+            scope: user
+            state: stopped
+
+        - name: Sync Battle.net / Blizzard shortcuts into Steam
+          ansible.builtin.command: python3 /home/bazzite/.local/bin/sync-steam-shortcuts.py
+          register: bnet_sync
+          changed_when: true
+
+        - name: Show applied shortcut changes
+          ansible.builtin.debug:
+            var: bnet_sync.stdout_lines
+      always:
+        - name: Start Steam again
+          ansible.builtin.systemd_service:
+            name: app-steam@autostart.service
+            scope: user
+            state: started
 
 
