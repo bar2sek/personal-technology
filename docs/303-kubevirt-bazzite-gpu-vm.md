@@ -464,6 +464,26 @@ Used for the Wave 3b reinstall, which wiped the Sabrent. Stop the VM, then copy 
 
 ---
 
+## 🧠 GPU Ownership & Bazzite as a GPU Server
+
+> [!IMPORTANT]
+> **The RTX 4070 belongs to this VM only.** `vfio-pci.ids` in `talos/patches/gpu-worker.yaml` binds the card to `vfio-pci` at boot, so the NVIDIA driver never loads on Talos and no pod can request the GPU. The VM's `runStrategy: Always` means it holds the card permanently. The `nvidia.com/gpu.present` node labels in the same patch only describe the hardware; there is no device plugin offering the GPU to pods.
+
+**Direction (decided 2026-10-20):** when a cluster app needs GPU compute, the **Bazzite VM serves it**, rather than moving the card or buying hardware. The VM already has the NVIDIA driver and CUDA, so a GPU workload runs as a container inside the guest (Podman on Bazzite). It's exposed to the cluster with a Kubernetes Service, the same way Sunshine is exposed. Clients must fall back to a CPU path when the VM is off.
+
+| Preference | Approach | Notes |
+| :--- | :--- | :--- |
+| 1 | CPU in the cluster | Always available; the fallback for everything |
+| 2 | **GPU service inside Bazzite** | First user: Immich ML (see [[504-immich-photo-backup\|Immich plan]], D6). Ollama would follow the same pattern. Managed by `ansible/playbooks/configure-bazzite-vm.yml`, not by hand |
+| 3 | Second GPU for the cluster | Last resort (purchase); e.g. Intel Arc in `pc-node-04` |
+
+**Trade-offs to remember:**
+- Games and GPU services share **12 GB of VRAM**. A large model loaded while gaming can make the game stutter or crash.
+- GPU services are only available while the VM is running, and Install mode (see the rebuild procedure) **detaches the GPU**. Plan for the CPU fallback, not around it.
+- Switching the card to the host instead ("cluster mode") would mean removing `vfio-pci.ids`, adding Talos's NVIDIA system extensions and the device plugin, and rebooting for every switch. That was rejected as too clunky.
+
+---
+
 ## ⚠️ Troubleshooting & Gotchas
 
 ### Steam "An error occurred while launching the game. Compatibility tool failed"
