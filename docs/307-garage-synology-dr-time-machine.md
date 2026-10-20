@@ -207,6 +207,61 @@ The NFS PersistentVolume and Claim are codified in `kubernetes/infrastructure/ba
 
 ---
 
+## 🌐 Remote Web Access
+
+The DSM web UI is published at **`nas.bar2sek.com`**, which takes two paths. Off the LAN it goes through the shared Cloudflare Tunnel, behind Cloudflare Access with Entra ID sign-in and an MFA requirement (see [[202-cloudflare-tunnel-zero-trust]]), so DSM's login page is never exposed to the internet. On the LAN and Tailscale, split-horizon DNS (see [[205-split-horizon-dns-ipv6-leak]]) sends it to ingress-nginx, which serves the trusted `*.bar2sek.com` wildcard cert and proxies to DSM. Both paths carry browser traffic only. SMB, NFS, Time Machine and the DS mobile apps stay LAN/Tailscale-only.
+
+```mermaid
+graph LR
+    subgraph Remote
+      B[Browser] -->|HTTPS| CF[Cloudflare Access<br/>Entra ID + MFA]
+      CF -->|Tunnel| P[cloudflared pods]
+    end
+    subgraph LAN / Tailscale
+      L[Browser] -->|"UDM DNS: CNAME ingress.home.arpa"| ING[ingress-nginx<br/>10.10.20.50<br/>wildcard cert]
+    end
+    P -->|https :5001<br/>self-signed| NAS[Synology DSM<br/>10.0.1.223]
+    ING -->|https :5001<br/>self-signed| NAS
+```
+
+**Codified in:**
+- Remote: `infra-cloud-deployments/terraform/cloudflare/` (`locals.tf` Access app, `main.tf` tunnel ingress rule and CNAME). Origin is `https://10.0.1.223:5001` with `no_tls_verify` because DSM serves a self-signed certificate.
+- LAN: `terraform/unifi/dns.tf` (`unifi_dns_record.nas`) and `kubernetes/infrastructure/ingress/synology-nas-ingress.yaml` (selector-less Service, manual EndpointSlice for `10.0.1.223:5001`, and Ingress).
+
+> [!WARNING]
+> **The LAN path has no Entra MFA.** It is the same exposure as browsing to `10.0.1.223:5001`, so DSM's own login is the only gate there. Enable DSM 2FA: DSM → *Personal* → *Account* → *Security* → *2-Factor Authentication*, using an authenticator app.
+
+> [!NOTE]
+> **Both paths need the cluster** (`cloudflared` and ingress-nginx run in it). If the cluster is down, open `https://10.0.1.223:5001` directly from the LAN and accept the self-signed certificate warning. That direct route matters during DR.
+
+**DSM hardening checklist** (DSM → *Control Panel*):
+- [x] *External Access* → *QuickConnect*: **disabled**. QuickConnect relays DSM through Synology's servers at `quickconnect.to/<ID>`, which bypasses Cloudflare Access and leaves a password-only login on the internet. Remote DS mobile apps then need the LAN or Tailscale. *Verified 2026-10-20: the QuickConnect directory (`global.quickconnect.to/Serv.php`, `get_server_info`) returns `errno 4` with no sites for the ID.*
+- [x] *External Access* → *DDNS*: no entries (no `*.synology.me`). *Verified 2026-10-20: empty.*
+- [x] *External Access* → *Router Configuration*: no port-forwarding rules. In UniFi, confirm there are no port forwards to `10.0.1.223` and that UPnP is off. In UniFi Network 9.x, check *Settings → Policy Engine → Policy Table*, filtered to Port Forwarding. *Verified 2026-10-20: DSM has never configured the router, Port Forwarding shows (0), and UPnP is off.*
+- [x] *Personal* → *Account* → *Security*: 2FA enabled. *Done 2026-10-20 (authenticator app).* Lockout risk: if the phone is lost, the authenticator app's own backup or sync is the recovery path. Keep that backup on.
+- [x] *Security* → *Protection*: `10.10.20.0/24` allow-listed for auto-block (see Troubleshooting). Enter it as *Subnet*: `10.10.20.0` with mask `255.255.255.0` (DSM rejects CIDR notation in the address field). *Done 2026-10-20.* Trade-off: anything on the cluster subnet is exempt from auto-block, which is why 2FA matters.
+
+**Apply (LAN path):**
+```bash
+just tf unifi apply -target=unifi_dns_record.nas
+kubectl apply -f kubernetes/infrastructure/ingress/synology-nas-ingress.yaml
+```
+
+**Verification:**
+1. Remote: from off-LAN (for example on cellular), `https://nas.bar2sek.com` goes to the Access login. Or use the DoH check in doc 205 to confirm the public records.
+2. LAN: `dig +short A nas.bar2sek.com @10.10.20.1` shows `ingress.home.arpa.` and `10.10.20.50`. `dig +short AAAA nas.bar2sek.com @10.10.20.1` shows no address.
+3. LAN: `curl -s -o /dev/null -w '%{remote_ip} %{http_code}\n' https://nas.bar2sek.com/` prints `10.10.20.50` and a `200`, with no certificate error.
+4. In a browser, log in to DSM and check that File Station and Control Panel open (WebSockets).
+
+**Troubleshooting:**
+- *LAN 502/504 from nginx:* the ingress pods cannot reach `10.0.1.223:5001`. Same firewall check as below, run from the `ingress-nginx` namespace.
+- *DSM auto-block locks everyone out on the LAN path:* DSM sees every LAN client as an ingress pod IP, so failed logins block that IP for all users. Add the cluster node subnet (`10.10.20.0/24`) to DSM → *Control Panel* → *Security* → *Protection* → *Allow/Block List* allow list, or to *Trusted Proxies* if your DSM version offers it.
+- *Cloudflare 502 / 1033:* `cloudflared` pods cannot reach `10.0.1.223:5001`. The cluster VLAN (`10.10.20.0/24`) already reaches the NAS over NFS, so check the UniFi inter-VLAN firewall rules for TCP 5001. Test with `kubectl run -n cloudflare-system nettest --rm -it --image=curlimages/curl -- curl -skI https://10.0.1.223:5001`.
+- *"Invalid host" or redirect loop from DSM:* check DSM → *Control Panel* → *Security* → *Advanced* for HTTP host header and redirect settings.
+- *Large File Station uploads fail:* Cloudflare's free tier caps request size. Use SMB over LAN or Tailscale for bulk transfers.
+
+---
+
 ## 🚨 Emergency Disaster Recovery Runbook (once Phase 5 is live)
 
 Restore from the NAS when offsite access is unavailable. The artifacts are `age`-encrypted, so the offline identity is still required. Full procedure: Backups README, *Restore Runbook*.

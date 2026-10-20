@@ -876,6 +876,19 @@ The milestone entries below record how each of these got here. The section that 
 
 ---
 
+## 🎯 Milestone 38: Synology DSM Behind Cloudflare Access & Split-Horizon (2026-10-20)
+
+- **Problem:** the DSM login (password only, no 2FA) was reachable from the internet through Synology QuickConnect, and there was no friendly URL for the NAS.
+- **Remote path (`infra-cloud-deployments`, `terraform/cloudflare`):** `nas.bar2sek.com` was added as a tunnel ingress rule to `https://10.0.1.223:5001`, with a CNAME and an Access app (Entra ID only, MFA required, 12h session). Plan: 3 added, 1 changed in place.
+- **LAN path:** a local CNAME `nas` → `ingress.home.arpa` (`terraform/unifi/dns.tf`), plus `kubernetes/infrastructure/ingress/synology-nas-ingress.yaml` (a selector-less Service, a manual EndpointSlice and an Ingress). LAN and Tailscale clients get the trusted wildcard cert with no `:5001` port.
+- **DSM hardening:** QuickConnect off, no DDNS, no port forwards or UPnP, 2FA on (Microsoft Authenticator), and `10.10.20.0/24` allow-listed so auto-block can't lock out the ingress source IPs.
+- **Verified:** an anonymous request to the remote URL gets a `302` to Access. On the LAN, `A` returns `10.10.20.50` and `AAAA` returns no address, and `curl` returns `200` with a valid cert. The QuickConnect directory returns `errno 4` for the ID.
+- **Found:** on the LAN, `omni`, `ceph` and `grafana` bypass Access by design (split-horizon), so each app's own login is the only gate there. Also, Microsoft Authenticator on iOS shows no Backup setting (an open issue in 2026 Microsoft Q&A threads); see backlog.
+- **Correction:** remote NAS access still depends on the cluster, because `cloudflared` runs in it. If the cluster is down, use `https://10.0.1.223:5001` on the LAN.
+- Details: *Remote Web Access* in [[307-garage-synology-dr-time-machine|docs/307]].
+
+---
+
 ## 🎯 Immediate Next Actions & Infrastructure Backlog
 
 > [!NOTE]
@@ -888,4 +901,6 @@ The milestone entries below record how each of these got here. The section that 
    - Codify automated rsync / CSI snapshot mirror from Ceph bulk volumes to Synology `bulk-media-mirror`.
 3. **Bootstrap Terraform State to a Remote Backend (deferred, risk accepted 2026-10-19)**:
    - `bootstrap/{aws,github,azure}` and `terraform/unifi` keep local state in the Drive-synced vault. That state holds plaintext secrets, the worst being the Azure root's private key and client secret. The plan is a dedicated admin-only S3 bucket with SSE-KMS. The CI state bucket must not be reused, because pull-request plan jobs can read every object in it. Findings and the migration plan: *Known Risk: Bootstrap State* in [[409-github-cloud-oidc-gitops|docs/409]].
+4. **DSM 2FA Recovery Path (deferred, risk accepted 2026-10-20)**:
+   - DSM 2FA lives only in Microsoft Authenticator on one phone, and the app's iCloud Backup setting is missing. Losing the phone would lock out the DSM admin. Options: a break-glass second DSM admin with a long random password in the password manager (preferred, no Microsoft dependency); or re-enrol 2FA and scan the QR code into a second TOTP app too. Retry the Authenticator backup after app updates.
 

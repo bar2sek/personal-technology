@@ -13,7 +13,7 @@ aliases:
 
 # Split-Horizon DNS: Closing the IPv6 (AAAA) Leak
 
-Internal clients reach `omni`, `ceph`, `grafana` and `auth` (`*.bar2sek.com`) over the LAN, using local DNS records on the UDM-Pro (`terraform/unifi/dns.tf`). Those names **also exist publicly** in Cloudflare (proxied / tunnel records). This note explains why that combination leaked IPv6 traffic to Cloudflare, how it is fixed, and the rule for adding new names.
+Internal clients reach `omni`, `ceph`, `grafana`, `auth` and `nas` (`*.bar2sek.com`) over the LAN, using local DNS records on the UDM-Pro (`terraform/unifi/dns.tf`). Those names **also exist publicly** in Cloudflare (proxied / tunnel records). This note explains why that combination leaked IPv6 traffic to Cloudflare, how it is fixed, and the rule for adding new names.
 
 ## The problem (until 2026-10-19)
 
@@ -49,6 +49,7 @@ graph LR
 | `ceph.bar2sek.com` | CNAME | `ingress.home.arpa` → `10.10.20.50` |
 | `grafana.bar2sek.com` | CNAME | `ingress.home.arpa` → `10.10.20.50` |
 | `auth.bar2sek.com` | CNAME | `ingress.home.arpa` → `10.10.20.50` |
+| `nas.bar2sek.com` | CNAME | `ingress.home.arpa` → `10.10.20.50` (nginx proxies to Synology DSM, see [[307-garage-synology-dr-time-machine#Remote Web Access]]) |
 
 Why this works and is safe:
 
@@ -75,7 +76,7 @@ Names that have **no** public record (`gaming`, `printer`, `printing`, `k8s`) st
 From any LAN or Tailscale client:
 
 ```bash
-for n in omni ceph grafana auth; do
+for n in omni ceph grafana auth nas; do
   h=$n.bar2sek.com
   echo "$h  A=$(dig +short A $h @10.10.20.1 | tr '\n' ' ')  AAAA=$(dig +short AAAA $h @10.10.20.1 | grep ':')"
 done

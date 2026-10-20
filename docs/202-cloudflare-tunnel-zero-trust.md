@@ -55,6 +55,7 @@ All public web services are routed via Cloudflare Tunnels using CNAME DNS record
 | Subdomain | App / Target Service | Internal Target | Cloudflare Access Protected? |
 | :--- | :--- | :--- | :--- |
 | `tesla.bar2sek.com` | TeslaMate Analytics | `http://teslamate.teslamate:4000` | **Yes** (Cloudflare Zero Trust Access - Admin) |
+| `nas.bar2sek.com` | Synology DSM web UI (see [[307-garage-synology-dr-time-machine#Remote Web Access]]; LAN clients bypass the tunnel via split-horizon DNS) | `https://10.0.1.223:5001` | **Yes** (Cloudflare Zero Trust Access - Admin) |
 | `grafana.bar2sek.com` | Cluster Grafana | `https://ingress-nginx-controller.ingress-nginx:443` | **Yes** (Cloudflare Zero Trust Access - Admin) |
 | `omni.bar2sek.com` | Sidero Omni Console | `https://10.10.10.5:443` | **Yes** (Cloudflare Zero Trust Access - Admin) |
 | `ceph.bar2sek.com` | Ceph Dashboard | `https://ingress-nginx-controller.ingress-nginx:443` | **Yes** (Cloudflare Zero Trust Access - Admin) |

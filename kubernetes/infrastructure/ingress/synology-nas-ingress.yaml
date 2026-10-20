@@ -1,0 +1,59 @@
+# LAN path for nas.bar2sek.com (split-horizon DNS → ingress VIP → Synology DSM).
+# The NAS lives outside the cluster, so the Service has no selector and a
+# manual EndpointSlice points it at DSM's HTTPS port. ingress-nginx serves the
+# *.bar2sek.com wildcard cert; DSM's self-signed cert is not verified upstream.
+# Remote access does not use this: the Cloudflare tunnel targets the NAS directly.
+# Runbook: docs/307-garage-synology-dr-time-machine.md (Remote Web Access)
+apiVersion: v1
+kind: Service
+metadata:
+  name: synology-dsm
+  namespace: ingress-nginx
+spec:
+  ports:
+    - name: https
+      port: 5001
+      targetPort: 5001
+      protocol: TCP
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: synology-dsm-1
+  namespace: ingress-nginx
+  labels:
+    kubernetes.io/service-name: synology-dsm
+addressType: IPv4
+ports:
+  - name: https
+    port: 5001
+    protocol: TCP
+endpoints:
+  - addresses:
+      - 10.0.1.223
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: synology-dsm-ingress
+  namespace: ingress-nginx
+  annotations:
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+    # File Station uploads over the LAN (Cloudflare caps remote uploads anyway)
+    nginx.ingress.kubernetes.io/proxy-body-size: "4g"
+    nginx.ingress.kubernetes.io/proxy-request-buffering: "off"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: nas.bar2sek.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: synology-dsm
+                port:
+                  number: 5001

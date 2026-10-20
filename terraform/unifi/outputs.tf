@@ -73,6 +73,11 @@ output "local_dns_auth" {
   description = "Local split-horizon DNS record for Authentik"
 }
 
+output "local_dns_nas" {
+  value       = "${unifi_dns_record.nas.name} -> ${unifi_dns_record.nas.value}"
+  description = "Local split-horizon DNS record for Synology DSM (via ingress-nginx)"
+}
+
 output "local_dns_printer" {
   value       = "${unifi_dns_record.printer.name} -> ${unifi_dns_record.printer.value}"
   description = "Local split-horizon DNS record for Brother DCP-7065DN Printer"

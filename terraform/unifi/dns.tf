@@ -59,6 +59,15 @@ resource "unifi_dns_record" "auth" {
   ttl         = "300s"
 }
 
+# Synology DSM: ingress-nginx terminates the wildcard cert and proxies to the
+# NAS (kubernetes/infrastructure/ingress/synology-nas-ingress.yaml).
+resource "unifi_dns_record" "nas" {
+  name        = "nas.${var.public_domain}"
+  record_type = "CNAME"
+  value       = unifi_dns_record.ingress_target.name
+  ttl         = "300s"
+}
+
 # --- Local-only names (no public record, so no IPv6 leak) ---
 
 resource "unifi_dns_record" "gaming" {
