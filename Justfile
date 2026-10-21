@@ -295,15 +295,26 @@ bazzite-restart:
     virtctl restart --force --grace-period=0 bazzite-gaming-vm -n vms
 
 # ------------------------------------------------------------------------------
-# 5. Workstation Management (nix-darwin)
+# 5. Workstation Management (nix-darwin + home-manager)
 # ------------------------------------------------------------------------------
 
-# Rebuild and apply the active nix-darwin configuration
-switch:
+# Sync canonical templates from nix-mac/templates into ~/.config/nix-darwin
+sync:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    TPL="{{justfile_directory()}}/nix-mac/templates"
+    mkdir -p "$HOME/.config/nix-darwin"
+    cp "$TPL/flake.nix" "$TPL/darwin.nix" "$TPL/home.nix" "$TPL/Justfile" "$TPL/p10k.zsh" "$TPL/flake.lock" "$HOME/.config/nix-darwin/"
+    echo "✅ Synced nix-mac/templates -> ~/.config/nix-darwin/"
+
+# Sync templates, rebuild, and apply the active nix-darwin + home-manager configuration
+switch: sync
     sudo -H darwin-rebuild switch --flake ~/.config/nix-darwin#MacBook-Pro
 
-# Update nix flake lockfile to latest package versions and rebuild
-update:
+# Update nix flake lockfile, sync it back to nix-mac/templates, and rebuild
+update: sync
     nix flake update --flake ~/.config/nix-darwin
+    cp ~/.config/nix-darwin/flake.lock "{{justfile_directory()}}/nix-mac/templates/flake.lock"
+    @echo "✅ Synced updated flake.lock -> nix-mac/templates/flake.lock"
     sudo -H darwin-rebuild switch --flake ~/.config/nix-darwin#MacBook-Pro
 
