@@ -8,7 +8,9 @@ discoveryDaemonInterval: 60m
 # Resources for the operator pod
 resources:
   limits:
-    cpu: 500m
+    # Averages ~25m but reconciles in short bursts; 500m tripped CPUThrottlingHigh
+    # (CFS throttles any 100ms window over the limit). 1000m matches the Ceph cluster spec.
+    cpu: 1000m
     memory: 512Mi
   requests:
     cpu: 200m
