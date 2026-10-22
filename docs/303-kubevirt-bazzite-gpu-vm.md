@@ -474,7 +474,7 @@ Used for the Wave 3b reinstall, which wiped the Sabrent. Stop the VM, then copy 
 | Preference | Approach | Notes |
 | :--- | :--- | :--- |
 | 1 | CPU in the cluster | Always available; the fallback for everything |
-| 2 | **GPU service inside Bazzite** | First user: Immich ML (see [[504-immich-photo-backup\|Immich plan]], D6). Ollama would follow the same pattern. Managed by `ansible/playbooks/configure-bazzite-vm.yml`, not by hand |
+| 2 | **GPU service inside Bazzite** | First user: Immich ML (see [[504-immich-photo-backup\|Immich plan]], D6). Planned next: **Ollama** (ClusterIP Service `ollama` in `vms`, port 11434) serving Frigate's GenAI descriptions and Home Assistant's Assist agent (see [[507-frigate-nvr-cameras\|Frigate plan]], Phase 2b). Managed by `ansible/playbooks/configure-bazzite-vm.yml`, not by hand |
 | 3 | Second GPU for the cluster | Last resort (purchase); e.g. Intel Arc in `pc-node-04` |
 
 **Trade-offs to remember:**

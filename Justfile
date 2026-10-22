@@ -175,6 +175,31 @@ gha-runners-status:
     @echo "===> Runner pods (arc-runners):"
     kubectl -n arc-runners get pods
 
+# Needs Secret frigate/frigate-cameras first (frigate-secrets.example.yaml).
+# Deploy Frigate: manifests, then the ConfigMap from config.yml (docs/507)
+frigate-apply:
+    kubectl apply -f kubernetes/apps/frigate/frigate.yaml
+    kubectl -n frigate create configmap frigate-config \
+      --from-file=config.yml=kubernetes/apps/frigate/config.yml \
+      --dry-run=client -o yaml | kubectl apply -f -
+    kubectl -n frigate rollout restart deploy/frigate
+    kubectl -n frigate rollout status deploy/frigate --timeout=5m
+
+# Refuses if a camera token appears in plain text instead of {FRIGATE_*}.
+# Copy the live Frigate config (after UI edits to zones/masks) back into git
+frigate-config-pull:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    TMP=$(mktemp)
+    trap 'rm -f "$TMP"' EXIT
+    kubectl -n frigate exec deploy/frigate -c frigate -- cat /config/config.yml > "$TMP"
+    if grep -E ':7441/[^{"[:space:]]' "$TMP"; then
+      echo "A Protect token is in plain text above; fix it in the UI before pulling." >&2
+      exit 1
+    fi
+    mv "$TMP" kubernetes/apps/frigate/config.yml
+    git diff --stat -- kubernetes/apps/frigate/config.yml
+
 # ------------------------------------------------------------------------------
 # 3. Terraform Infrastructure as Code
 # ------------------------------------------------------------------------------

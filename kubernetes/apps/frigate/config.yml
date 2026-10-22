@@ -1,0 +1,80 @@
+mqtt:
+  enabled: false # Phase 3: Home Assistant + Mosquitto
+
+# Tailscale terminates TLS; 8971 serves plain HTTP with Frigate's login.
+# Port 5000 is unauthenticated and must stay cluster-internal.
+tls:
+  enabled: false
+auth:
+  enabled: true
+
+database:
+  path: /config/frigate.db
+
+# OpenVINO on CPU: no accelerator needed for one camera at 5 fps on the
+# 3800X. Phase 2 measures whether that holds as cameras are added (docs/507).
+detectors:
+  ov:
+    type: openvino
+    device: CPU
+model:
+  width: 300
+  height: 300
+  input_tensor: nhwc
+  input_pixel_format: bgr
+  path: /openvino-model/ssdlite_mobilenet_v2.xml
+  labelmap_path: /openvino-model/coco_91cl_bkgr.txt
+
+# go2rtc holds one connection per stream to the UDM-Pro and fans it out to
+# Frigate's recorder, detector and the live view. rtspx:// = RTSPS without
+# certificate verification (Protect uses a self-signed cert on :7441).
+go2rtc:
+  streams:
+    cam01:
+      - "rtspx://10.0.1.1:7441/{FRIGATE_CAM01_HIGH_TOKEN}"
+    cam01_sub:
+      - "rtspx://10.0.1.1:7441/{FRIGATE_CAM01_LOW_TOKEN}"
+
+record:
+  enabled: true
+  continuous:
+    days: 3
+  motion:
+    days: 7
+  alerts:
+    retain:
+      days: 30
+  detections:
+    retain:
+      days: 14
+
+snapshots:
+  enabled: true
+  retain:
+    default: 30
+
+objects:
+  track:
+    - person
+    - car
+    - dog
+    - cat
+
+cameras:
+  cam01:
+    ffmpeg:
+      output_args:
+        record: preset-record-ubiquiti
+      inputs:
+        # Main stream is copied to disk untouched (no decode); only the
+        # small sub stream is decoded for detection.
+        - path: rtsp://127.0.0.1:8554/cam01
+          input_args: preset-rtsp-restream
+          roles: [record]
+        - path: rtsp://127.0.0.1:8554/cam01_sub
+          input_args: preset-rtsp-restream
+          roles: [detect]
+    detect:
+      width: 640
+      height: 360
+      fps: 5

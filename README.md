@@ -85,6 +85,7 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 - [504 - Immich Self-Hosted Photo & Video Backup Platform (Decommissioned)](docs/504-immich-photo-backup.md)
 - [505 - Home Assistant Smart Home & IoT Automation Platform](docs/505-home-assistant-smart-home.md)
 - [506 - In-Cluster CUPS Network Print Server & AirPrint Bridge](docs/506-cups-airprint-bridge.md)
+- [507 - Frigate NVR: Local Cameras & Object Detection (Planned)](docs/507-frigate-nvr-cameras.md)
 
 ### 💻 Section 6: Mac AI Workstation Architecture & USB Bootstrap
 - [Workstation Map of Content](nix-mac/Index.md) — Master Workstation Index & Navigation

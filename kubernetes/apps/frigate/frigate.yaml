@@ -1,0 +1,188 @@
+# ==============================================================================
+# Frigate NVR: local camera recording + object detection (docs/507)
+# ==============================================================================
+# Phase 1: one UniFi Protect camera (restreamed from the UDM-Pro), OpenVINO
+# detection on CPU, recordings on the erasure-coded HDD pool. Reached only over
+# the tailnet (Tailscale Ingress at the bottom). Camera tokens come from the
+# Secret `frigate-cameras` (frigate-secrets.example.yaml), never committed.
+#
+# Config ownership: config.yml next to this file is the source of truth.
+# `just frigate-apply` loads it into the ConfigMap `frigate-config`, and the
+# init container copies it over /config/config.yml on every pod start, so edits
+# made in Frigate's Settings UI survive only until the next restart. After
+# tuning zones/masks in the UI, run `just frigate-config-pull` and commit.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: frigate
+  labels:
+    # Frigate's s6 init runs as root, so `restricted` is out. Nothing here is
+    # privileged; an accelerator, if Phase 2 calls for one, comes via a device plugin.
+    pod-security.kubernetes.io/enforce: baseline
+---
+# Config + SQLite event database: small, latency-sensitive, SSD pool.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: frigate-config
+  namespace: frigate
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: rook-ceph-block
+  resources:
+    requests:
+      storage: 5Gi
+---
+# Recordings, clips, snapshots: large sequential writes, EC 2+1 HDD pool
+# (1.5x overhead, survives one host down). Thin-provisioned, so this is a cap,
+# not an allocation; Frigate deletes the oldest footage when space runs low.
+# Exception to the docs/104 "never the only copy" rule for the HDD tier,
+# accepted because footage ages out by design (docs/507).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: frigate-media
+  namespace: frigate
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: rook-ceph-hdd-ec
+  resources:
+    requests:
+      storage: 2Ti
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frigate
+  namespace: frigate
+spec:
+  replicas: 1
+  # RWO volumes: stop the old pod before starting the new one
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: frigate
+  template:
+    metadata:
+      labels:
+        app: frigate
+    spec:
+      automountServiceAccountToken: false
+      # Most idle CPU in the cluster, and where any Phase 2 accelerator goes.
+      # The 4070 on pc-node-05 stays with the VM (GenAI extras only, Phase 2b).
+      nodeSelector:
+        kubernetes.io/hostname: pc-node-04
+      initContainers:
+        - name: seed-config
+          image: ghcr.io/blakeblackshear/frigate:0.18.2@sha256:fd60f99ffd4eb6c42360ed4e14953e270586f239309ab3983e55b2e97ffac09a
+          command: ["sh", "-c", "cp /seed/config.yml /config/config.yml"]
+          volumeMounts:
+            - name: seed
+              mountPath: /seed
+              readOnly: true
+            - name: config
+              mountPath: /config
+      containers:
+        - name: frigate
+          image: ghcr.io/blakeblackshear/frigate:0.18.2@sha256:fd60f99ffd4eb6c42360ed4e14953e270586f239309ab3983e55b2e97ffac09a
+          env:
+            - name: TZ
+              value: "America/Chicago"
+          envFrom:
+            - secretRef:
+                name: frigate-cameras
+          ports:
+            - containerPort: 8971
+              name: http-auth
+            - containerPort: 5000
+              name: http-internal
+            - containerPort: 8554
+              name: rtsp
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: media
+              mountPath: /media/frigate
+            - name: cache
+              mountPath: /tmp/cache
+            - name: shm
+              mountPath: /dev/shm
+          startupProbe:
+            httpGet:
+              path: /api/version
+              port: http-internal
+            periodSeconds: 10
+            failureThreshold: 30
+          livenessProbe:
+            httpGet:
+              path: /api/version
+              port: http-internal
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 1000m
+              memory: 1Gi
+            # Memory-backed emptyDirs (cache, shm) count against this limit.
+            limits:
+              cpu: 4000m
+              memory: 4Gi
+      volumes:
+        - name: seed
+          configMap:
+            name: frigate-config
+        - name: config
+          persistentVolumeClaim:
+            claimName: frigate-config
+        - name: media
+          persistentVolumeClaim:
+            claimName: frigate-media
+        # Recording segments land here first, then move to /media in one write.
+        - name: cache
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Gi
+        # Decoded detect frames; ~30 MiB per 640x360 camera, sized for ~8.
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frigate
+  namespace: frigate
+spec:
+  selector:
+    app: frigate
+  ports:
+    - port: 8971
+      targetPort: http-auth
+      name: http-auth
+    # For Home Assistant's Frigate integration and the go2rtc restream
+    # (Phase 3); cluster-internal only.
+    - port: 5000
+      targetPort: http-internal
+      name: http-internal
+    - port: 8554
+      targetPort: rtsp
+      name: rtsp
+---
+# Tailnet-only HTTPS as frigate.tail6e33.ts.net (same pattern as ntfy).
+# Points at the authenticated port only.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: frigate
+  namespace: frigate
+spec:
+  ingressClassName: tailscale
+  defaultBackend:
+    service:
+      name: frigate
+      port:
+        name: http-auth
+  tls:
+    - hosts:
+        - frigate

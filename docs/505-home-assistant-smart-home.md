@@ -28,6 +28,10 @@ Running Home Assistant inside our Talos cluster unlocks incredible cross-applica
    - *Example Automation*: *"When all phones leave home Wi-Fi, turn off lights, set HVAC to eco mode, and arm cameras."*
 3. **Mealie Integration**:
    - Displays tonight's planned meal and recipe instructions on wall-mounted smart home dashboards or TV screens.
+4. **Frigate NVR + Local AI (planned)**:
+   - Camera entities, per-zone occupancy sensors and snapshot notifications from [[507-frigate-nvr-cameras|Frigate]] over MQTT.
+   - The Ollama server on the Bazzite VM's RTX 4070 doubles as Home Assistant's Assist **conversation agent**, with a cloud-agent pipeline as the fallback when the VM is off.
+   - *Example Automation*: *"When a person is in the porch zone after dark, turn on the porch light and send the AI summary of the event to my phone."*
 
 ---
 
