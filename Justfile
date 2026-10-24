@@ -200,6 +200,182 @@ frigate-config-pull:
     mv "$TMP" kubernetes/apps/frigate/config.yml
     git diff --stat -- kubernetes/apps/frigate/config.yml
 
+# Asks before each irreversible step; LAB_YES=1 skips the prompts.
+# Cold-stop the whole cluster: silence, stop apps, freeze Ceph, power off (docs/112)
+lab-down:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    REPLICAS=homelab.bar2sek.com/lab-down-replicas
+    SUSPENDED=homelab.bar2sek.com/lab-down-suspended
+    ceph() { kubectl -n rook-ceph exec deploy/rook-ceph-tools -- ceph "$@"; }
+    am() { kubectl -n monitoring exec alertmanager-kube-prometheus-stack-alertmanager-0 -c alertmanager -- amtool --alertmanager.url=http://localhost:9093 "$@"; }
+    step() { printf '\n===> %s\n' "$*"; }
+    confirm() {
+      [[ ${LAB_YES:-} == 1 ]] && return 0
+      read -rp "$1 [y/N] " a
+      [[ $a == [yY] ]] || { echo "Stopped here; earlier steps stay done (just lab-up undoes them)." >&2; exit 1; }
+    }
+
+    step "1/8 Pre-checks"
+    HEALTH=$(ceph health)
+    echo "Ceph: $HEALTH"
+    kubectl get nodes
+    # Node IPs now: once the control plane is down, kubectl can't answer.
+    ips() { kubectl get nodes -l "$1" -o jsonpath='{range .items[*]}{.status.addresses[?(@.type=="InternalIP")].address}{" "}{end}'; }
+    WORKERS=$(ips '!node-role.kubernetes.io/control-plane')
+    CONTROL=$(ips 'node-role.kubernetes.io/control-plane')
+    echo "Workers: $WORKERS"
+    echo "Control plane: $CONTROL"
+    [[ $HEALTH == HEALTH_OK* ]] || confirm "Ceph is not HEALTH_OK. Continue anyway?"
+    confirm "Power down the whole cluster?"
+
+    step "2/8 Silencing all alerts until lab-up (30 days max)"
+    am silence add --duration=30d --comment=lab-down 'alertname=~".+"'
+
+    step "3/8 Stopping the gaming VM (if running)"
+    if kubectl -n vms get vmi bazzite-gaming-vm >/dev/null 2>&1; then
+      virtctl stop bazzite-gaming-vm -n vms
+      kubectl -n vms wait --for=delete vmi/bazzite-gaming-vm --timeout=5m
+    else
+      echo "Not running."
+    fi
+
+    step "4/8 Suspending CronJobs (one catch-up run each after lab-up)"
+    kubectl get cronjobs -A -o json \
+      | jq -r '.items[] | select(.spec.suspend != true) | "\(.metadata.namespace) \(.metadata.name)"' \
+      | while read -r ns name; do
+          kubectl -n "$ns" annotate cronjob "$name" "$SUSPENDED=true" --overwrite >/dev/null
+          kubectl -n "$ns" patch cronjob "$name" --type merge -p '{"spec":{"suspend":true}}'
+        done
+
+    step "5/8 Scaling every workload with a Ceph volume to 0"
+    # Pods (not Jobs or VMs) mounting a rook-ceph PVC -> the object that owns
+    # their replica count: Deployment, StatefulSet, or for operator-managed
+    # StatefulSets the Prometheus/Alertmanager resource above them.
+    PVCS=$(kubectl get pvc -A -o json | jq -c '[.items[] | select((.spec.storageClassName // "") | startswith("rook-ceph")) | "\(.metadata.namespace)/\(.metadata.name)"]')
+    TARGETS=$(kubectl get pods -A -o json | jq -r --argjson pvcs "$PVCS" '
+        .items[] | .metadata.namespace as $ns
+        | select(any(.spec.volumes[]?; .persistentVolumeClaim.claimName as $c | $c != null and ($pvcs | index("\($ns)/\($c)")) != null))
+        | (.metadata.ownerReferences // [])[0]
+        | select(. != null and (.kind == "ReplicaSet" or .kind == "StatefulSet"))
+        | "\($ns) \(.kind)/\(.name)"' | sort -u \
+      | while read -r ns obj; do
+          owner=$(kubectl -n "$ns" get "$obj" -o jsonpath='{.metadata.ownerReferences[0].kind}/{.metadata.ownerReferences[0].name}')
+          [[ $owner == / ]] && owner=$obj
+          echo "$ns $owner"
+        done | sort -u)
+    echo "$TARGETS"
+    while read -r ns obj; do
+      [[ -z $ns ]] && continue
+      n=$(kubectl -n "$ns" get "$obj" -o jsonpath='{.spec.replicas}')
+      kubectl -n "$ns" annotate "$obj" "$REPLICAS=${n:-1}" --overwrite >/dev/null
+      case ${obj%%/*} in
+        Deployment|StatefulSet|ReplicaSet) kubectl -n "$ns" scale "$obj" --replicas=0 ;;
+        *) kubectl -n "$ns" patch "$obj" --type merge -p '{"spec":{"replicas":0}}' ;;
+      esac
+    done <<< "$TARGETS"
+
+    echo "Waiting for Ceph volumes to detach..."
+    attached() { kubectl get volumeattachments -o json | jq '[.items[] | select(.spec.attacher | startswith("rook-ceph"))] | length'; }
+    for _ in $(seq 60); do
+      n=$(attached)
+      [[ $n == 0 ]] && break
+      echo "  $n still attached"
+      sleep 10
+    done
+    [[ $(attached) == 0 ]] || confirm "Ceph volumes still attached after 10 min. Continue anyway?"
+
+    step "6/8 Freezing Ceph and pausing the Rook operator"
+    # The operator would otherwise fail over the monitor of any node that is
+    # slow to come back (10 min) during lab-up.
+    for f in noout norebalance nobackfill norecover; do ceph osd set "$f"; done
+    kubectl -n rook-ceph scale deploy/rook-ceph-operator --replicas=0
+
+    step "7/8 Powering off workers: $WORKERS"
+    confirm "Last check before nodes go off. Proceed?"
+    # --force skips cordon/drain: the apps are already stopped, and a drain
+    # needs the API server, which disappears with the control plane.
+    for ip in $WORKERS; do talosctl -n "$ip" shutdown --force; done
+
+    step "8/8 Powering off control plane: $CONTROL"
+    for ip in $CONTROL; do talosctl -n "$ip" shutdown --force; done
+
+    printf '\nCluster is off. Network, omni-server and the Synology stay on.\nStart it again with: just lab-up\n'
+
+# Cold-start the cluster after lab-down: wait for nodes, thaw Ceph, restore apps
+lab-up:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    REPLICAS=homelab.bar2sek.com/lab-down-replicas
+    SUSPENDED=homelab.bar2sek.com/lab-down-suspended
+    ceph() { kubectl -n rook-ceph exec deploy/rook-ceph-tools -- ceph "$@"; }
+    am() { kubectl -n monitoring exec alertmanager-kube-prometheus-stack-alertmanager-0 -c alertmanager -- amtool --alertmanager.url=http://localhost:9093 "$@"; }
+    step() { printf '\n===> %s\n' "$*"; }
+    # wait_for <seconds> <what> <command...>: poll every 10 s until it succeeds
+    wait_for() {
+      local limit=$1 what=$2 t=0; shift 2
+      until "$@" >/dev/null 2>&1; do
+        (( t >= limit )) && { echo "Timed out after ${limit}s waiting for $what" >&2; return 1; }
+        sleep 10; t=$((t + 10)); echo "  waiting for $what (${t}s)"
+      done
+    }
+    START=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+    step "1/6 Power on the nodes"
+    echo "Control plane first: sm-node-01..03 (IPMI https://10.10.10.11-13 or the power button),"
+    echo "then pc-node-04 and pc-node-05. This waits for them."
+    wait_for 1800 "the Kubernetes API" kubectl get --raw /readyz
+
+    step "2/6 Waiting for every node to report Ready"
+    # Status left over from before the shutdown can still say Ready, so require
+    # a heartbeat newer than the start of this recipe.
+    fresh() {
+      kubectl get nodes -o json | jq -e --arg t "$START" \
+        'all(.items[]; any(.status.conditions[]; .type == "Ready" and .status == "True" and .lastHeartbeatTime > $t))'
+    }
+    wait_for 1800 "all nodes Ready" fresh
+    kubectl get nodes
+
+    step "3/6 Resuming the Rook operator; waiting for every OSD"
+    kubectl -n rook-ceph scale deploy/rook-ceph-operator --replicas=1
+    wait_for 600 "the Ceph toolbox" kubectl -n rook-ceph exec deploy/rook-ceph-tools -- ceph -s
+    osds_up() { ceph osd stat -f json | jq -e '.num_osds > 0 and .num_up_osds == .num_osds'; }
+    wait_for 1200 "all OSDs up" osds_up
+    ceph osd stat
+
+    step "4/6 Thawing Ceph; waiting for all PGs active+clean"
+    for f in norecover nobackfill norebalance noout; do ceph osd unset "$f"; done
+    clean() { ceph pg stat -f json | jq -e '.pg_summary | .num_pgs == ([.num_pg_by_state[] | select(.name == "active+clean") | .num] | add // 0)'; }
+    wait_for 1800 "all PGs active+clean" clean
+    ceph health
+
+    step "5/6 Restoring workloads and CronJobs"
+    for kind in deployments statefulsets replicasets prometheuses.monitoring.coreos.com alertmanagers.monitoring.coreos.com; do
+      kubectl get "$kind" -A -o json \
+        | jq -r --arg a "$REPLICAS" '.items[] | select(.metadata.annotations[$a] != null) | "\(.metadata.namespace) \(.kind)/\(.metadata.name) \(.metadata.annotations[$a])"'
+    done | while read -r ns obj n; do
+      case ${obj%%/*} in
+        Deployment|StatefulSet|ReplicaSet) kubectl -n "$ns" scale "$obj" --replicas="$n" ;;
+        *) kubectl -n "$ns" patch "$obj" --type merge -p "{\"spec\":{\"replicas\":$n}}" ;;
+      esac
+      kubectl -n "$ns" annotate "$obj" "$REPLICAS-" >/dev/null
+    done
+    kubectl get cronjobs -A -o json \
+      | jq -r --arg a "$SUSPENDED" '.items[] | select(.metadata.annotations[$a] != null) | "\(.metadata.namespace) \(.metadata.name)"' \
+      | while read -r ns name; do
+          kubectl -n "$ns" patch cronjob "$name" --type merge -p '{"spec":{"suspend":false}}'
+          kubectl -n "$ns" annotate cronjob "$name" "$SUSPENDED-" >/dev/null
+        done
+
+    step "6/6 Expiring the lab-down alert silence"
+    wait_for 600 "Alertmanager" kubectl -n monitoring wait --for=condition=Ready pod/alertmanager-kube-prometheus-stack-alertmanager-0 --timeout=10s
+    IDS=$(am silence query -o json | jq -r '.[] | select(.comment == "lab-down") | .id')
+    if [[ -n $IDS ]]; then am silence expire $IDS; else echo "None found."; fi
+
+    printf '\nPods not Running/Completed (should settle within a few minutes):\n'
+    kubectl get pods -A --no-headers | grep -vE 'Running|Completed' || echo "  none"
+    printf '\nCluster is up. The gaming VM stays off: just bazzite-start\n'
+
 # ------------------------------------------------------------------------------
 # 3. Terraform Infrastructure as Code
 # ------------------------------------------------------------------------------
@@ -318,6 +494,16 @@ bazzite-ping:
 # Force restart frozen Bazzite Gaming VM via KubeVirt
 bazzite-restart:
     virtctl restart --force --grace-period=0 bazzite-gaming-vm -n vms
+
+# Start the gaming VM (runStrategy Manual: nothing starts it automatically)
+bazzite-start:
+    virtctl start bazzite-gaming-vm -n vms
+    until kubectl -n vms get vmi bazzite-gaming-vm >/dev/null 2>&1; do sleep 2; done
+    kubectl -n vms wait --for=condition=Ready vmi/bazzite-gaming-vm --timeout=10m
+
+# Shut the gaming VM down (ACPI power-off from inside the guest)
+bazzite-stop:
+    virtctl stop bazzite-gaming-vm -n vms
 
 # ------------------------------------------------------------------------------
 # 5. Workstation Management (nix-darwin + home-manager)

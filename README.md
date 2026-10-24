@@ -51,6 +51,7 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 - [109 - Phase 4: UPS Power Resiliency & Network UPS Tools (NUT) Monitoring](docs/109-ups-power-monitoring-nut.md)
 - [110 - Moving Talos /var off the SuperDOMs & Storage Reshuffle](docs/110-ephemeral-var-migration.md)
 - [111 - Storage Reshuffle Hardware Checklist](docs/111-storage-reshuffle-hardware-checklist.md)
+- [112 - Cluster Cold Stop & Start (Weekend Lab Mode)](docs/112-cluster-cold-stop-start.md)
 
 ### 🌐 Section 2: UniFi Networking & Infrastructure
 - [201 - UniFi Physical Cabling & Logical Topology Diagrams](docs/201-unifi-network-topology.md)

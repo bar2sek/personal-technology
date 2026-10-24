@@ -149,7 +149,7 @@ metadata:
     app: bazzite-gaming
     special: bazzite-gaming
 spec:
-  runStrategy: Always
+  runStrategy: Manual # on demand since 2026-10-24: just bazzite-start / bazzite-stop
   template:
     metadata:
       labels:
@@ -467,7 +467,7 @@ Used for the Wave 3b reinstall, which wiped the Sabrent. Stop the VM, then copy 
 ## 🧠 GPU Ownership & Bazzite as a GPU Server
 
 > [!IMPORTANT]
-> **The RTX 4070 belongs to this VM only.** `vfio-pci.ids` in `talos/patches/gpu-worker.yaml` binds the card to `vfio-pci` at boot, so the NVIDIA driver never loads on Talos and no pod can request the GPU. The VM's `runStrategy: Always` means it holds the card permanently. The `nvidia.com/gpu.present` node labels in the same patch only describe the hardware; there is no device plugin offering the GPU to pods.
+> **The RTX 4070 belongs to this VM only.** `vfio-pci.ids` in `talos/patches/gpu-worker.yaml` binds the card to `vfio-pci` at boot, so the NVIDIA driver never loads on Talos and no pod can request the GPU. The VM holds the card whenever it runs. Since 2026-10-24 its `runStrategy` is `Manual`: it runs only when started (`just bazzite-start`), and stays off after a cluster cold start ([[112-cluster-cold-stop-start|weekend lab mode]]), so GPU services inside it are on demand too. The `nvidia.com/gpu.present` node labels in the same patch only describe the hardware; there is no device plugin offering the GPU to pods.
 
 **Direction (decided 2026-10-20):** when a cluster app needs GPU compute, the **Bazzite VM serves it**, rather than moving the card or buying hardware. The VM already has the NVIDIA driver and CUDA, so a GPU workload runs as a container inside the guest (Podman on Bazzite). It's exposed to the cluster with a Kubernetes Service, the same way Sunshine is exposed. Clients must fall back to a CPU path when the VM is off.
 
@@ -500,7 +500,7 @@ Used for the Wave 3b reinstall, which wiped the Sabrent. Stop the VM, then copy 
      ```
 
 ### Frozen VM / Unresponsive Guest OS or Moonlight Stream
-* **Root Cause**: If the desktop compositor (KDE Plasma/Wayland), graphics driver, or guest kernel locks up, the Moonlight stream freezes and network timeouts occur on `10.10.20.52`. Because the VM is managed by KubeVirt with `spec.runStrategy: Always`, a forced restart can be commanded immediately from the host or Mac.
+* **Root Cause**: If the desktop compositor (KDE Plasma/Wayland), graphics driver, or guest kernel locks up, the Moonlight stream freezes and network timeouts occur on `10.10.20.52`. Because the VM is managed by KubeVirt, a forced restart can be commanded immediately from the host or Mac.
 * **Resolution**:
   1. **One-Liner Fast Restart (`virtctl` or `just`)**:
      ```bash

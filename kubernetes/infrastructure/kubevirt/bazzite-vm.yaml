@@ -7,7 +7,9 @@ metadata:
     app: bazzite-gaming
     special: bazzite-gaming
 spec:
-  runStrategy: Always
+  # On demand (2026-10-24): KubeVirt never starts or restarts it on its own,
+  # including after a cluster cold start. `just bazzite-start` / `bazzite-stop`.
+  runStrategy: Manual
   template:
     metadata:
       labels:

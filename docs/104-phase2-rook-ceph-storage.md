@@ -182,6 +182,9 @@ kubectl -n kube-system run mtu-test --rm -it --image=alpine:3.20 --overrides='{"
 
 ## 🧰 Runbook: Taking a Node Offline for Hardware Work
 
+> [!TIP]
+> Powering off the **whole** cluster is a different procedure (apps stopped first, cluster-wide Ceph flags, no drain): see [[112-cluster-cold-stop-start|docs/112]] and `just lab-down` / `just lab-up`.
+
 Used on 2026-10-17 to reseat a disk in `sm-node-02` (a control-plane node holding three OSDs and a monitor), and on 2026-10-18 to inspect it (no monitor there by then).
 
 1. **Pre-checks (read-only):** `ceph pg stat` shows all PGs `active+clean`; `ceph mon stat` shows the other monitors can still form a quorum without this node; at least two other control-plane nodes are Ready (`talosctl -n <other cp> etcd members`). **Never take two control-plane nodes down at once:** etcd loses quorum and the Kubernetes API stops. `kubectl get pdb -A` should show no budget with 0 allowed disruptions, or the drain hangs.

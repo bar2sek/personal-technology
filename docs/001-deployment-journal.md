@@ -889,6 +889,17 @@ The milestone entries below record how each of these got here. The section that 
 
 ---
 
+## 🎯 Milestone 39: Weekend Lab Mode, First Cold Stop (2026-10-24)
+
+- **Why:** the cluster draws about 380 W (about $33 a month) before it runs any always-on services. Until cameras and Home Assistant arrive, it runs as a weekend lab.
+- **Built:** `just lab-down` / `just lab-up` (an 8-step and a 6-step procedure) and `just bazzite-start` / `bazzite-stop`. The Bazzite VM was moved to `runStrategy: Manual` and applied, so it stays off after a cold start.
+- **First `lab-down`:** attended, clean, 7 min 28 s. Steps: silence alerts, stop the VM, suspend 6 CronJobs, scale 7 Ceph-backed workloads to 0 (volumes detached in about 40 s), set the Ceph flags, pause the Rook operator, then `talosctl shutdown --force` workers → control plane. All 5 nodes are off.
+- **While the cluster is off:** Authentik, Actual Budget sync, ntfy, Grafana and every Cloudflare-tunnel app are unreachable, including remote NAS access; on the LAN, use `https://10.0.1.223:5001`. Omni, Dex and NUT on `omni-server` are unaffected.
+- **Pending:** the first `lab-up` and the lab-off wattage reading.
+- Details: [[112-cluster-cold-stop-start|docs/112]].
+
+---
+
 ## 🎯 Immediate Next Actions & Infrastructure Backlog
 
 > [!NOTE]
