@@ -699,7 +699,7 @@ The milestone entries below record how each of these got here. The section that 
 
 - **Hardware Discovery & Physical Placement**:
   - Successfully brought online the garage **Synology DiskStation DS713+** (2-bay Intel Atom D2700, 2x 2TB HDDs in SHR / RAID 1 = 2.0 TB usable).
-  - Connected via 1GbE Cat6 to `USW-Lite-8-PoE` (Port 2) at IP `10.0.1.223` (MAC `00:11:32:28:d1:27`).
+  - Connected via 1GbE Cat6 to `USW-Lite-8-PoE` (Port 2) at IP `10.0.1.223`.
   - Confirmed inter-VLAN routing from Kubernetes nodes/pods (`10.10.20.0/24`) to garage NAS (`10.0.1.223`) over UDM-Pro fabric with zero routing blocks.
 - **Workstation Protection (`nix-mac` Time Machine)**:
   - Designed isolated SMB share `TimeMachine-MacBook` with strict 1.0 TB quota and dedicated service account `tm-macbook`.
