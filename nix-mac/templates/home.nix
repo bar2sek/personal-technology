@@ -282,8 +282,6 @@
         # Infrastructure & cloud
         jnoortheen.nix-ide
         hashicorp.terraform
-        amazonwebservices.aws-toolkit-vscode
-        ms-azuretools.vscode-azureresourcegroups
         ms-azuretools.vscode-docker
         ms-azuretools.vscode-containers # Required by vscode-docker
         ms-kubernetes-tools.vscode-kubernetes-tools
@@ -317,17 +315,10 @@
         "git.confirmSync" = false;
         "git.autorefresh" = true;
         "git.autoRepositoryDetection" = true;
-        "git.repositoryScanMaxDepth" = 2;
+        "git.repositoryScanMaxDepth" = 1;
+        "scm.alwaysShowRepositories" = true;
         "scm.repositories.visible" = 10;
         "scm.repositories.selectionMode" = "multiple";
-        "git.scanRepositories" = [
-          "food-diet-nutrition"
-          "home-projects"
-          "homelab-ops"
-          "infra-cloud-deployments"
-          "personal-technology"
-          "professional-technology"
-        ];
         "roo-cline.autoImportSettingsPath" = "~/.config/roo-code/settings.json";
         "files.watcherExclude" = {
           "**/.git/objects/**" = true;

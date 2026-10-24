@@ -47,7 +47,7 @@ Extensions are owned by home-manager (`programs.vscode` in `templates/home.nix`)
 |---|---|
 | AI assistants | `google.google-antigravity`, `anthropic.claude-code` (Claude.ai subscription, no per-token charges), `rooveterinaryinc.roo-cline` (Grok, local MLX, AWS Bedrock) |
 | Theme & icons | `enkia.tokyo-night`, `pkief.material-icon-theme` |
-| Infrastructure & cloud | `jnoortheen.nix-ide`, `hashicorp.terraform`, `amazonwebservices.aws-toolkit-vscode`, `ms-azuretools.vscode-azureresourcegroups`, `ms-azuretools.vscode-docker` (+ `vscode-containers`), `ms-kubernetes-tools.vscode-kubernetes-tools`, `redhat.vscode-yaml` |
+| Infrastructure & cloud | `jnoortheen.nix-ide`, `hashicorp.terraform`, `ms-azuretools.vscode-docker` (+ `vscode-containers`), `ms-kubernetes-tools.vscode-kubernetes-tools`, `redhat.vscode-yaml` |
 | Languages & formatting | `dbaeumer.vscode-eslint`, `esbenp.prettier-vscode`, `golang.go`, `ms-python.python` (+ `vscode-pylance`, `debugpy`, `vscode-python-envs`) |
 
 > [!IMPORTANT]

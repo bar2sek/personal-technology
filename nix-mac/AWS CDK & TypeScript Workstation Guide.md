@@ -30,7 +30,7 @@ graph TD
     B --> D[AWS CLI v2 - awscli]
     B --> E[AWS CDK CLI - aws-cdk]
     B --> F[TypeScript Compiler - tsc]
-    B --> G[IDE Extensions: AWS Toolkit, ESLint, Prettier]
+    B --> G[IDE Extensions: ESLint, Prettier]
     B --> H[OrbStack Docker Engine - Asset Bundling]
 ```
 
@@ -47,7 +47,6 @@ graph TD
 ### 2. VS Code Extensions
 
 Declared in home-manager `programs.vscode` (see [[Home Manager Guide]]):
-* `amazonwebservices.aws-toolkit-vscode`: AWS resource explorer, CloudWatch logs viewer, and CDK Explorer.
 * `dbaeumer.vscode-eslint`: Static code analysis and linting for TypeScript constructs.
 * `esbenp.prettier-vscode`: Opinionated code formatting for TypeScript and JSON.
 
