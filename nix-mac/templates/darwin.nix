@@ -313,9 +313,10 @@
       -m everywhere 2>/dev/null || true
     lpoptions -d "Brother_DCP_7065DN" 2>/dev/null || true
 
-    # Refresh macOS Dock and live Dark Mode appearance immediately
+    # Refresh live Dark Mode appearance immediately (nix-darwin's built-in
+    # userDefaults activation already restarts Dock; avoid a second killall Dock
+    # after brew bundle which can race with Mission Control and lock a 56px strut).
     sudo -u "$PRIMARY_USER" osascript -e 'tell application "System Events" to tell appearance preferences to set dark mode to true' 2>/dev/null || true
-    killall Dock 2>/dev/null || true
   '';
 
   # ----------------------------------------------------------------------

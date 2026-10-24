@@ -110,6 +110,12 @@ ls -la ~/Justfile ~/.ssh/config ~/.config/gh/config.yml ~/.local/bin/tailscale
 cat ~/.ssh/config
 ```
 
+> [!WARNING] Troubleshooting: Windows Leave a 56px Gap at the Bottom of All Spaces
+> If `Dock` is restarted while macOS **Mission Control** is open (which temporarily forces `autoHideOn=0`), the new `Dock` process registers its full 56px unhidden strut with `WindowManager` (`setDockInfo`) and fails to clear it when Mission Control closes—leaving `NSScreen.mainScreen.visibleFrame.origin.y = 56` even though the Dock is visually hidden.
+> - **Why `killall Dock` alone won't clear it:** `WindowManager` (`PID` persists across Dock restarts) caches the last `setDockInfo` strut and `Dock` does not resend `setDockInfo` on normal startup when `autohide = true`.
+> - **Fix:** Toggle Dock auto-hide off and back on (**`Cmd + Option + D`** twice, or run `osascript -e 'tell application "System Events" to set autohide of dock preferences to false' && sleep 1 && osascript -e 'tell application "System Events" to set autohide of dock preferences to true'`).
+> - **Prevention:** `darwin.nix` no longer runs a second `killall Dock` inside `postActivation` after `brew bundle`; `nix-darwin`'s built-in `userDefaults` phase already restarts the Dock once.
+
 ## Related Notes
 * [[Nix-Darwin Guide]]
 * [[IDE Configuration Guide]]
