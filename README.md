@@ -51,7 +51,8 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 - [109 - Phase 4: UPS Power Resiliency & Network UPS Tools (NUT) Monitoring](docs/109-ups-power-monitoring-nut.md)
 - [110 - Moving Talos /var off the SuperDOMs & Storage Reshuffle](docs/110-ephemeral-var-migration.md)
 - [111 - Storage Reshuffle Hardware Checklist](docs/111-storage-reshuffle-hardware-checklist.md)
-- [112 - Cluster Cold Stop & Start (Weekend Lab Mode)](docs/112-cluster-cold-stop-start.md)
+- [112 - Cluster Cold Stop & Start (Maintenance & Outages)](docs/112-cluster-cold-stop-start.md)
+- [113 - Headlamp: Read-Only Kubernetes Web UI over Tailscale](docs/113-headlamp-cluster-ui.md)
 
 ### 🌐 Section 2: UniFi Networking & Infrastructure
 - [201 - UniFi Physical Cabling & Logical Topology Diagrams](docs/201-unifi-network-topology.md)
@@ -130,6 +131,7 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 │   │   ├── rook-ceph/         # 3-tier Ceph cluster, StorageClasses & Rook alert rules
 │   │   ├── backups/           # Encrypted S3 + Synology NAS backup CronJobs (cluster state, Postgres)
 │   │   ├── monitoring/        # kube-prometheus-stack values, alert tuning & Homelab Overview dashboard
+│   │   ├── headlamp/          # Headlamp K8s web UI (read-only token, tailnet-only)
 │   │   ├── ntfy/              # Self-hosted ntfy (Alertmanager → phone push over Tailscale)
 │   │   ├── nut/               # NUT UPS server, exporter & alert rules
 │   │   ├── metallb/           # MetalLB L2 address pool

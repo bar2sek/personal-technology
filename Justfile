@@ -46,6 +46,42 @@ ceph-status:
 tunnel-status:
     kubectl -n cloudflare-system get pods -o wide
 
+# Deploy Headlamp, the tailnet-only Kubernetes web UI (docs/113)
+headlamp-apply:
+    kubectl apply -f kubernetes/infrastructure/headlamp/headlamp.yaml
+    kubectl -n headlamp rollout status deploy/headlamp
+
+# Printed once, stored nowhere. Paste it into the Headlamp login screen.
+# Mint a read-only Headlamp login token (default 30 days)
+headlamp-token duration="720h":
+    kubectl -n headlamp create token headlamp-viewer --duration={{duration}}
+
+# `kubectl auth can-i --as` is unreliable through the Omni proxy (it reports
+# your own rights). A SubjectAccessReview asks the API server's authorizer
+# directly and stores nothing.
+# Verify Headlamp RBAC: viewer reads but can't touch Secrets; pod SA has nothing
+headlamp-rbac-check:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    sar() { # <sa> <verb> <resource[/subresource]> <expected>
+      local res=${3%%/*} sub="" got
+      [[ $3 == */* ]] && sub=",\"subresource\":\"${3#*/}\""
+      got=$(printf '{"apiVersion":"authorization.k8s.io/v1","kind":"SubjectAccessReview","spec":{"user":"system:serviceaccount:headlamp:%s","groups":["system:serviceaccounts","system:serviceaccounts:headlamp","system:authenticated"],"resourceAttributes":{"namespace":"identity","verb":"%s","resource":"%s"%s}}}' "$1" "$2" "$res" "$sub" \
+        | kubectl create -f - -o jsonpath='{.status.allowed}')
+      got=${got:-false}
+      [[ $got == "$4" ]] && mark=ok || { mark=FAIL; FAILED=1; }
+      printf '%-4s %-16s %-7s %-20s allowed=%s\n' "$mark" "$1" "$2" "$3" "$got"
+    }
+    FAILED=0
+    sar headlamp-viewer list   nodes             true
+    sar headlamp-viewer get    pods/log          true
+    sar headlamp-viewer list   persistentvolumes true
+    sar headlamp-viewer list   secrets           false
+    sar headlamp-viewer delete pods              false
+    sar headlamp        list   pods              false
+    sar headlamp        list   secrets           false
+    exit $FAILED
+
 # Check status of the monitoring stack (Prometheus, Grafana, Alertmanager, Node-Exporter)
 monitoring-status:
     @echo "===> Monitoring Pods & PVCs:"
@@ -345,7 +381,9 @@ lab-up:
 
     step "4/6 Thawing Ceph; waiting for all PGs active+clean"
     for f in norecover nobackfill norebalance noout; do ceph osd unset "$f"; done
-    clean() { ceph pg stat -f json | jq -e '.pg_summary | .num_pgs == ([.num_pg_by_state[] | select(.name == "active+clean") | .num] | add // 0)'; }
+    # active+clean+scrubbing(+deep) counts as clean: after days off, overdue
+    # scrubs run for a long time and would otherwise hit the timeout.
+    clean() { ceph pg stat -f json | jq -e '.pg_summary | .num_pgs == ([.num_pg_by_state[] | select(.name | test("^active\\+clean(\\+scrubbing(\\+deep)?)?$")) | .num] | add // 0)'; }
     wait_for 1800 "all PGs active+clean" clean
     ceph health
 

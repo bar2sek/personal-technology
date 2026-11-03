@@ -900,6 +900,17 @@ The milestone entries below record how each of these got here. The section that 
 
 ---
 
+## 🎯 Milestone 40: First Cold Start, Back to 24/7 Home-Prod (2026-11-03)
+
+- **Decision:** weekend lab mode is retired. Home Assistant, power monitoring for solar planning, Frigate cameras, TeslaMate and Immich phone backup need the cluster always on. `lab-down` / `lab-up` stay as the runbook for maintenance and long outages.
+- **First `lab-up`:** after 10 days off. Nodes powered on by front buttons, control plane first. API reachable, all 5 nodes Ready, 20/20 OSDs up within about 1 minute of the Rook operator resuming, `HEALTH_OK` once the flags were unset. Workloads, 6 CronJobs and Prometheus/Alertmanager restored; the lab-down silence expired.
+- **Bug fixed:** step 4 required PG state exactly `active+clean`. After 10 days off, Ceph starts a backlog of overdue deep scrubs (`active+clean+scrubbing+deep`, healthy), so the wait would have timed out before step 5 restored the apps. The check now accepts scrubbing states. The first run was stopped and the recipe re-run; it is idempotent.
+- **Expected noise after a cold start:** pods from before the shutdown linger in `Error` (their controllers already run replacements); Authentik server/worker crash-loop until `authentik-db` is back (it is scaled to 0 by lab-down, they aren't); the Postgres backup jobs retry for the same reason.
+- **Headlamp deployed:** read-only Kubernetes UI at `headlamp.tail6e33.ts.net`, RBAC verified with `just headlamp-rbac-check` (SubjectAccessReview, because `can-i --as` is unreliable through the Omni proxy): [[113-headlamp-cluster-ui|docs/113]].
+- Details: [[112-cluster-cold-stop-start|docs/112]].
+
+---
+
 ## 🎯 Immediate Next Actions & Infrastructure Backlog
 
 > [!NOTE]

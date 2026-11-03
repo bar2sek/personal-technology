@@ -1,12 +1,12 @@
 ---
-title: "Cluster Cold Stop & Start (Weekend Lab Mode)"
+title: "Cluster Cold Stop & Start (Maintenance & Outages)"
 date: 2026-10-24
 tags:
   - homelab/operations
   - kubernetes/runbook
   - storage/ceph
   - power
-status: in-progress
+status: evergreen
 aliases:
   - "Lab Mode"
   - "lab-down"
@@ -14,7 +14,10 @@ aliases:
   - "Cold Start Runbook"
 ---
 
-# 🔌 Cluster Cold Stop & Start (Weekend Lab Mode)
+# 🔌 Cluster Cold Stop & Start (Maintenance & Outages)
+
+> [!IMPORTANT]
+> **2026-11-03: weekend lab mode is retired. The cluster runs 24/7 as home-prod.** Home Assistant, power monitoring for solar planning, Frigate cameras, TeslaMate and Immich phone backup all need to be always-on. `lab-down` / `lab-up` stay as the runbook for planned maintenance (electrical work, moves, hardware swaps) and extended power outages. The history below is kept as written.
 
 **Why:** the stack draws about 380 W around the clock (UPS telemetry, 2026-10-22), roughly $33 a month at $0.12/kWh. Until it runs services that need to be always-on (cameras, Home Assistant), the cluster runs as a **weekend lab**: powered on when in use, off the rest of the week. The network, `omni-server` and the Synology stay on.
 
@@ -26,7 +29,7 @@ just lab-up     # wait for nodes, thaw Ceph, restore apps, un-silence
 ```
 
 > [!IMPORTANT]
-> Status: **`lab-down` proven (2026-10-24), `lab-up` not yet run.** See *First Run Log* below. Set `status: evergreen` once the first `lab-up` is done and recorded here and in the [[001-deployment-journal|deployment journal]].
+> Status: **both proven.** `lab-down` 2026-10-24, `lab-up` 2026-11-03. See *First Run Log* below and the [[001-deployment-journal|deployment journal]] (Milestones 39–40).
 
 This is the whole-cluster version of *Runbook: Taking a Node Offline for Hardware Work* in [[104-phase2-rook-ceph-storage|docs/104]]. That runbook keeps the cluster up while one node leaves; this one stops everything, so the order matters more.
 
@@ -138,7 +141,16 @@ Do the first cycle with a terminal open and Grafana/Ceph status visible, on a da
 - **Gotcha:** both prompts were answered in one go, before the step 6 check could happen. The log (`~/lab-down-<timestamp>.log`, written with `tee`) confirmed everything afterwards, so keep the `tee` habit.
 - **Lab-off wattage:** _to be measured with the Kill-A-Watt._
 
-**`lab-up`:** _not yet run._
+**`lab-up`, 2026-11-03: clean on the second run, after 10 days off.**
+
+- **Power-on:** front buttons, sm-node-01..03 first, then pc-node-04/05. The Supermicros took about 5 minutes of POST before the first ping. Starting the workers early is fine: their kubelets retry until the API answers.
+- **Steps 1–3:** all 5 nodes Ready; 20/20 OSDs up within about 1 minute of the Rook operator resuming.
+- **Bug (fixed):** step 4 waited for PGs exactly `active+clean`. After days off, Ceph immediately starts its overdue deep scrubs, so 14 PGs sat in `active+clean+scrubbing+deep` (healthy) and the wait would have hit its 30-minute timeout *before* step 5 restored the apps. The check now accepts `active+clean+scrubbing(+deep)`. The first run was stopped and the recipe re-run; steps 1–4 are idempotent.
+- **Steps 5–6:** restored 7 workloads (plus their ReplicaSets), Prometheus and Alertmanager, resumed 6 CronJobs, expired the silence. Expect a `HEALTH_WARN` about overdue scrubs for a few hours.
+- **Expected leftovers, not failures:**
+  - Pods from before the shutdown stay in `Error`; their controllers already run replacements. Clean up with `kubectl delete pods -A --field-selector=status.phase=Failed`.
+  - `authentik-server` / `authentik-worker` crash-loop until `authentik-db` is back (lab-down scales the DB, not them) and can then sit in back-off for up to 5 minutes: `kubectl -n identity rollout restart deploy/authentik-server deploy/authentik-worker`.
+  - The Postgres backup catch-up jobs fail and retry until their databases are up.
 
 ---
 
