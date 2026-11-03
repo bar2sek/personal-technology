@@ -387,17 +387,36 @@ lab-up:
     wait_for 1800 "all PGs active+clean" clean
     ceph health
 
-    step "5/6 Restoring workloads and CronJobs"
-    for kind in deployments statefulsets replicasets prometheuses.monitoring.coreos.com alertmanagers.monitoring.coreos.com; do
-      kubectl get "$kind" -A -o json \
-        | jq -r --arg a "$REPLICAS" '.items[] | select(.metadata.annotations[$a] != null) | "\(.metadata.namespace) \(.kind)/\(.metadata.name) \(.metadata.annotations[$a])"'
-    done | while read -r ns obj n; do
+    step "5/6 Restoring workloads, then CronJobs once the workloads are ready"
+    # Process substitution, not a pipe: the loop must run in this shell so
+    # ROLLOUTS survives it.
+    ROLLOUTS=()
+    while read -r ns obj n; do
       case ${obj%%/*} in
-        Deployment|StatefulSet|ReplicaSet) kubectl -n "$ns" scale "$obj" --replicas="$n" ;;
+        Deployment|StatefulSet) kubectl -n "$ns" scale "$obj" --replicas="$n"; ROLLOUTS+=("$ns $obj") ;;
+        ReplicaSet) kubectl -n "$ns" scale "$obj" --replicas="$n" ;;
         *) kubectl -n "$ns" patch "$obj" --type merge -p "{\"spec\":{\"replicas\":$n}}" ;;
       esac
       kubectl -n "$ns" annotate "$obj" "$REPLICAS-" >/dev/null
+    done < <(
+      for kind in deployments statefulsets replicasets prometheuses.monitoring.coreos.com alertmanagers.monitoring.coreos.com; do
+        kubectl get "$kind" -A -o json \
+          | jq -r --arg a "$REPLICAS" '.items[] | select(.metadata.annotations[$a] != null) | "\(.metadata.namespace) \(.kind)/\(.metadata.name) \(.metadata.annotations[$a])"'
+      done
+    )
+    # Resuming a CronJob fires its catch-up run immediately. Started before the
+    # databases are up, the Postgres backups burn their retries and fail
+    # (2026-11-03). On timeout, warn and resume anyway: one failed catch-up run
+    # is better than backups left suspended, and step 6 must still run.
+    NOT_READY=()
+    # ${a[@]+...}: an empty array is "unbound" under set -u in macOS bash 3.2
+    for r in ${ROLLOUTS[@]+"${ROLLOUTS[@]}"}; do
+      read -r ns obj <<<"$r"
+      kubectl -n "$ns" rollout status "$obj" --timeout=5m || NOT_READY+=("$ns/$obj")
     done
+    if (( ${#NOT_READY[@]} )); then
+      echo "WARNING: not ready after 5 min: ${NOT_READY[*]}. Resuming CronJobs anyway; check their catch-up jobs." >&2
+    fi
     kubectl get cronjobs -A -o json \
       | jq -r --arg a "$SUSPENDED" '.items[] | select(.metadata.annotations[$a] != null) | "\(.metadata.namespace) \(.metadata.name)"' \
       | while read -r ns name; do

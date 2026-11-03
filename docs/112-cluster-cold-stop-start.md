@@ -73,7 +73,7 @@ graph TD
         U1["1 Power on: control plane first<br/>wait for API"] --> U2["2 All nodes Ready<br/>(fresh heartbeat)"]
         U2 --> U3["3 Resume operator<br/>wait for all OSDs up"]
         U3 --> U4["4 Unset Ceph flags<br/>wait all PGs active+clean"]
-        U4 --> U5["5 Restore replicas + CronJobs"]
+        U4 --> U5["5 Restore replicas, wait for rollouts,<br/>then resume CronJobs"]
         U5 --> U6["6 Expire lab-down silence"]
     end
     D8 -. "days later" .-> U1
@@ -104,7 +104,7 @@ Steps 1, 5 (if volumes won't detach) and 7 stop and ask. `LAB_YES=1 just lab-dow
 2. **Wait for every node to be `Ready` with a heartbeat newer than when `lab-up` started.** After a full stop, the API can briefly report the last *pre-shutdown* status, which says `Ready`, so a plain `kubectl wait` could pass while nodes are still off.
 3. **Resume the Rook operator and wait until every OSD is up** (`num_up_osds == num_osds`, 20 today).
 4. **Unset the Ceph flags and wait until every PG is `active+clean`.** Then print `ceph health`. A leftover `HEALTH_WARN` (e.g. a recent daemon crash report) is not a blocker; read it.
-5. **Restore** every annotated workload to its saved replica count, and resume the annotated CronJobs. Each CronJob runs one catch-up job right away, because its schedule was missed while the cluster was off.
+5. **Restore** every annotated workload to its saved replica count, **wait for each restored Deployment/StatefulSet to finish rolling out** (5 min each), then resume the annotated CronJobs. Each CronJob runs one catch-up job right away, because its schedule was missed while the cluster was off. The wait matters: before it was added (2026-11-03), the NAS Postgres catch-up started while `authentik-db` was still booting and failed. If a workload times out, the recipe warns and resumes the CronJobs anyway, so backups are never left suspended and step 6 still runs.
 6. **Expire the `lab-down` silence**, then list any pods not `Running`/`Completed`. Authentik's server pods crash-loop until its database is back, then settle.
 
 The gaming VM stays off. Start it with `just bazzite-start` and stop it with `just bazzite-stop`.
@@ -150,7 +150,9 @@ Do the first cycle with a terminal open and Grafana/Ceph status visible, on a da
 - **Expected leftovers, not failures:**
   - Pods from before the shutdown stay in `Error`; their controllers already run replacements. Clean up with `kubectl delete pods -A --field-selector=status.phase=Failed`.
   - `authentik-server` / `authentik-worker` crash-loop until `authentik-db` is back (lab-down scales the DB, not them) and can then sit in back-off for up to 5 minutes: `kubectl -n identity rollout restart deploy/authentik-server deploy/authentik-worker`.
-  - The Postgres backup catch-up jobs fail and retry until their databases are up.
+  - The Postgres backup catch-up jobs fail and retry until their databases are up. The NAS one ran out of retries (`BackoffLimitExceeded`); a manual run (`kubectl -n backups create job --from=cronjob/backup-postgres-databases-nas manual-pg-nas-$(date +%s)`) succeeded. **Fixed afterwards:** step 5 now waits for the restored workloads before resuming CronJobs.
+  - **Check logs before deleting failed pods.** The `status.phase=Failed` cleanup also removed the failed backup pod, and its logs with it.
+  - Headlamp and other UIs list the startup `Warning` events (`FailedScheduling`, `Unhealthy`, `BackOff`) for about an hour. Judge health by pod status, `ceph health` and Alertmanager, not that event list.
 
 ---
 
