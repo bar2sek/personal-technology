@@ -84,7 +84,7 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 - [501 - TeslaMate Vehicle Telemetry & Analytics Platform](docs/501-teslamate-telemetry-deployment.md)
 - [502 - Actual Budget Self-Hosted Personal Finance Platform](docs/502-personal-finance-apps.md)
 - [503 - Mealie Recipe Manager & Meal Planner](docs/503-mealie-recipe-planner.md)
-- [504 - Immich Self-Hosted Photo & Video Backup Platform (Decommissioned)](docs/504-immich-photo-backup.md)
+- [504 - Immich: Owned Photo Library (Second Copy Alongside Google Photos)](docs/504-immich-photo-backup.md)
 - [505 - Home Assistant Smart Home & IoT Automation Platform](docs/505-home-assistant-smart-home.md)
 - [506 - In-Cluster CUPS Network Print Server & AirPrint Bridge](docs/506-cups-airprint-bridge.md)
 - [507 - Frigate NVR: Local Cameras & Object Detection (Planned)](docs/507-frigate-nvr-cameras.md)
@@ -145,6 +145,7 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 │   │   ├── authentik/         # Authentik master IdP & PostgreSQL
 │   │   └── aws-hybrid/        # AWS ACK (S3, Route53) & EKS Connector
 │   └── apps/                  # Containerized self-hosted application suite
+│       ├── immich/            # Immich photo library (LAN + tailnet only, docs/504)
 │       ├── teslamate/         # Tesla telemetry, MQTT, PostgreSQL, Grafana
 │       ├── finance/           # Actual Budget personal finance & its S3/NAS backup jobs
 │       ├── mealie/            # Mealie recipe manager

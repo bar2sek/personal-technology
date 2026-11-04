@@ -221,6 +221,24 @@ frigate-apply:
     kubectl -n frigate rollout restart deploy/frigate
     kubectl -n frigate rollout status deploy/frigate --timeout=5m
 
+# Generates the database password once and never rotates it: Postgres keeps the
+# password it was initialized with, so a new one would lock Immich out.
+# Deploy Immich: manifests, the Secret if missing, then wait for rollouts (docs/504)
+immich-apply:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    kubectl apply -f kubernetes/apps/immich/immich.yaml
+    if ! kubectl -n immich get secret immich-secrets >/dev/null 2>&1; then
+      kubectl -n immich create secret generic immich-secrets --from-literal=db-password="$(openssl rand -hex 24)"
+    fi
+    for d in immich-postgres immich-valkey immich-machine-learning immich-server; do
+      kubectl -n immich rollout status "deploy/$d" --timeout=10m
+    done
+
+# Check Immich pods, volumes and ingresses
+immich-status:
+    kubectl -n immich get pods,pvc,ingress
+
 # Refuses if a camera token appears in plain text instead of {FRIGATE_*}.
 # Copy the live Frigate config (after UI edits to zones/masks) back into git
 frigate-config-pull:

@@ -70,6 +70,15 @@ resource "unifi_dns_record" "nas" {
 
 # --- Local-only names (no public record, so no IPv6 leak) ---
 
+# Immich: no public record today (docs/504 D4). CNAME anyway, so adding one
+# later can't start the IPv6 leak.
+resource "unifi_dns_record" "immich" {
+  name        = "immich.${var.public_domain}"
+  record_type = "CNAME"
+  value       = unifi_dns_record.ingress_target.name
+  ttl         = "300s"
+}
+
 resource "unifi_dns_record" "gaming" {
   name        = "gaming.${var.public_domain}"
   record_type = "A"
