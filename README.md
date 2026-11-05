@@ -29,7 +29,7 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 | **Physical Nodes** | **6 Nodes**: `omni-server` (Dell OptiPlex), `sm-node-01/02` (Supermicro Xeon D), `sm-node-03` (Supermicro 1U Xeon E5), `pc-node-04` (Ryzen 3800X storage PC: SSD + HDD host), `pc-node-05` (Ryzen 7600 RTX 4070 GPU PC, also an HDD host). |
 | **Total Compute** | **36 Physical Cores / 72 vCPU Threads** (`allowSchedulingOnControlPlanes: true` across all 5 cluster nodes). |
 | **Total Memory** | **320 GB DDR4 RAM**. |
-| **Total Storage** | **~37 TB (33.7 TiB) Raw Rook-Ceph Storage (18 OSDs, as of 2026-10-18)**: **6.0TB High-IOPS NVMe Tier** (4 OSDs: sm-01, sm-02, pc-04, pc-05) + **16.0TB Replicated SATA SSD Tier** (8 OSDs across 4 hosts: sm-01 ×2, sm-02 ×2, sm-03 ×1, pc-04 ×3) + **15.0TB Bulk HDD Tier** (6 OSDs: 4 on `pc-04`, 2 on `pc-05`). *(The storage reshuffle is mid-flight: two IronWolf 4TB and a 250GB MX500 are staged in `sm-03` for Wave 4. See [110 - /var migration](docs/110-ephemeral-var-migration.md).)* |
+| **Total Storage** | **~40 TiB Raw Rook-Ceph Storage (20 OSDs across 5 hosts, as of 2026-11-05)**: **5.0 TiB High-IOPS NVMe Tier** (4 OSDs) + **15 TiB Replicated SATA SSD Tier** (8 OSDs) + **21 TiB Bulk HDD Tier** (8 OSDs, erasure coded 2+1). *(Storage reshuffle complete. See [110 - /var migration](docs/110-ephemeral-var-migration.md).)* |
 | **Network Fabric** | **3.5 Gbps Google Fiber WAN**, **20 Gbps LAG SFP+ Switch Backbone**, **Dual 10G SFP+ Server Uplinks**, **2.5G Multi-Gig Node Uplink**, MTU 9000 Jumbo Frames, Dual-Stack IPv4/IPv6, UniFi U7 Pro (Wi-Fi 7) & U6-Lite (Wi-Fi 6). |
 
 ---
