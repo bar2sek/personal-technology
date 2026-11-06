@@ -70,6 +70,11 @@ data:
   configuration.yaml: |
     default_config:
 
+    # Keep detailed history through a heating season. The default of 10 days would
+    # purge thermostat state before the heat pump review (docs/505).
+    recorder:
+      purge_keep_days: 180
+
     frontend:
       themes: !include_dir_merge_named themes
 
