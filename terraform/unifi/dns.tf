@@ -87,6 +87,14 @@ resource "unifi_dns_record" "home" {
   ttl         = "300s"
 }
 
+# Headlamp: no public record (docs/113). CNAME for the same reason.
+resource "unifi_dns_record" "headlamp" {
+  name        = "headlamp.${var.public_domain}"
+  record_type = "CNAME"
+  value       = unifi_dns_record.ingress_target.name
+  ttl         = "300s"
+}
+
 resource "unifi_dns_record" "gaming" {
   name        = "gaming.${var.public_domain}"
   record_type = "A"

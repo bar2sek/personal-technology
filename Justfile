@@ -46,7 +46,7 @@ ceph-status:
 tunnel-status:
     kubectl -n cloudflare-system get pods -o wide
 
-# Deploy Headlamp, the tailnet-only Kubernetes web UI (docs/113)
+# Deploy Headlamp, the private (LAN + tailnet) Kubernetes web UI (docs/113)
 headlamp-apply:
     kubectl apply -f kubernetes/infrastructure/headlamp/headlamp.yaml
     kubectl -n headlamp rollout status deploy/headlamp

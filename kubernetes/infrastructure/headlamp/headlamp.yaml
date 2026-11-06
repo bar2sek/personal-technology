@@ -1,9 +1,10 @@
 # ==============================================================================
 # Headlamp: Kubernetes web UI (docs/113)
 # ==============================================================================
-# Reached only over the tailnet (Tailscale Ingress at the bottom). Headlamp has
-# no permissions of its own: every request it makes to the API server carries
-# the token pasted at login, and RBAC on that token decides what is visible.
+# Private: headlamp.bar2sek.com on the LAN, headlamp.tail6e33.ts.net on the
+# tailnet (Ingresses at the bottom). Headlamp has no permissions of its own:
+# every request it makes to the API server carries the token pasted at login,
+# and RBAC on that token decides what is visible.
 #
 # Two ServiceAccounts, on purpose:
 #   headlamp          the pod's own identity. Bound to NOTHING. (The upstream
@@ -163,6 +164,35 @@ spec:
     - port: 80
       targetPort: http
       name: http
+---
+# LAN: no public Cloudflare record exists for this name, so the tunnel can't
+# route to it. Leaving out secretName uses the controller's default wildcard
+# certificate. Log streaming and watches are long-lived WebSockets, so raise
+# nginx's 60s idle timeout.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: headlamp-lan
+  namespace: headlamp
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: headlamp.bar2sek.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: headlamp
+                port:
+                  name: http
+  tls:
+    - hosts:
+        - headlamp.bar2sek.com
 ---
 # Tailnet-only HTTPS: the operator runs a proxy that joins the tailnet as
 # `headlamp` (MagicDNS name headlamp.tail6e33.ts.net) with a Tailscale-issued
