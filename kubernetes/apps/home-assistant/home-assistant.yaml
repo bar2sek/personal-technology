@@ -1,8 +1,23 @@
+# ==============================================================================
+# Home Assistant (docs/505)
+# ==============================================================================
+# Reached only on the LAN (home.bar2sek.com, no public DNS record) and the tailnet
+# (home-assistant.tail6e33.ts.net).
+#
+# No hostNetwork: mDNS/SSDP discovery wouldn't cross into the IoT VLAN anyway.
+# Devices are added by reserved IP. Flannel masquerades pod traffic, so devices
+# see the node's K8S-CONTROL address.
+#
+# The image runs as root (s6 init), so this namespace is `baseline`, not
+# `restricted`.
 apiVersion: v1
 kind: Namespace
 metadata:
   name: home-automation
+  labels:
+    pod-security.kubernetes.io/enforce: baseline
 ---
+# Energy history can't be recreated, and solar sizing depends on it (docs/505).
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -14,9 +29,54 @@ spec:
   storageClassName: rook-ceph-block
   resources:
     requests:
-      storage: 10Gi
+      storage: 20Gi
 ---
-# Home Assistant Core Deployment
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: home-assistant-seed
+  namespace: home-automation
+data:
+  # Copied only if missing, then the UI owns it (Settings > System > Network).
+  # Since 2026.x, http: in YAML is imported once as a *pending* config and rolled
+  # back unless confirmed in the UI within 5 minutes, which can't happen when the
+  # UI is only reachable through the proxy. So seed the store as already stable.
+  # ingress-nginx and the Tailscale proxy both run in the pod network; without
+  # this, Home Assistant answers forwarded requests with 400 Bad Request.
+  http-store.json: |
+    {
+      "version": 3,
+      "minor_version": 1,
+      "key": "http",
+      "data": {
+        "stable": {
+          "server_port": 8123,
+          "use_x_forwarded_for": true,
+          "trusted_proxies": ["10.244.0.0/16"],
+          "cors_allowed_origins": ["https://cast.home-assistant.io"],
+          "login_attempts_threshold": -1,
+          "ip_ban_enabled": true,
+          "ssl_profile": "intermediate_v6",
+          "use_x_frame_options": true,
+          "created_at": "2026-11-05T00:00:00+00:00",
+          "error": null,
+          "error_message": null
+        },
+        "pending": null,
+        "yaml_migration_done": true
+      }
+    }
+  # Copied only if missing: after first boot, the UI and the PVC own this file.
+  configuration.yaml: |
+    default_config:
+
+    frontend:
+      themes: !include_dir_merge_named themes
+
+    automation: !include automations.yaml
+    script: !include scripts.yaml
+    scene: !include scenes.yaml
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -24,6 +84,7 @@ metadata:
   namespace: home-automation
 spec:
   replicas: 1
+  # RWO volume: stop the old pod before starting the new one
   strategy:
     type: Recreate
   selector:
@@ -34,42 +95,136 @@ spec:
       labels:
         app: home-assistant
     spec:
-      hostNetwork: true # Allows mDNS & SSDP local IoT device discovery
-      dnsPolicy: ClusterFirstWithHostNet
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        - name: seed-config
+          image: ghcr.io/home-assistant/home-assistant:2026.11.0@sha256:c6c1ca9931036bf3a2c4cc088d8db25dfea3b33935a5ecc83c40349462e2f69e
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              mkdir -p /config/.storage
+              [ -e /config/.storage/http ] || cp /seed/http-store.json /config/.storage/http
+              [ -e /config/configuration.yaml ] || cp /seed/configuration.yaml /config/configuration.yaml
+              [ -e /config/automations.yaml ] || echo '[]' > /config/automations.yaml
+              touch /config/scripts.yaml /config/scenes.yaml
+              mkdir -p /config/themes
+          securityContext:
+            allowPrivilegeEscalation: false
+          volumeMounts:
+            - name: config-storage
+              mountPath: /config
+            - name: seed
+              mountPath: /seed
+              readOnly: true
       containers:
         - name: home-assistant
-          image: ghcr.io/home-assistant/home-assistant:2024.9.1
+          image: ghcr.io/home-assistant/home-assistant:2026.11.0@sha256:c6c1ca9931036bf3a2c4cc088d8db25dfea3b33935a5ecc83c40349462e2f69e
           env:
             - name: TZ
               value: "America/Chicago"
           ports:
             - containerPort: 8123
               name: http
+          securityContext:
+            allowPrivilegeEscalation: false
           volumeMounts:
-            - mountPath: /config
-              name: config-storage
+            - name: config-storage
+              mountPath: /config
+          # First boot installs dependencies, so allow up to 5 minutes
+          startupProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 10
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 5
           resources:
             requests:
               cpu: 100m
-              memory: 256Mi
+              memory: 512Mi
             limits:
-              cpu: 1000m
-              memory: 1024Mi
+              cpu: 2000m
+              memory: 2Gi
       volumes:
         - name: config-storage
           persistentVolumeClaim:
             claimName: home-assistant-config-pvc
+        - name: seed
+          configMap:
+            name: home-assistant-seed
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: home-assistant-service
+  name: home-assistant
   namespace: home-automation
 spec:
-  type: ClusterIP
-  ports:
-    - port: 8123
-      targetPort: 8123
-      name: http
   selector:
     app: home-assistant
+  ports:
+    - port: 80
+      targetPort: http
+      name: http
+---
+# LAN: no public Cloudflare record exists for this name, so the tunnel can't
+# route to it. Leaving out secretName uses the controller's default wildcard
+# certificate. The long timeouts keep the UI's websocket open.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: home-assistant-lan
+  namespace: home-automation
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: home.bar2sek.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: home-assistant
+                port:
+                  name: http
+  tls:
+    - hosts:
+        - home.bar2sek.com
+---
+# Tailnet-only HTTPS as home-assistant.tail6e33.ts.net (same pattern as ntfy).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: home-assistant-tailnet
+  namespace: home-automation
+spec:
+  ingressClassName: tailscale
+  defaultBackend:
+    service:
+      name: home-assistant
+      port:
+        name: http
+  tls:
+    - hosts:
+        - home-assistant

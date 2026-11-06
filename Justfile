@@ -239,6 +239,160 @@ immich-apply:
 immich-status:
     kubectl -n immich get pods,pvc,ingress
 
+# Deploy Home Assistant (docs/505)
+ha-apply:
+    kubectl apply -f kubernetes/apps/home-assistant/home-assistant.yaml
+    kubectl -n home-automation rollout status deploy/home-assistant --timeout=10m
+
+# Check Home Assistant pods, volume and ingresses
+ha-status:
+    kubectl -n home-automation get pods,pvc,ingress
+
+# One-time backup setup: copy the upload key into the namespace, create the NAS folder
+ha-backup-bootstrap:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    # `create`, not `apply`: apply would keep a second copy of the secret in an annotation.
+    if kubectl -n home-automation get secret s3-backup-credentials >/dev/null 2>&1; then
+      echo "Upload key already present."
+    else
+      kubectl -n backups get secret s3-backup-credentials -o json \
+        | jq '{apiVersion, kind, type, data, metadata: {name: .metadata.name, namespace: "home-automation"}}' \
+        | kubectl create -f - >/dev/null
+      echo "Upload key copied."
+    fi
+    # NFS can't mount a missing folder, so make it through the whole-share mount in `backups`.
+    kubectl -n backups delete job ha-nas-folder --ignore-not-found >/dev/null
+    kubectl create -f - >/dev/null <<'EOF'
+    apiVersion: batch/v1
+    kind: Job
+    metadata:
+      name: ha-nas-folder
+      namespace: backups
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 300
+      ttlSecondsAfterFinished: 600
+      template:
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          containers:
+            - name: mkdir
+              image: alpine:3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6
+              command: ["mkdir", "-p", "/nas/apps/home-assistant"]
+              volumeMounts:
+                - name: nas
+                  mountPath: /nas
+          volumes:
+            - name: nas
+              persistentVolumeClaim:
+                claimName: pvc-synology-nfs-backups
+    EOF
+    kubectl -n backups wait --for=condition=complete job/ha-nas-folder --timeout=5m
+    echo "NAS folder ready."
+
+# Deploy the Home Assistant backup CronJobs (run ha-backup-bootstrap first)
+ha-backup-apply:
+    kubectl apply -f kubernetes/apps/home-assistant/home-assistant-backup.yaml
+    kubectl -n home-automation get cronjob,pvc
+
+# Run both Home Assistant backups now and show their logs
+ha-backup-run:
+    #!/usr/bin/env bash
+    set -uo pipefail
+    STAMP=$(date +%s)
+    STATUS=0
+    for CJ in backup-home-assistant backup-home-assistant-nas; do
+      JOB="$CJ-manual-$STAMP"
+      kubectl -n home-automation create job "$JOB" --from="cronjob/$CJ" >/dev/null
+      kubectl -n home-automation wait --for=condition=complete "job/$JOB" --timeout=15m || STATUS=1
+      kubectl -n home-automation logs "job/$JOB" --all-containers --prefix --tail=-1
+    done
+    exit "$STATUS"
+
+# Restore the newest S3 backup into a throwaway namespace and check it. boot=yes also
+# starts it: only safe with no devices connected, or it would talk to them (docs/505).
+ha-restore-drill boot="no" identity="~/homelab-backups.identity.age":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    NS=restore-drill
+    BUCKET=s3-aws-backups-prod-use2-001
+    IDENTITY="{{identity}}"
+    IDENTITY="${IDENTITY/#\~/$HOME}"
+    IMAGE=$(kubectl -n home-automation get deploy home-assistant -o jsonpath='{.spec.template.spec.containers[0].image}')
+    trap 'kubectl delete namespace "$NS" --ignore-not-found --wait=false >/dev/null' EXIT
+    LATEST=$(aws s3 ls "s3://$BUCKET/apps/home-assistant/" | awk '{print $4}' | grep '\.age$' | sort | tail -1)
+    [ -n "$LATEST" ] || { echo "No backups found in S3." >&2; exit 1; }
+    echo "Restoring $LATEST"
+    kubectl create namespace "$NS" >/dev/null
+    kubectl -n "$NS" create -f - >/dev/null <<EOF
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: ha-drill
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      containers:
+        - name: ha
+          image: $IMAGE
+          command: ["sleep", "3600"]
+          env:
+            - name: TZ
+              value: America/Chicago
+          volumeMounts:
+            - name: config
+              mountPath: /config
+      volumes:
+        - name: config
+          emptyDir: {}
+    EOF
+    kubectl -n "$NS" wait --for=condition=ready pod/ha-drill --timeout=5m >/dev/null
+    # Plaintext only passes through this pipe. age asks for the identity passphrase here.
+    aws s3 cp "s3://$BUCKET/apps/home-assistant/$LATEST" - \
+      | age -d -i "$IDENTITY" \
+      | kubectl -n "$NS" exec -i ha-drill -- tar xzf - -C /config
+    kubectl -n "$NS" exec ha-drill -- python3 -c '
+    import json, os, sqlite3
+    db = sqlite3.connect("/config/home-assistant_v2.db")
+    print("integrity:", db.execute("PRAGMA integrity_check").fetchone()[0])
+    print("schema version:", db.execute("SELECT MAX(schema_version) FROM schema_changes").fetchone()[0])
+    for table in ("states", "statistics", "statistics_short_term"):
+        print(table + ":", db.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0], "rows")
+    for path in ("configuration.yaml", ".storage/auth", ".storage/http", ".storage/core.config_entries"):
+        print(path + ":", "present" if os.path.exists("/config/" + path) else "MISSING")
+    users = json.load(open("/config/.storage/auth"))["data"]["users"]
+    print("owner account:", any(u["is_owner"] for u in users))
+    '
+    if [ "{{boot}}" = "yes" ]; then
+      echo "Booting the restored copy (first boot can take a few minutes)..."
+      kubectl -n "$NS" exec ha-drill -- sh -c 'nohup python3 -m homeassistant --config /config >/tmp/ha.log 2>&1 &'
+      kubectl -n "$NS" exec ha-drill -- python3 -c '
+    import json, time, urllib.error, urllib.request
+    # Once onboarding is complete, Home Assistant stops serving this endpoint: 404 is
+    # the good answer. A 200 listing unfinished steps means the accounts did not restore.
+    for _ in range(60):
+        try:
+            steps = json.load(urllib.request.urlopen("http://127.0.0.1:8123/api/onboarding", timeout=5))
+            finished = all(s["done"] for s in steps)
+        except urllib.error.HTTPError as error:
+            if error.code != 404:
+                raise SystemExit(f"ERROR: unexpected HTTP {error.code} from the restored copy")
+            finished = True
+        except OSError:
+            time.sleep(5)
+            continue
+        print("onboarding finished:", finished)
+        if not finished:
+            raise SystemExit("ERROR: the restored copy wants onboarding again")
+        break
+    else:
+        raise SystemExit("ERROR: restored Home Assistant did not start in 5 minutes")
+    '
+    fi
+    echo "Drill passed. Deleting $NS."
+
 # Refuses if a camera token appears in plain text instead of {FRIGATE_*}.
 # Copy the live Frigate config (after UI edits to zones/masks) back into git
 frigate-config-pull:

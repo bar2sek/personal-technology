@@ -37,16 +37,18 @@ graph LR
             CS["backup-cluster-state 03:00"]
             PG["backup-postgres-databases 03:30"]
             AB["finance/backup-actual-budget 03:45"]
+            HA["home-automation/backup-home-assistant 04:00"]
         end
         subgraph Local["NAS CronJobs (NAS mount, no AWS key)"]
             CSN["backup-cluster-state-nas 03:10"]
             PGN["backup-postgres-databases-nas 03:40"]
             ABN["finance/backup-actual-budget-nas 03:50"]
+            HAN["home-automation/backup-home-assistant-nas 04:10"]
         end
     end
     SCR --> CS & PG & CSN & PGN
-    CS & PG & AB -->|"*.age"| S3
-    CSN & PGN & ABN -->|"*.age over NFS"| NAS
+    CS & PG & AB & HA -->|"*.age"| S3
+    CSN & PGN & ABN & HAN -->|"*.age over NFS"| NAS
     subgraph AWS["AWS S3: s3-aws-backups-prod-use2-001"]
         S3["Versioned · SSE-S3 · Object Lock GOVERNANCE 30d<br/>Bucket policy: TLS only · *.age only · no bypass"]
     end
@@ -74,6 +76,7 @@ One bucket, deliberately split by **who may change it**:
 | 1 | Declarative cluster state (CRDs, cluster-scoped resources, namespaced workloads, ConfigMaps, PVCs). **No Secrets.** | 03:00 S3 · 03:10 NAS | `cluster-state/*.tar.gz.age` | Active |
 | 2 | PostgreSQL: Authentik (active), TeslaMate (when deployed) | 03:30 S3 · 03:40 NAS | `postgres/<app>/*.sql.gz.age` | Active |
 | 2 | Actual Budget data volume (SQLite), from the `finance` namespace | 03:45 S3 · 03:50 NAS | `apps/actual/*.tar.gz.age` | Active (`kubernetes/apps/finance/actual-budget-backup.yaml`) |
+| 2 | Home Assistant config volume (SQLite snapshot + `.storage`), from `home-automation` | 04:00 S3 · 04:10 NAS | `apps/home-assistant/*.tar.gz.age` | Active (`kubernetes/apps/home-assistant/home-assistant-backup.yaml`, [[505-home-assistant-smart-home\|doc 505]]) |
 
 Every dataset goes to **two destinations as two separate CronJobs**: S3 (offsite, 35-day lifecycle, Object Lock) and the garage Synology over NFS (local, pruned after 35 days by the job itself). See [[307-garage-synology-dr-time-machine\|Synology DR]].
 
@@ -303,12 +306,13 @@ kubectl delete namespace restore-drill
 
 **Upload key:** IAM allows two keys per user, so rotation needs no downtime.
 1. Run the `kubectl create secret … --from-env-file=<(aws iam create-access-key …)` block above, after `kubectl delete secret s3-backup-credentials -n backups`.
-2. Run a manual job and confirm the upload.
-3. Delete the old key: `aws iam delete-access-key --user-name svc-aws-backup-uploader-prod-001 --access-key-id <old>`.
+2. Replace the copies in `finance` and `home-automation`: delete each `s3-backup-credentials`, then re-copy it (`just ha-backup-bootstrap` does this for `home-automation`).
+3. Run a manual job and confirm the upload.
+4. Delete the old key: `aws iam delete-access-key --user-name svc-aws-backup-uploader-prod-001 --access-key-id <old>`.
 
 **Encryption key:**
 1. Generate a new identity (Setup §2), store it per *Key custody*, and run the `it works` test.
-2. Update **every** `backup-encryption` ConfigMap (`backups`, `finance`) and apply them.
+2. Update **every** `backup-encryption` ConfigMap (`backups`, `finance`, `home-automation`) and apply them.
 3. Run each backup job by hand and do a restore test with the new identity.
 4. **Keep the old identity for at least 36 days.** Backups encrypted to it stay in the bucket until lifecycle removes them.
 

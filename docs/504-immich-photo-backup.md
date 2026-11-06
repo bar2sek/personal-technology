@@ -14,7 +14,7 @@ aliases:
 # 📸 Immich: Owned Photo Library
 
 > [!NOTE]
-> **Status (2026-11-03): Phase 1 manifests written and validated (`kubeconform`, server dry run under Pod Security `restricted`), not yet applied. Phase 0 is still open.** Google Photos stays primary during a 2–3 month trial of Immich as the day-to-day app; this plan is only rewritten around Immich-as-primary if that trial passes (restore drill, background backup keeps up, sharing solved). Plan approved 2026-10-20 (decisions D1–D6 final). This replaces the earlier "decommissioned" reference doc. That decision assumed a 500 GB library and GPU-accelerated ML. The real library is ~25 GB, and the RTX 4070 on `pc-node-05` now belongs to the Bazzite VM ([[303-kubevirt-bazzite-gpu-vm|KubeVirt GPU VM]]), so this plan runs ML on CPU.
+> **Status (2026-11-05): Phase 1 complete and verified** (v3.3.5, non-root under Pod Security `restricted`; LAN and tailnet URLs, Authentik SSO, a test upload with thumbnails, smart search and face detection on CPU). **Immich has no backups until Phase 4.** Next: Phase 0 (Takeout), then Phase 2. Google Photos stays primary during a 2–3 month trial of Immich as the day-to-day app; this plan is only rewritten around Immich-as-primary if that trial passes (restore drill, background backup keeps up, sharing solved). Plan approved 2026-10-20 (decisions D1–D6 final). This replaces the earlier "decommissioned" reference doc. That decision assumed a 500 GB library and GPU-accelerated ML. The real library is ~25 GB, and the RTX 4070 on `pc-node-05` now belongs to the Bazzite VM ([[303-kubevirt-bazzite-gpu-vm|KubeVirt GPU VM]]), so this plan runs ML on CPU.
 
 ## 🎯 Goal and non-goals
 
@@ -147,7 +147,10 @@ just immich-status
 
 #### Authentik SSO (D5)
 
-Configured in the UIs, the same way as the other apps. The settings live in the Authentik and Immich databases.
+Settings live in the Authentik and Immich databases, not in git. The Authentik side was created 2026-11-05 with `ak shell` as a copy of the Grafana provider (same flows, signing key and scope mappings; client ID `immich`, no access policy binding, so any Authentik user can pass Authentik).
+
+> [!WARNING]
+> A provider created through `ak shell` gets an **empty `grant_types`** list unless you set it (Grafana's provider has them all). Login then fails in Immich with "Failed to finish oauth" and in the Authentik log with `Invalid grant_type for provider`. Immich's provider allows only `authorization_code` and `refresh_token`.
 
 1. **Authentik → Applications → Create with provider:** OAuth2/OpenID, confidential client, an RS256 signing key, slug `immich`. Strict redirect URIs:
 
@@ -160,8 +163,12 @@ Configured in the UIs, the same way as the other apps. The settings live in the 
    ```
 
    The first is required by the iOS app.
-2. **Immich → Administration → Settings → Authentication → OAuth:** enable it, with issuer URL `https://auth.bar2sek.com/application/o/immich/` plus the client ID and secret from step 1. Leave auto-register on only if everyone who can pass Authentik should get an account.
+2. **Immich → Administration → Settings → Authentication → OAuth:** enable it, with issuer URL `https://auth.bar2sek.com/application/o/immich/` plus the client ID and secret from step 1. Copy the secret from Authentik → Applications → Providers → Immich → Edit. Turn auto-register **off**: Immich then only accepts Authentik users whose email matches an existing Immich account, so the admin's email must match its Authentik email.
 3. Test in a private window, keeping the admin session open until it works.
+
+**First deploy (2026-11-05):** all four rollouts passed first try, in about a minute. Startup warnings that are normal on a first boot: `FailedScheduling` (PVCs still binding), failed readiness/startup probes while Postgres initialized, and `relation "system_metadata" does not exist` (Immich checks for the table just before its migrations create it).
+
+**DNS gotcha:** right after adding the record, `dig` answered correctly while `curl` and browsers still failed with "could not resolve host". `dig` queries the DNS server directly; everything else goes through macOS's resolver, which can keep a failed lookup cached. Flush it with the command in [[205-split-horizon-dns-ipv6-leak|docs/205]].
 
 **Verify:**
 - Web login via Authentik works on both URLs.

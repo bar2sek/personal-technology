@@ -1,0 +1,400 @@
+# ==============================================================================
+# Home Assistant: nightly encrypted backup to S3 and the Synology NAS (docs/505)
+# ==============================================================================
+# Same model as finance/actual-budget-backup.yaml: age ciphertext only, the
+# cluster can't decrypt it, one CronJob per destination so a NAS outage can't
+# skip the offsite copy. kubernetes/infrastructure/backups/README.md has the design.
+#
+# Unlike Actual, this can't just tar the live volume. The recorder writes to
+# SQLite every few seconds and recent data sits in the -wal file, so a plain copy
+# can be torn. The job takes a snapshot with SQLite's online backup API instead.
+#
+# That needs a read-write mount, because readers in WAL mode use the shared-memory
+# -shm file. It also needs the same node as the app: -shm only works within one
+# kernel. The RWO volume and the podAffinity below both guarantee that.
+#
+# The app's image is used because it already has Python's sqlite3 and is cached on
+# that node. It doesn't have to match the app's version: both only need SQLite.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backup-encryption
+  namespace: home-automation
+data:
+  # Public age key (same recipient as the cluster backups). Safe to commit.
+  AGE_RECIPIENT: "age1evkgm564me3rdnlaue0wsvth7949gptvw3g2l8rjamlzvwqz9u6qlacewg"
+---
+# Shared by both CronJobs so the two destinations can't drift apart.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: home-assistant-backup-scripts
+  namespace: home-automation
+data:
+  # Writes a gzipped tar of /config to stdout, with a consistent database.
+  pack.py: |
+    import os
+    import shutil
+    import sqlite3
+    import sys
+    import tarfile
+    import time
+
+    CONFIG = "/config"
+    DB = "home-assistant_v2.db"
+    TMP_ROOT = ".backup-tmp"
+    # Live database files (replaced by the snapshot), logs, a lock that must not
+    # be restored, and anything Home Assistant re-creates by itself.
+    SKIP_PREFIXES = (DB, "home-assistant.log")
+    SKIP_NAMES = {TMP_ROOT, ".ha_run.lock", "lost+found", "deps", "tts", "backups"}
+
+
+    def log(message):
+        print(message, file=sys.stderr, flush=True)
+
+
+    def snapshot(destination):
+        source = sqlite3.connect(f"file:{CONFIG}/{DB}?mode=ro", uri=True, timeout=60)
+        target = sqlite3.connect(destination)
+        # Copied in one step under a read transaction; writers carry on in the WAL.
+        source.backup(target)
+        source.close()
+        result = target.execute("PRAGMA integrity_check").fetchone()[0]
+        if result != "ok":
+            raise SystemExit(f"ERROR: snapshot failed integrity check: {result}")
+        # Leave one self-contained file; Home Assistant turns WAL back on at startup.
+        target.execute("PRAGMA journal_mode=DELETE")
+        target.close()
+        log(f"Database snapshot: {os.path.getsize(destination)} bytes, integrity ok")
+
+
+    def add_tree(archive):
+        count = 0
+        for root, dirs, files in os.walk(CONFIG):
+            if root == CONFIG:
+                dirs[:] = [d for d in dirs if d not in SKIP_NAMES]
+                files = [
+                    f for f in files
+                    if f not in SKIP_NAMES and not f.startswith(SKIP_PREFIXES)
+                ]
+            for name in dirs + files:
+                path = os.path.join(root, name)
+                arcname = os.path.relpath(path, CONFIG)
+                try:
+                    archive.add(path, arcname=arcname, recursive=False)
+                    count += 1
+                except FileNotFoundError:
+                    # Home Assistant replaces .storage files by rename, so a temp
+                    # file can vanish mid-walk. The real file is still captured.
+                    log(f"Skipped, vanished during backup: {arcname}")
+        return count
+
+
+    def clear_stale(tmp_root):
+        for name in os.listdir(tmp_root):
+            path = os.path.join(tmp_root, name)
+            if time.time() - os.path.getmtime(path) > 3600:
+                log(f"Removing stale snapshot directory: {name}")
+                shutil.rmtree(path, ignore_errors=True)
+
+
+    def main():
+        tmp_root = os.path.join(CONFIG, TMP_ROOT)
+        # On this volume, not in an emptyDir: the unencrypted copy stays where the
+        # same data already lives and never reaches node disk.
+        work = os.path.join(tmp_root, os.uname().nodename)
+        os.makedirs(work, mode=0o700)
+        try:
+            clear_stale(tmp_root)
+            snap = os.path.join(work, DB)
+            snapshot(snap)
+            with tarfile.open(fileobj=sys.stdout.buffer, mode="w|gz") as archive:
+                archive.add(snap, arcname=DB)
+                log(f"Archived {add_tree(archive) + 1} entries")
+        finally:
+            shutil.rmtree(work, ignore_errors=True)
+
+
+    main()
+  backup.sh: |
+    set -euo pipefail
+    # Fail closed: no valid recipient means no backup, never an unencrypted one.
+    case "${AGE_RECIPIENT:-}" in
+      age1*) ;;
+      *) echo "ERROR: AGE_RECIPIENT missing or invalid. Refusing to back up." >&2; exit 1 ;;
+    esac
+
+    AGE_VERSION=v1.3.2
+    AGE_SHA256=cbe24006683f8eb669266162894b9a522a1af52f2665fbc63a4bb032ed26ac10
+    cd /tmp
+    wget -qO age.tgz "https://github.com/FiloSottile/age/releases/download/${AGE_VERSION}/age-${AGE_VERSION}-linux-amd64.tar.gz"
+    echo "${AGE_SHA256}  age.tgz" | sha256sum -c -
+    tar xzf age.tgz
+    AGE=/tmp/age/age
+    echo probe | "${AGE}" -r "${AGE_RECIPIENT}" > /dev/null
+
+    OUT="${OUTPUT_DIR}/home-assistant_$(date -u +%Y%m%d_%H%M%S).tar.gz.age"
+    # Rename at the end, so a half-written file never looks like a complete backup.
+    python3 /scripts/pack.py | "${AGE}" -r "${AGE_RECIPIENT}" -o "${OUT}.partial"
+    mv "${OUT}.partial" "${OUT}"
+    ls -l "${OUT}"
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: backup-home-assistant
+  namespace: home-automation
+spec:
+  schedule: "0 4 * * *" # Daily at 04:00 UTC, after the other backups
+  suspend: false
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 3600
+      ttlSecondsAfterFinished: 259200 # 3 days
+      template:
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          enableServiceLinks: false
+          securityContext:
+            seccompProfile:
+              type: RuntimeDefault
+          affinity:
+            # Must land on the node where the app has the RWO volume attached
+            podAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - labelSelector:
+                    matchLabels:
+                      app: home-assistant
+                  topologyKey: kubernetes.io/hostname
+          initContainers:
+            - name: pack-and-encrypt
+              image: ghcr.io/home-assistant/home-assistant:2026.11.0@sha256:c6c1ca9931036bf3a2c4cc088d8db25dfea3b33935a5ecc83c40349462e2f69e
+              command: ["/bin/sh", "/scripts/backup.sh"]
+              env:
+                - name: OUTPUT_DIR
+                  value: /work
+              envFrom:
+                - configMapRef:
+                    name: backup-encryption
+              securityContext:
+                runAsUser: 0 # the app runs as root, so its files are root's
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 128Mi
+                limits:
+                  cpu: 1000m
+                  memory: 512Mi
+              volumeMounts:
+                - name: config-storage
+                  mountPath: /config
+                - name: scripts
+                  mountPath: /scripts
+                  readOnly: true
+                - name: work
+                  mountPath: /work
+                - name: tmp
+                  mountPath: /tmp
+          containers:
+            - name: upload
+              image: amazon/aws-cli:2.37.13@sha256:d32864c20087d486f5988c3e70817d67a73f584a47535cada9ad97e0ea1e5196
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -euo pipefail
+                  if [ -z "${AWS_ACCESS_KEY_ID:-}" ] || [ -z "${S3_BUCKET:-}" ]; then
+                    echo "ERROR: Secret 's3-backup-credentials' is missing or incomplete." >&2
+                    exit 1
+                  fi
+                  for f in /work/home-assistant_*.tar.gz.age; do
+                    # CRC32 checksum: Object Lock buckets reject uploads without one
+                    aws s3 cp "${f}" "s3://${S3_BUCKET}/apps/home-assistant/$(basename "${f}")" \
+                      --storage-class STANDARD --checksum-algorithm CRC32
+                  done
+                  echo "Home Assistant backup successful."
+              env:
+                - name: HOME # aws-cli writes its cache under $HOME
+                  value: /tmp
+              envFrom:
+                - secretRef:
+                    name: s3-backup-credentials
+              securityContext:
+                runAsNonRoot: true
+                runAsUser: 1000
+                runAsGroup: 1000
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 128Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+              volumeMounts:
+                - name: work
+                  mountPath: /work
+                  readOnly: true
+                - name: upload-tmp
+                  mountPath: /tmp
+          volumes:
+            - name: config-storage
+              persistentVolumeClaim:
+                claimName: home-assistant-config-pvc
+            - name: scripts
+              configMap:
+                name: home-assistant-backup-scripts
+            - name: work # ciphertext only
+              emptyDir:
+                sizeLimit: 10Gi
+            - name: tmp
+              emptyDir:
+                sizeLimit: 256Mi
+            - name: upload-tmp
+              emptyDir:
+                sizeLimit: 256Mi
+---
+# ==============================================================================
+# Tier 3: local copy on the garage Synology NAS
+# ==============================================================================
+# The PV points only at the apps/home-assistant subfolder of the k8s-backups
+# share, so this namespace can't see the other backups. NFS can't mount a folder
+# that doesn't exist: `just ha-backup-bootstrap` creates it.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-synology-nfs-home-assistant
+  labels:
+    tier: tier-3-dr
+    destination: synology-nas
+spec:
+  capacity:
+    storage: 50Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  # Reserve this PV for exactly one claim, so no other namespace can bind it
+  claimRef:
+    namespace: home-automation
+    name: pvc-synology-nfs-home-assistant
+  nfs:
+    server: 10.0.1.223
+    path: /volume1/k8s-backups/apps/home-assistant
+  mountOptions:
+    - hard
+    - nfsvers=4
+    - noatime
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-synology-nfs-home-assistant
+  namespace: home-automation
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+  storageClassName: ""
+  volumeName: pv-synology-nfs-home-assistant
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: backup-home-assistant-nas
+  namespace: home-automation
+spec:
+  schedule: "10 4 * * *" # Daily at 04:10 UTC, after the S3 job
+  suspend: false
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 3600 # a hung NFS mount must not block the job forever
+      ttlSecondsAfterFinished: 259200 # 3 days
+      template:
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          enableServiceLinks: false
+          securityContext:
+            seccompProfile:
+              type: RuntimeDefault
+          affinity:
+            podAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - labelSelector:
+                    matchLabels:
+                      app: home-assistant
+                  topologyKey: kubernetes.io/hostname
+          containers:
+            - name: encrypt-to-nas
+              image: ghcr.io/home-assistant/home-assistant:2026.11.0@sha256:c6c1ca9931036bf3a2c4cc088d8db25dfea3b33935a5ecc83c40349462e2f69e
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -euo pipefail
+                  /bin/sh /scripts/backup.sh
+                  # Retention: match S3 (35 days). Also clear partials from failed runs.
+                  find /nas -maxdepth 1 -name 'home-assistant_*.tar.gz.age' -mtime +35 -print -delete
+                  find /nas -maxdepth 1 -name '*.partial' -mmin +60 -print -delete
+                  echo "Home Assistant NAS backup successful."
+              env:
+                - name: OUTPUT_DIR
+                  value: /nas
+              envFrom:
+                - configMapRef:
+                    name: backup-encryption
+              securityContext:
+                runAsUser: 0
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 128Mi
+                limits:
+                  cpu: 1000m
+                  memory: 512Mi
+              volumeMounts:
+                - name: config-storage
+                  mountPath: /config
+                - name: scripts
+                  mountPath: /scripts
+                  readOnly: true
+                - name: nas
+                  mountPath: /nas
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: config-storage
+              persistentVolumeClaim:
+                claimName: home-assistant-config-pvc
+            - name: scripts
+              configMap:
+                name: home-assistant-backup-scripts
+            - name: nas
+              persistentVolumeClaim:
+                claimName: pvc-synology-nfs-home-assistant
+            - name: tmp
+              emptyDir:
+                sizeLimit: 256Mi

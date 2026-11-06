@@ -911,6 +911,26 @@ The milestone entries below record how each of these got here. The section that 
 
 ---
 
+## 🎯 Milestone 41: Immich Deployed for a Trial (2026-11-05)
+
+- **Why:** an owned copy of the photo library, and a 2–3 month trial of Immich as the day-to-day app. Google Photos stays primary and stays on until the trial's criteria pass.
+- **Deployed:** v3.3.5 with Immich's VectorChord Postgres image, Valkey and CPU machine learning, all non-root under Pod Security `restricted`. Reachable only on the tailnet and the LAN; no public record.
+- **Authentik SSO:** working, with auto-register off.
+- **Verified:** a test upload produced thumbnails, a smart search embedding and a face record on CPU. Models took about 2 GB on the HDD pool.
+- **Open:** Takeout import, phone backup. **No backups until Phase 4.**
+- Details: [[504-immich-photo-backup|docs/504]].
+
+---
+
+## 🎯 Milestone 42: Home Assistant Deployed (2026-11-05)
+
+- **Why:** the daily-use anchor of home-prod, and the collector for Refoss EM16P/EM06P circuit data for solar sizing.
+- **Deployed:** 2026.11.0, rewritten from the unused 2024 starter: no `hostNetwork`, trusted proxies seeded into HA's HTTP store (YAML `http:` now auto-reverts after 5 minutes without UI confirmation), 20 Gi on SSD. Onboarded and reachable at `home.bar2sek.com` on the LAN and on the tailnet; no public record.
+- **Open:** Refoss connection and firewall rule. **No backups yet.**
+- Details: [[505-home-assistant-smart-home|docs/505]].
+- **Backup built before the monitors go in**: nightly `age`-encrypted copies to S3 and the NAS, so energy history is protected from the first reading. It snapshots SQLite with the online backup API instead of tarring the live volume, and uses Python's `tarfile` because the image's busybox `tar` honors only the last `-C` and silently produced a database-only archive in testing. The restore drill passed from S3 with the offline key: the restored copy booted with the owner account intact. Design and drill: [[505-home-assistant-smart-home|doc 505]].
+---
+
 ## 🎯 Immediate Next Actions & Infrastructure Backlog
 
 > [!NOTE]

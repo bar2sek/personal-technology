@@ -79,6 +79,14 @@ resource "unifi_dns_record" "immich" {
   ttl         = "300s"
 }
 
+# Home Assistant: no public record today (docs/505). CNAME for the same reason.
+resource "unifi_dns_record" "home" {
+  name        = "home.${var.public_domain}"
+  record_type = "CNAME"
+  value       = unifi_dns_record.ingress_target.name
+  ttl         = "300s"
+}
+
 resource "unifi_dns_record" "gaming" {
   name        = "gaming.${var.public_domain}"
   record_type = "A"
