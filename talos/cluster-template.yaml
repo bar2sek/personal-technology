@@ -81,6 +81,22 @@ patches:
             imageGCHighThresholdPercent: 60
             imageGCLowThresholdPercent: 50
             imageMaximumGCAge: 168h
+  # API servers trust Authentik for Headlamp SSO (docs/113).
+  # Keep it last: Omni names patches by position.
+  # The prefixes must match the Group in kubernetes/infrastructure/headlamp/headlamp.yaml.
+  # The issuer's trailing slash is significant: it must equal the token's `iss`.
+  - name: controlplane-oidc
+    inline: |-
+      cluster:
+        apiServer:
+          extraArgs:
+            oidc-issuer-url: https://auth.bar2sek.com/application/o/headlamp/
+            oidc-client-id: headlamp
+            oidc-username-claim: preferred_username
+            oidc-username-prefix: "authentik:"
+            oidc-groups-claim: groups
+            oidc-groups-prefix: "authentik:"
+            oidc-signing-algs: RS256
 
 ---
 kind: Workers
@@ -254,7 +270,6 @@ patches:
           match: disk.wwid == "naa.500a0751e6489822"
         minSize: 200GiB
         grow: true
-
 ---
 kind: Machine
 name: 927ef8ab-872a-f416-acb4-2cf05d577ea4

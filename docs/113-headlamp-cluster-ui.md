@@ -129,7 +129,7 @@ In the UI: Cluster → Nodes lists all five nodes; a pod's Logs tab streams; Sec
 ## 🔑 SSO through Authentik (in progress)
 
 > [!NOTE]
-> **Status (2026-11-05): phases 1 and 2 of 5 done.** Authentik and the group's permissions are ready, but Headlamp and the API server don't use them yet, so token login is still the only login.
+> **Status (2026-11-06): phases 1 to 3 of 5 done.** All three API servers trust Authentik and passed the token tests. Headlamp isn't configured yet, so token login is still the only login.
 
 Headlamp forwards whatever you log in with to the API server, so the API server has to trust the identity provider. That is why SSO needs a control-plane change and not only Headlamp flags.
 
@@ -137,11 +137,13 @@ Headlamp forwards whatever you log in with to the API server, so the API server 
 | :--- | :--- | :--- |
 | 1. Authentik | `headlamp` OIDC provider, application and `headlamp-viewers` group | Done |
 | 2. Permissions | Bind `authentik:headlamp-viewers` to `view` and `headlamp-cluster-read` | Done |
-| 3. API server | Check the node network reaches Authentik, then add OIDC flags through the Omni template | Not started |
+| 3. API server | Check the node network reaches Authentik, then add OIDC flags through the Omni template | Done |
 | 4. Headlamp | Add OIDC flags and the client secret, test both URLs | Not started |
 | 5. Entra (later) | Enable Entra as Authentik's upstream login ([[407-azure-entra-id-authentik-federation|docs/407]]) | Not started |
 
 Token login stays as the way in when Authentik is down.
+
+SSO sends the browser to `auth.bar2sek.com`, which has a public DNS record pointing at Cloudflare, while `headlamp.bar2sek.com` has none. Sign-in away from home should therefore reach Authentik through Cloudflare, with Headlamp itself still reachable only at home or over Tailscale. Not yet tested from outside the LAN.
 
 ### What phase 1 created
 
@@ -159,6 +161,58 @@ just headlamp-sso-apply      # secret, blueprint ConfigMap, Authentik manifest, 
 
 > [!IMPORTANT]
 > **The group name must match the API server's prefix.** The bindings expect `authentik:headlamp-viewers`, so phase 3 must set `--oidc-groups-prefix=authentik:`. A different prefix means sign-in succeeds but every page says forbidden.
+
+### Phase 3: one API server first
+
+The flags now live in the `controlplane-oidc` patch in `talos/cluster-template.yaml`. They started as a temporary `controlplane-oidc-canary` patch on `sm-node-03`, because doing one node first limits a bad flag or an untrusted certificate chain to one of three API servers. Use the same approach for future API server flag changes.
+
+```bash
+omnictl cluster template diff -f talos/cluster-template.yaml   # expect only the intended patch
+omnictl cluster template sync -f talos/cluster-template.yaml
+```
+
+The sync restarted only that node's `kube-apiserver` pod. The node did not reboot, and it was serving again in under a minute.
+
+**To undo it:** delete the patch and run the same two commands. Omni runs outside the cluster, so this doesn't depend on the API server being healthy. Removing `controlplane-oidc` now restarts all three API servers and turns SSO off, and token login keeps working.
+
+**Result on 2026-11-06:** test tokens signed with Authentik's real key, sent directly to each node's port 6443:
+
+| Node | Token | Request | Result | What it proves |
+| :--- | :--- | :--- | :--- | :--- |
+| `sm-node-03` | In the group | Who am I | 201, `authentik:canary-test` in `authentik:headlamp-viewers` | Signature, issuer and both prefixes work |
+| `sm-node-03` | In the group | List nodes | 200 | The phase 2 bindings apply |
+| `sm-node-03` | In the group | List Secrets | 403 | Still read-only |
+| `sm-node-03` | No group | List nodes | 403 | Access comes from the group |
+| `sm-node-03` | Wrong audience | List nodes | 401 | Tokens for other apps are rejected |
+| `sm-node-03` | ServiceAccount | List nodes | 200 | Token login still works |
+| `sm-node-01` | In the group | List nodes | 401 | The control: no flags, no trust |
+| `sm-node-01` | ServiceAccount | List nodes | 200 | Token login unaffected |
+
+> [!NOTE]
+> **This doesn't test a real sign-in.** The claims were written by hand to match what the API server expects, using `OAuth2Provider.encode()` in `ak shell`, which stores nothing. Whether Authentik's own ID tokens carry `preferred_username` and `groups` in that form is first tested by a browser login in phase 4.
+
+> [!WARNING]
+> **Test each node directly, not through the VIP or `kubectl`.** The VIP can land on an API server without the flags, and the Omni proxy replaces your identity. During the canary, an SSO login through the VIP can fail depending on which node answers, so Headlamp must wait until all three have the flags.
+
+> [!TIP]
+> **`omnictl cluster template status` can end in `context deadline exceeded` when nothing is wrong.** It happened on this sync even though the change had applied. `omnictl get clusterstatus homelab-k8s -o yaml` showed the cluster ready with 5/5 machines healthy. Confirm the flags on the pod too.
+
+To check the flags:
+
+```bash
+kubectl -n kube-system get pod kube-apiserver-sm-node-03 -o json | jq -r '.spec.containers[0].command[]' | grep oidc
+```
+
+### Phase 3: all three API servers
+
+It takes two syncs, so `sm-node-03` never loses its flags:
+
+1. **Done 2026-11-06: add `controlplane-oidc` to the ControlPlane patches and keep the canary.** `sm-node-02` restarted at 14:10:02Z and `sm-node-01` at 14:10:23Z, one after the other, about a minute after the sync. `sm-node-03` kept the same values and did not restart. A check every few seconds during the rollout saw no API errors. All three then passed the six token tests from the table above, with the same flags on each.
+2. **Done 2026-11-06: delete `controlplane-oidc-canary` in a separate sync.** This changed nothing on the nodes, because the shared patch sets the same values.
+
+Syncing both changes at once could remove the canary first, depending on the order Omni applies them, and leave `sm-node-03` without the flags until the new patch lands.
+
+A two-minute check after step 2 showed no restarts, all three still had the flags, and the token tests passed again.
 
 ### Gotchas
 
