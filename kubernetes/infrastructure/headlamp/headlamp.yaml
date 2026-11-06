@@ -85,6 +85,36 @@ subjects:
     name: headlamp-viewer
     namespace: headlamp
 ---
+# SSO identity: same read-only rights as headlamp-viewer, granted to the
+# Authentik group. The `authentik:` prefix comes from --oidc-groups-prefix on the
+# API server, so nothing in Authentik can claim a built-in group such as
+# system:masters. These bindings do nothing until the API server trusts Authentik.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: headlamp-sso-view
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+subjects:
+  - kind: Group
+    apiGroup: rbac.authorization.k8s.io
+    name: authentik:headlamp-viewers
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: headlamp-sso-cluster-read
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: headlamp-cluster-read
+subjects:
+  - kind: Group
+    apiGroup: rbac.authorization.k8s.io
+    name: authentik:headlamp-viewers
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:

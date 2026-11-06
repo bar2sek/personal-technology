@@ -931,6 +931,16 @@ The milestone entries below record how each of these got here. The section that 
 - **Backup built before the monitors go in**: nightly `age`-encrypted copies to S3 and the NAS, so energy history is protected from the first reading. It snapshots SQLite with the online backup API instead of tarring the live volume, and uses Python's `tarfile` because the image's busybox `tar` honors only the last `-C` and silently produced a database-only archive in testing. The restore drill passed from S3 with the offline key: the restored copy booted with the owner account intact. Design and drill: [[505-home-assistant-smart-home|doc 505]].
 ---
 
+## 🎯 Milestone 43: Headlamp SSO, Authentik Client and Permissions (2026-11-05)
+
+- **Goal:** replace pasted Headlamp tokens with Authentik sign-in, with Entra as Authentik's upstream later.
+- **Done:** `headlamp` OIDC provider, application and `headlamp-viewers` group, defined by the first Authentik blueprint in the repo. Client secret generated in the cluster and never printed. Only `authentik-worker` rolled.
+- **Permissions:** `authentik:headlamp-viewers` bound to the same read-only roles as the token. `just headlamp-rbac-check` now covers the group and a negative control, 14/14.
+- **Not done:** API server flags and Headlamp flags. Token login is still the only Headlamp login.
+- Details: [[113-headlamp-cluster-ui|docs/113]].
+
+---
+
 ## 🎯 Immediate Next Actions & Infrastructure Backlog
 
 > [!NOTE]

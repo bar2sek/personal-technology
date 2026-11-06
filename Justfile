@@ -56,6 +56,31 @@ headlamp-apply:
 headlamp-token duration="720h":
     kubectl -n headlamp create token headlamp-viewer --duration={{duration}}
 
+# Generated in place and never printed, so it stays out of the synced vault.
+# Safe to re-run: keeps the existing value. Delete the Secret in both namespaces to rotate.
+# Create the Headlamp OIDC client secret in the identity and headlamp namespaces (docs/113)
+headlamp-oidc-secret:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if kubectl -n identity get secret headlamp-oidc >/dev/null 2>&1; then
+      s="$(kubectl -n identity get secret headlamp-oidc -o jsonpath='{.data.client-secret}' | base64 -d)"
+    else
+      s="$(openssl rand -hex 32)"
+    fi
+    for ns in identity headlamp; do
+      kubectl -n "$ns" create secret generic headlamp-oidc --from-literal=client-secret="$s" \
+        --dry-run=client -o yaml | kubectl apply -f -
+    done
+
+# Publish the Authentik blueprints and roll the worker so it picks them up (docs/113)
+headlamp-sso-apply: headlamp-oidc-secret
+    kubectl -n identity create configmap authentik-blueprints \
+        --from-file=kubernetes/infrastructure/authentik/blueprints/ \
+        --dry-run=client -o yaml | kubectl apply -f -
+    kubectl apply -f kubernetes/infrastructure/authentik/authentik.yaml
+    kubectl -n identity rollout status deploy/authentik-worker --timeout=300s
+    kubectl -n identity exec deploy/authentik-worker -- ak apply_blueprint custom/headlamp.yaml
+
 # `kubectl auth can-i --as` is unreliable through the Omni proxy (it reports
 # your own rights). A SubjectAccessReview asks the API server's authorizer
 # directly and stores nothing.
@@ -63,14 +88,23 @@ headlamp-token duration="720h":
 headlamp-rbac-check:
     #!/usr/bin/env bash
     set -euo pipefail
-    sar() { # <sa> <verb> <resource[/subresource]> <expected>
-      local res=${3%%/*} sub="" got
-      [[ $3 == */* ]] && sub=",\"subresource\":\"${3#*/}\""
-      got=$(printf '{"apiVersion":"authorization.k8s.io/v1","kind":"SubjectAccessReview","spec":{"user":"system:serviceaccount:headlamp:%s","groups":["system:serviceaccounts","system:serviceaccounts:headlamp","system:authenticated"],"resourceAttributes":{"namespace":"identity","verb":"%s","resource":"%s"%s}}}' "$1" "$2" "$res" "$sub" \
+    review() { # <label> <user> <groups-json> <verb> <resource[/subresource]> <expected>
+      local res=${5%%/*} sub="" got
+      [[ $5 == */* ]] && sub=",\"subresource\":\"${5#*/}\""
+      got=$(printf '{"apiVersion":"authorization.k8s.io/v1","kind":"SubjectAccessReview","spec":{"user":"%s","groups":%s,"resourceAttributes":{"namespace":"identity","verb":"%s","resource":"%s"%s}}}' "$2" "$3" "$4" "$res" "$sub" \
         | kubectl create -f - -o jsonpath='{.status.allowed}')
       got=${got:-false}
-      [[ $got == "$4" ]] && mark=ok || { mark=FAIL; FAILED=1; }
-      printf '%-4s %-16s %-7s %-20s allowed=%s\n' "$mark" "$1" "$2" "$3" "$got"
+      [[ $got == "$6" ]] && mark=ok || { mark=FAIL; FAILED=1; }
+      printf '%-4s %-16s %-7s %-20s allowed=%s\n' "$mark" "$1" "$4" "$5" "$got"
+    }
+    sar() { # <sa> <verb> <resource[/subresource]> <expected>
+      review "$1" "system:serviceaccount:headlamp:$1" '["system:serviceaccounts","system:serviceaccounts:headlamp","system:authenticated"]' "$2" "$3" "$4"
+    }
+    sso() { # <verb> <resource[/subresource]> <expected>: a member of the Authentik group
+      review sso-viewer authentik:akadmin '["authentik:headlamp-viewers","system:authenticated"]' "$1" "$2" "$3"
+    }
+    no_group() { # <verb> <resource> <expected>: same user, not in the group
+      review sso-no-group authentik:akadmin '["system:authenticated"]' "$1" "$2" "$3"
     }
     FAILED=0
     sar headlamp-viewer list   nodes             true
@@ -80,6 +114,13 @@ headlamp-rbac-check:
     sar headlamp-viewer delete pods              false
     sar headlamp        list   pods              false
     sar headlamp        list   secrets           false
+    sso list   nodes             true
+    sso get    pods/log          true
+    sso list   persistentvolumes true
+    sso list   secrets           false
+    sso delete pods              false
+    no_group list nodes          false
+    no_group list pods           false
     exit $FAILED
 
 # Check status of the monitoring stack (Prometheus, Grafana, Alertmanager, Node-Exporter)

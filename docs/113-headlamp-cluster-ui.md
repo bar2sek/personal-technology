@@ -101,7 +101,16 @@ just headlamp-rbac-check
 # ok   headlamp-viewer  delete  pods                 allowed=false
 # ok   headlamp         list    pods                 allowed=false
 # ok   headlamp         list    secrets              allowed=false
+# ok   sso-viewer       list    nodes                allowed=true
+# ok   sso-viewer       get     pods/log             allowed=true
+# ok   sso-viewer       list    persistentvolumes    allowed=true
+# ok   sso-viewer       list    secrets              allowed=false
+# ok   sso-viewer       delete  pods                 allowed=false
+# ok   sso-no-group     list    nodes                allowed=false
+# ok   sso-no-group     list    pods                 allowed=false
 ```
+
+The `sso-*` rows describe a user the API server can't authenticate yet, because a SubjectAccessReview only asks what RBAC would allow. They prove the bindings, not the login. `sso-no-group` is the negative control: the same user without the group gets nothing.
 
 > [!WARNING]
 > **Don't trust `kubectl auth can-i --as=...` here.** The workstation kubeconfig goes through Omni's Kubernetes proxy, which authenticates you and then makes the request as your Omni identity, so `--as` answers reflect *your* admin rights ("yes" to everything, including `delete pods`). `just headlamp-rbac-check` creates `SubjectAccessReview` objects instead: the API server's authorizer evaluates RBAC for the named ServiceAccount directly, and nothing is stored.
@@ -117,6 +126,63 @@ curl -s -H "accept: application/dns-json" "https://cloudflare-dns.com/dns-query?
 
 In the UI: Cluster → Nodes lists all five nodes; a pod's Logs tab streams; Secrets shows "forbidden" (expected).
 
+## 🔑 SSO through Authentik (in progress)
+
+> [!NOTE]
+> **Status (2026-11-05): phases 1 and 2 of 5 done.** Authentik and the group's permissions are ready, but Headlamp and the API server don't use them yet, so token login is still the only login.
+
+Headlamp forwards whatever you log in with to the API server, so the API server has to trust the identity provider. That is why SSO needs a control-plane change and not only Headlamp flags.
+
+| Phase | Change | Status |
+| :--- | :--- | :--- |
+| 1. Authentik | `headlamp` OIDC provider, application and `headlamp-viewers` group | Done |
+| 2. Permissions | Bind `authentik:headlamp-viewers` to `view` and `headlamp-cluster-read` | Done |
+| 3. API server | Check the node network reaches Authentik, then add OIDC flags through the Omni template | Not started |
+| 4. Headlamp | Add OIDC flags and the client secret, test both URLs | Not started |
+| 5. Entra (later) | Enable Entra as Authentik's upstream login ([[407-azure-entra-id-authentik-federation|docs/407]]) | Not started |
+
+Token login stays as the way in when Authentik is down.
+
+### What phase 1 created
+
+```bash
+just headlamp-sso-apply      # secret, blueprint ConfigMap, Authentik manifest, applies the blueprint
+```
+
+- **`kubernetes/infrastructure/authentik/blueprints/headlamp.yaml`** defines the provider, application, group and access binding. It is the first Authentik blueprint in this repo. The Grafana client has no definition here.
+- **`headlamp-oidc` Secret** (namespaces `identity` and `headlamp`) holds the client secret. `just headlamp-oidc-secret` generates it in place, never prints it, and keeps the existing value on re-run. To rotate, delete it in both namespaces, then re-run `just headlamp-sso-apply`.
+- **Issuer:** `https://auth.bar2sek.com/application/o/headlamp/`, client ID `headlamp`.
+
+### What phase 2 created
+
+`headlamp-sso-view` and `headlamp-sso-cluster-read` bind the group to the same roles as the token. They are separate from the token's bindings so SSO can be removed on its own. They do nothing until the API server trusts Authentik.
+
+> [!IMPORTANT]
+> **The group name must match the API server's prefix.** The bindings expect `authentik:headlamp-viewers`, so phase 3 must set `--oidc-groups-prefix=authentik:`. A different prefix means sign-in succeeds but every page says forbidden.
+
+### Gotchas
+
+> [!WARNING]
+> **Add group members in the blueprint, not the Authentik UI.** The worker re-applies blueprints on a schedule, so UI edits to these objects get overwritten, including `headlamp-viewers` membership. This matters when Entra users arrive.
+
+> [!WARNING]
+> **Never set `groups` on a user in a blueprint.** That could replace the user's whole list and remove `akadmin` from `authentik Admins`. Membership is set from the group side.
+
+> [!IMPORTANT]
+> `authentik-worker` now requires the `authentik-blueprints` ConfigMap and `headlamp-oidc` Secret. On a rebuilt cluster, run `just headlamp-sso-apply` rather than applying `authentik.yaml` alone, or the worker will not start.
+
+- **A signing key is required.** The API server rejects symmetric tokens, and without a signing key Authentik issues HS256. Discovery should list `RS256`.
+- **`offline_access` is what prevents hourly sign-outs.** The ID token expires with the one-hour access token, and the refresh token lasts 30 days. Headlamp must also request this scope in phase 4.
+- **Test blueprint changes without applying them** using `Importer.from_string(text).validate()` in `ak shell`, which rolls back. Any `!Env` value must be set in that shell.
+
+### Verify phase 1
+
+```bash
+curl -s https://auth.bar2sek.com/application/o/headlamp/.well-known/openid-configuration
+# issuer as above, RS256, scopes include offline_access, claims include groups
+kubectl -n identity exec deploy/authentik-worker -- ak apply_blueprint custom/headlamp.yaml
+```
+
 ## 🩺 Troubleshooting
 
 | Symptom | Cause / fix |
@@ -130,5 +196,4 @@ In the UI: Cluster → Nodes lists all five nodes; a pod's Logs tab streams; Sec
 
 ## 🔮 Later
 
-- **Authentik SSO:** add OIDC flags to the kube-apiserver through a Talos patch, add an Authentik provider, and bind RBAC to Authentik groups. That gives per-person identity instead of a shared viewer token. It's a rolling control-plane change, so it's deferred.
 - **Write access:** if restarting a Deployment from the UI becomes useful, add a separate `headlamp-operator` ServiceAccount with a narrow role (e.g. `patch` on deployments) rather than widening the viewer.

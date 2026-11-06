@@ -232,6 +232,12 @@ spec:
                 secretKeyRef:
                   name: authentik-secrets
                   key: secret-key
+            # Read by blueprints/headlamp.yaml (!Env). Created by `just headlamp-oidc-secret`.
+            - name: HEADLAMP_OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: headlamp-oidc
+                  key: client-secret
             # Public URL authentik uses to build links; required from 2026.11
             - name: AUTHENTIK_WEB__BASE_URL
               value: https://auth.bar2sek.com
@@ -259,6 +265,16 @@ spec:
             limits:
               cpu: 1000m
               memory: 1.5Gi
+          # The worker applies blueprints. The ConfigMap comes from
+          # blueprints/*.yaml via `just headlamp-sso-apply`.
+          volumeMounts:
+            - name: custom-blueprints
+              mountPath: /blueprints/custom
+              readOnly: true
+      volumes:
+        - name: custom-blueprints
+          configMap:
+            name: authentik-blueprints
 ---
 # ==============================================================================
 # Authentik Service
