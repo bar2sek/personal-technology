@@ -138,7 +138,7 @@ Headlamp forwards whatever you log in with to the API server, so the API server 
 | 1. Authentik | `headlamp` OIDC provider, application and `headlamp-viewers` group | Done |
 | 2. Permissions | Bind `authentik:headlamp-viewers` to `view` and `headlamp-cluster-read` | Done |
 | 3. API server | Check the node network reaches Authentik, then add OIDC flags through the Omni template | Done |
-| 4. Headlamp | Add OIDC flags and the client secret, test both URLs | Not started |
+| 4. Headlamp | Add OIDC flags and the client secret, test both URLs | Applied; browser sign-in not confirmed |
 | 5. Entra (later) | Enable Entra as Authentik's upstream login ([[407-azure-entra-id-authentik-federation|docs/407]]) | Not started |
 
 Token login stays as the way in when Authentik is down.
@@ -213,6 +213,32 @@ It takes two syncs, so `sm-node-03` never loses its flags:
 Syncing both changes at once could remove the canary first, depending on the order Omni applies them, and leave `sm-node-03` without the flags until the new patch lands.
 
 A two-minute check after step 2 showed no restarts, all three still had the flags, and the token tests passed again.
+
+### Phase 4: Headlamp
+
+Applied 2026-11-06 from `kubernetes/infrastructure/headlamp/headlamp.yaml`. Both URLs pass the check below, returning a 302 with their own `https` callback, PKCE and the `offline_access` scope. A browser sign-in hasn't been confirmed yet.
+
+| Setting | Why |
+| :--- | :--- |
+| `-oidc-idp-issuer-url`, `-oidc-client-id` | Must match the API server's flags, or it rejects the token |
+| `-oidc-scopes=profile,email,offline_access` | The default leaves out `offline_access`, which causes hourly sign-outs |
+| `-oidc-use-pkce` | Protects the login code in transit, and Authentik supports S256 |
+| `HEADLAMP_CONFIG_OIDC_CLIENT_SECRET` | Keeps the secret out of the pod's args |
+| No `-oidc-callback-url` | Headlamp builds the callback from each request's `Host` and `X-Forwarded-Proto`, so both URLs work. Setting it would pin one URL. It also means logout has no return address, so signing out may stop on an Authentik page. |
+| `proxy-buffer-size: 16k` on `headlamp-lan` | The callback sets the token as a cookie, which can overflow nginx's default 4k buffer and return a 502 |
+
+Check each URL without a browser. `/oidc` makes Headlamp fetch Authentik's discovery document, then redirect, so it tests Headlamp's CA bundle and the callback it builds:
+
+```bash
+for host in headlamp.bar2sek.com headlamp.tail6e33.ts.net; do
+  curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' "https://$host/oidc?cluster=talos-homelab&dt=1" | grep -oE '^[0-9]+|redirect_uri=[^&]+'
+done
+```
+
+Expect a 302 and `redirect_uri` set to that host's `/oidc-callback` over `https`. An `http://` callback means the proxy isn't passing `X-Forwarded-Proto`, and Authentik will refuse it.
+
+> [!IMPORTANT]
+> The Deployment now requires the `headlamp-oidc` Secret. On a rebuilt cluster, run `just headlamp-sso-apply` before `just headlamp-apply`, or the pod stays in `CreateContainerConfigError`.
 
 ### Gotchas
 

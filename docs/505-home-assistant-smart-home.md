@@ -14,7 +14,7 @@ aliases:
 # 🏠 Home Assistant: Smart Home & Energy Monitoring
 
 > [!NOTE]
-> **Status (2026-11-05): deployed (2026.11.0) and onboarded, reachable on the LAN and tailnet. Still open: Refoss connection and firewall rule. Nightly encrypted backups run to S3 and the NAS, and a restore drill passed.**
+> **Status (2026-11-07): deployed (2026.11.0) and onboarded, reachable on the LAN and tailnet. Garage EM06P installed and online (temporarily on the trusted Wi-Fi, see [[#Garage EM06P install (2026-11-07)]]); Refoss RPC integration and house EM16P still open. Nightly encrypted backups run to S3 and the NAS, and a restore drill passed.**
 
 **Why now:** Home Assistant is the daily-use anchor of the 24/7 "home-prod" cluster, and it's what collects the circuit-level energy data for solar and battery sizing. The monitors are a **Refoss EM16P** (house) and **EM06P** (garage). The breaker maps, CT-to-port plan and safe-install sequence live in the `home-projects` repo: `solar-battery/Electrical Panels & Monitor Port Plan.md`.
 
@@ -41,7 +41,7 @@ graph LR
 
 | Decision | Choice | Why |
 | :--- | :--- | :--- |
-| Refoss connection | **`refoss_rpc`** (custom integration, HACS default repo). MQTT is the fallback | Its README lists both the EM16P and EM06P. Home Assistant connects out to each device, so the IoT VLAN needs no path into the cluster and there's no broker to run |
+| Refoss connection | **`refoss_rpc`** (community integration, installed from the built-in **Marketplace**). MQTT is the fallback | Its README lists both the EM16P and EM06P. Home Assistant connects out to each device, so the IoT VLAN needs no path into the cluster and there's no broker to run |
 | Networking | **No `hostNetwork`** | mDNS/SSDP discovery wouldn't cross into the IoT VLAN anyway. Devices are added by reserved IP. Flannel masquerades pod traffic, so devices see a K8S-CONTROL node address |
 | Exposure | LAN plus tailnet, **no public record** | Same model as Immich. Adding a public record or tunnel hostname would put it on the internet |
 | Login | Home Assistant's own accounts | Authentik would need a custom component, and the iOS Companion app is simpler without it. Revisit later |
@@ -86,17 +86,49 @@ Install the **garage EM06P first** and prove the whole path before touching the 
 
 2. **Reserve its IP** in UniFi, under the IoT network.
 3. **Allow the cluster to reach it.** Add a UniFi firewall rule from K8S-CONTROL (`10.10.20.0/24`) to the monitors' reserved IPs, on the device's web port only. Return traffic is already allowed. Keep the existing IoT → private subnets block.
-4. **Install HACS,** which needs a GitHub login, then restart:
+4. **Open the Marketplace:** Settings → Marketplace, and accept the community-content warning once. Nothing to install: it ships with Home Assistant 2026.11+. A GitHub sign-in is optional (only for custom repositories and higher rate limits).
 
-   ```bash
-   kubectl -n home-automation exec deploy/home-assistant -- sh -c 'wget -O - https://get.hacs.xyz | bash -'
-   ```
+   > [!WARNING]
+   > **HACS is gone as of 2026.11.** The Marketplace replaced it, and the `get.hacs.xyz` installer now exits with *"HACS does not work on Home Assistant 2026.11 and newer"* (seen 2026-11-07). Don't try to work around it. Template code that used `integration_entities('hacs')` must use `'marketplace'`.
 
-5. **Install "Refoss RPC"** from HACS, restart, then add it under Settings → Devices & Services using the reserved IP.
+5. **Install "Refoss RPC"** from the Marketplace, restart if a repair asks for it, then add it under Settings → Devices & Services using the device's reserved IP.
 6. **Set the CT channels** per the port plan, including circuit factor 2 on the balanced 240 V loads.
 7. **Add sensors to the Energy dashboard** (Settings → Dashboards → Energy). Don't count both the house mains and the garage total as whole-home consumption: the garage feeder is downstream of the house mains.
 
 **Verify:** apply a known load (a space heater on one circuit) and check that the matching channel reads a sensible value with the right sign. A negative reading means the CT is reversed (arrows go K → L toward the load).
+
+### Garage EM06P install (2026-11-07)
+
+* **Breaker:** HOM215 in garage slots **8–10** (not 9–11 as first planned). Harness wires are about 0.35 mm, far below the breaker's 14–10 AWG range, so every harness wire is pigtailed to 12 AWG copper with Wago 221s. Details live in the port plan in `home-projects`.
+* **Mount:** taped inside the top of the panel, antenna sideways. Wi-Fi reads **−38 dBm** through the closed steel panel, so no external enclosure is needed.
+* **Network (temporary):** joined to the **trusted Wi-Fi**, not the IoT VLAN, because the IoT VLAN has **no SSID yet** (Terraform defines the network, not a WLAN). It sits on the same subnet as the Synology, which the cluster already reaches, so **no firewall rule was needed**: the Home Assistant pod gets HTTP answers from it.
+* **Moving it later doesn't need the panel opened:** the monitor's own web page has Wi-Fi settings. It also has a second station slot (`sta_2`): add the IoT SSID there first, so a typo can't strand it.
+* **Refoss RPC** installed from the Marketplace and added by IP; all six channels report (firmware 2.1.13).
+
+**Channel → port → circuit** (inferred from live readings; the device only says `em:1…6`):
+
+| Channel | Port | Circuit | Factor |
+| :---: | :---: | :--- | :---: |
+| 1 | A1 | Garage feeder L2 | 1 |
+| 2 | B1 | Garage lights | 1 |
+| 3 | C1 | Garage feeder L1 | 1 |
+| 4 | A2 | Mini split (L2 pole) | **2** |
+| 5 | B2 | Under-bench outlets | 1 |
+| 6 | C2 | Tesla charger (L1 pole) | **2** |
+
+**Verification:** every channel read positive power at PF ≈ 0.85, so arrows and legs are right. The feeders balance: L1 ≈ mini split leg + under-bench, L2 ≈ mini split leg + a few watts of unmonitored receptacles. With factor 2, channel 4's *power* doubles while its *current* stays per-leg. Still unproven under load: lights (2) and Tesla (6).
+
+**Device settings applied over its JSON-RPC API** (`POST http://<ip>/rpc` with `{"id":1,"src":"…","method":…,"params":…}`; method names come from the device's own `index.html.gz`):
+
+```json
+{"method": "Em.Config.Set", "params": {"config": [{"id": 4, "name": "Mini split", "factor": 2}]}}
+{"method": "WiFi.Config.Set", "params": {"ap": {"enable": false}}}
+```
+
+> [!WARNING]
+> **The setup AP stays on and open after Wi-Fi setup** (`ap.is_open: true`, `auth_en: false`), so anyone in range could reconfigure the monitor. It was disabled with the call above. Do the same on the EM16P. Device auth (`Refoss.Auth.Set`) is still off, because turning it on means re-entering credentials in the integration. `cloud.enable` is true and reaches the internet until the move to the IoT VLAN.
+
+Watch out: Namespaces are case-sensitive (`WiFi`, not `Wifi`), and an unknown one answers `200 invalid namespace`.
 
 ### If `refoss_rpc` is unreliable: MQTT
 
@@ -190,6 +222,7 @@ Expected noise at boot: *"could not validate that the sqlite3 database was shutd
 
 - [ ] Doc 201's firewall matrix doesn't match Terraform on VLAN numbering for IoT. Confirm the live rules in UniFi, then correct the doc.
 - [ ] `refoss_rpc` with an entered IP across VLANs, on real hardware.
+- [ ] Create an IoT SSID on IOT-SMART-HOME (2.4 GHz), codify it in `terraform/unifi/`, move the EM06P to it from its web page, then add the K8S-CONTROL → IoT rule.
 - [ ] Prometheus/Grafana export for the heat-pump balance-point analysis.
 - [ ] Lennox S40 integration (`lennoxs30`).
 

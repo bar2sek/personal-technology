@@ -148,6 +148,22 @@ spec:
             - "-in-cluster-context-name=talos-homelab"
             - "-plugins-dir=/headlamp/plugins"
             - "-session-ttl=86400"
+            # SSO (docs/113). No -oidc-callback-url on purpose: Headlamp then builds
+            # the callback from each request's Host and X-Forwarded-Proto, so the LAN
+            # and tailnet URLs both work. Both are allowed in blueprints/headlamp.yaml.
+            # offline_access gets a refresh token: the ID token only lasts an hour.
+            - "-oidc-idp-issuer-url=https://auth.bar2sek.com/application/o/headlamp/"
+            - "-oidc-client-id=headlamp"
+            - "-oidc-scopes=profile,email,offline_access"
+            - "-oidc-use-pkce"
+          env:
+            # An env var rather than a flag, so the secret isn't in the pod's args.
+            # Created by `just headlamp-oidc-secret`.
+            - name: HEADLAMP_CONFIG_OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: headlamp-oidc
+                  key: client-secret
           ports:
             - containerPort: 4466
               name: http
@@ -198,7 +214,8 @@ spec:
 # LAN: no public Cloudflare record exists for this name, so the tunnel can't
 # route to it. Leaving out secretName uses the controller's default wildcard
 # certificate. Log streaming and watches are long-lived WebSockets, so raise
-# nginx's 60s idle timeout.
+# nginx's 60s idle timeout. The SSO callback sets the token as a cookie, which can
+# exceed nginx's default 4k header buffer and return a 502.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -207,6 +224,7 @@ metadata:
   annotations:
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "16k"
 spec:
   ingressClassName: nginx
   rules:
