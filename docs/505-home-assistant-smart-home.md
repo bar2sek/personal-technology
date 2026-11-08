@@ -14,7 +14,7 @@ aliases:
 # 🏠 Home Assistant: Smart Home & Energy Monitoring
 
 > [!NOTE]
-> **Status (2026-11-07): deployed (2026.11.0) and onboarded, reachable on the LAN and tailnet. Garage EM06P installed and online (temporarily on the trusted Wi-Fi, see [[#Garage EM06P install (2026-11-07)]]). House EM16P installed 2026-11-08 and partly load-tested (see [[#House EM16P install (2026-11-08)]]); it still has to be added to the Refoss RPC integration. Nightly encrypted backups run to S3 and the NAS, and a restore drill passed.**
+> **Status (2026-11-08): deployed (2026.11.0) and onboarded, reachable on the LAN and tailnet. Garage EM06P installed and online (temporarily on the trusted Wi-Fi, see [[#Garage EM06P install (2026-11-07)]]). House EM16P installed 2026-11-08, all 18 channels load-tested, and added to Refoss RPC the same day (see [[#House EM16P install (2026-11-08)]]). Energy dashboard live with exact MidAmerican Rate RS pricing (see [[#⚡ Energy Dashboard & MidAmerican Pricing]]). Nightly encrypted backups run to S3 and the NAS, and a restore drill passed.**
 
 **Why now:** Home Assistant is the daily-use anchor of the 24/7 "home-prod" cluster, and it's what collects the circuit-level energy data for solar and battery sizing. The monitors are a **Refoss EM16P** (house) and **EM06P** (garage). The breaker maps, CT-to-port plan and safe-install sequence live in the `home-projects` repo: `solar-battery/Electrical Panels & Monitor Port Plan.md`.
 
@@ -130,7 +130,8 @@ Install the **garage EM06P first** and prove the whole path before touching the 
 
 ### House EM16P install (2026-11-08)
 
-* **Breaker:** HOM215 at house slots **32–34** (planned 39–41), harness pigtailed to 12 AWG like the garage. Mounted low on the left wall of the panel, antenna through a side knockout. **Wi-Fi is weak (−86 to −89 dBm)** even with the external antenna; occasional read timeouts are expected until an access point goes closer to the panel.
+* **Breaker:** HOM215 at house slots **32–34** (planned 39–41), harness pigtailed to 12 AWG like the garage. Mounted low on the left wall of the panel, antenna through a side knockout.
+* **Wi-Fi: fixed by enabling roaming, −87 → −41 dBm.** It read −86 to −89 dBm with 40–70 % ping loss even after the U7 Pro was moved into line of sight. Cause: Refoss ships with **`roam.enable: false`**, so the monitor stayed on the garage **U6-Lite** (the first access point it joined, heard through the house wall) and went straight back to it after every restart. `WiFi.Config.Set` `{"roam": {"enable": true, "rssi_thr": -60}}` and one `Refoss.Device.Reboot` moved it to the U7 Pro: **−41 dBm, 0 % loss**. UniFi rated the bad link "Excellent" throughout, so trust `WiFi.Status.Get` and ping, not the UniFi label. **The garage EM06P still has roaming off** (harmless today at −35 dBm, but enable it before moving it to the IoT SSID).
 * **Network (temporary):** same trusted Wi-Fi as the garage unit, IP **10.0.1.36** (firmware 3.1.11). Open setup AP disabled with `WiFi.Config.Set` (`ap.enable: false`), verified with `WiFi.Config.Get`.
 * **Channels are grouped by letter:** `em:1–6` = A1–A6, `em:7–12` = B1–B6, `em:13–18` = C1–C6. Names and factors were set on the device; the full table and load-test results live in the port plan in `home-projects`.
 * **Mains read negative at first:** the red service conductor is L2 and the black is L1, the reverse of the plan, so A1 and B1 were each referenced to the wrong leg's voltage. Fixed with **`factor: -1`** on channels 1 and 7. The device accepts negative factors, and energy then accumulates in the normal (not return) counters.
@@ -142,9 +143,57 @@ Install the **garage EM06P first** and prove the whole path before touching the 
 > [!IMPORTANT]
 > **Getters are `Namespace.Thing.Get`, not `Namespace.GetThing`:** `Refoss.DeviceInfo.Get`, `Sys.Status.Get`, `WiFi.Config.Get`, `WiFi.Status.Get` (has `rssi`), `Em.Status.Get` and `Em.Config.Get` (both need `{"id": n}`). Shelly-style names like `Refoss.GetDeviceInfo` or `WiFi.GetConfig` make the device **close the connection with no reply**. That, not the network, is why the Mac "couldn't reach" the garage monitor on 2026-11-07: with the right method names, `curl -X POST http://<ip>/rpc` from the Mac works for both monitors.
 
+* **Added to Refoss RPC (2026-11-08):** Settings → Devices & services → Refoss RPC → *Add device* → `10.0.1.36` (the integration was already installed for the EM06P, so no Marketplace step). Device `em16p`, firmware 3.1.11, **188 entities**: per channel power, voltage, current, power factor, today/week/month energy and matching return-energy sensors, plus RSSI, uptime, update and restart. One uptime duplicate is disabled by default. Entity IDs follow the device's channel names, e.g. `sensor.house_refoss_smart_energy_monitor_heat_pump_power`, so **rename channels on the device before adding it** (two were renamed first: `Washer-Dryer combo (21)`, `Dehumidifier (23)`). Channel names are limited to roughly 24 characters; longer ones return `Value out of range`.
+* **Verified:** HA's latest recorder values matched `Refoss.Status.Get` within seconds (homelab ≈ 505 W, mains L1/L2 ≈ 682/75 W, fridge 3 W with the door open). All 18 channels were load-tested first; results live in the port plan in `home-projects`.
+* **Energy dashboard: configured 2026-11-08**, with MidAmerican pricing. See [[#⚡ Energy Dashboard & MidAmerican Pricing]].
+
 **Planned outage, lessons (2026-11-08):** `just lab-down` / `lab-up` worked, but the restart took over an hour. omni-server didn't power back on by itself, every node needed a manual power button, sm-node-03 hung at boot until power-cycled, and pc-node-05 came up briefly unreachable. `lab-up` then timed out because **osd.6 (SSD in sm-node-01) is not detected** ("no disk found with OSD ID 6"), and it waits for *all* OSDs. The remaining steps were run by hand with **`noout` left set** so Ceph doesn't start rebuilding osd.6 elsewhere. **Unset `noout` after osd.6 is reseated or removed.**
 
 Watch out: Namespaces are case-sensitive (`WiFi`, not `Wifi`), and an unknown one answers `200 invalid namespace`.
+
+### ⚡ Energy Dashboard & MidAmerican Pricing
+
+**Configured 2026-11-08** by writing `/config/.storage/energy` (validated with HA's own `ENERGY_SOURCE_SCHEMA` / `DEVICE_CONSUMPTION_SCHEMA` inside the pod) and restarting, because the Energy settings have no YAML form and the API needs a token. HA only reads that file at startup.
+
+```mermaid
+graph LR
+    L1["Mains L1"] --> Grid["Grid consumption<br/>(whole house incl. garage)"]
+    L2["Mains L2"] --> Grid
+    Price["sensor.midamerican_rs_price<br/>season + 1,000 kWh block"] --> Grid
+    Grid --> Dev["20 individual devices<br/>16 house + 4 garage circuits"]
+    Grid --> Untracked["Untracked = mains − devices<br/>(garage receptacles, breakers 6/8/14/24)"]
+```
+
+| Piece | Setting | Why |
+| :--- | :--- | :--- |
+| Grid sources | **Mains L1** and **Mains L2** (`…_this_month_energy` + `…_power`), two unified grid sources | The house mains include the garage sub-panel (house breaker 17–19) |
+| Devices | 16 EM16P branch circuits + garage Tesla, mini split, lights, under-bench | Each with energy and a live power sensor |
+| Left out | Garage feeder channels | Their energy is already in the garage branch devices; adding them double-counts |
+| Price | `entity_energy_price: sensor.midamerican_rs_price` on both legs | Rate RS has a winter block, so a fixed price would be wrong in Dec–Feb |
+| Fixed charge | `cost_adjustment_day: 0.1502` per leg = **$0.3004/day** | $8.50/month basic charge × 1.075 franchise × 12 ⁄ 365 |
+
+**Rate RS model (from 11 bills, Dec 2025 – Sep 2026).** Back-tested against the Sep 2026 bill: 849 kWh × (8.044¢ + 1.775¢) + $8.50, × 1.075 = **$98.75, exact.**
+
+| Component | Value |
+| :--- | :--- |
+| Summer energy (usage ≈ May 4 → Aug 31; the bill read 9/30 was already winter) | 10.575¢ |
+| Winter energy, first 1,000 kWh per billing cycle | 8.044¢ |
+| Winter energy, above 1,000 kWh | 4.536¢ |
+| Riders per kWh, Sep 2026: EAC 1.527 + transmission 0.356 + efficiency 0.115 + demand response 0.069 − income-tax adj. 0.292 | **1.775¢** |
+| Franchise fee | × 1.075 on everything, including the basic charge |
+| **All-in marginal price** | summer **13.28¢**, winter **10.56¢**, winter > 1,000 kWh **6.78¢** |
+
+The model lives in a package on the PVC, `/config/packages/midamerican_rs.yaml` (enabled by `homeassistant: packages: !include_dir_named packages` appended to `configuration.yaml`; backup at `configuration.yaml.bak-20261108`). It creates:
+
+* `sensor.house_grid_energy_month`: L1 + L2 monthly kWh (`total_increasing`)
+* `sensor.midamerican_billing_cycle_energy`: `utility_meter`, monthly reset, the kWh that count toward the 1,000 kWh block
+* `sensor.midamerican_rs_price`: USD/kWh, with `season` and `billing_cycle_kwh` attributes
+
+> [!WARNING]
+> **Maintenance.** (1) **Riders change** a few times a year (EAC went 0.802¢ → 1.527¢ in Aug 2026, income-tax adj. −0.081¢ → −0.292¢ in Apr 2026). When a bill shows new values, edit the `riders` line and restart. (2) **Billing cycles end on the meter-read date**, recently the last day or the 1st of the month, so the monthly reset is a close approximation. It only matters in months that cross 1,000 kWh (Dec–Feb). (3) The first cycle started counting on 2026-11-08, so November's block will be crossed a little later than on the real bill; use `utility_meter.calibrate` with the MidAmerican app's usage-to-date if it matters. (4) Neither the package nor `.storage/energy` is in Git (the PVC owns HA config after first boot); this section is the source of truth for rebuilding them. Nightly backups capture both.
+
+> [!TIP]
+> A one-month sanity check: on the next bill, compare its electric total with the Energy dashboard's grid cost for the same read dates. Expect agreement within a few dollars (differences come from the read-date approximation and the monitor's ±1 % accuracy).
 
 ### If `refoss_rpc` is unreliable: MQTT
 
