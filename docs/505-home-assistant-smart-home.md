@@ -14,7 +14,7 @@ aliases:
 # 🏠 Home Assistant: Smart Home & Energy Monitoring
 
 > [!NOTE]
-> **Status (2026-11-07): deployed (2026.11.0) and onboarded, reachable on the LAN and tailnet. Garage EM06P installed and online (temporarily on the trusted Wi-Fi, see [[#Garage EM06P install (2026-11-07)]]); Refoss RPC integration and house EM16P still open. Nightly encrypted backups run to S3 and the NAS, and a restore drill passed.**
+> **Status (2026-11-07): deployed (2026.11.0) and onboarded, reachable on the LAN and tailnet. Garage EM06P installed and online (temporarily on the trusted Wi-Fi, see [[#Garage EM06P install (2026-11-07)]]). House EM16P installed 2026-11-08 and partly load-tested (see [[#House EM16P install (2026-11-08)]]); it still has to be added to the Refoss RPC integration. Nightly encrypted backups run to S3 and the NAS, and a restore drill passed.**
 
 **Why now:** Home Assistant is the daily-use anchor of the 24/7 "home-prod" cluster, and it's what collects the circuit-level energy data for solar and battery sizing. The monitors are a **Refoss EM16P** (house) and **EM06P** (garage). The breaker maps, CT-to-port plan and safe-install sequence live in the `home-projects` repo: `solar-battery/Electrical Panels & Monitor Port Plan.md`.
 
@@ -127,6 +127,22 @@ Install the **garage EM06P first** and prove the whole path before touching the 
 
 > [!WARNING]
 > **The setup AP stays on and open after Wi-Fi setup** (`ap.is_open: true`, `auth_en: false`), so anyone in range could reconfigure the monitor. It was disabled with the call above. Do the same on the EM16P. Device auth (`Refoss.Auth.Set`) is still off, because turning it on means re-entering credentials in the integration. `cloud.enable` is true and reaches the internet until the move to the IoT VLAN.
+
+### House EM16P install (2026-11-08)
+
+* **Breaker:** HOM215 at house slots **32–34** (planned 39–41), harness pigtailed to 12 AWG like the garage. Mounted low on the left wall of the panel, antenna through a side knockout. **Wi-Fi is weak (−86 to −89 dBm)** even with the external antenna; occasional read timeouts are expected until an access point goes closer to the panel.
+* **Network (temporary):** same trusted Wi-Fi as the garage unit, IP **10.0.1.36** (firmware 3.1.11). Open setup AP disabled with `WiFi.Config.Set` (`ap.enable: false`), verified with `WiFi.Config.Get`.
+* **Channels are grouped by letter:** `em:1–6` = A1–A6, `em:7–12` = B1–B6, `em:13–18` = C1–C6. Names and factors were set on the device; the full table and load-test results live in the port plan in `home-projects`.
+* **Mains read negative at first:** the red service conductor is L2 and the black is L1, the reverse of the plan, so A1 and B1 were each referenced to the wrong leg's voltage. Fixed with **`factor: -1`** on channels 1 and 7. The device accepts negative factors, and energy then accumulates in the normal (not return) counters.
+
+```json
+{"method": "Em.Config.Set", "params": {"config": [{"id": 7, "name": "Mains L1 (black)", "factor": -1}]}}
+```
+
+> [!IMPORTANT]
+> **Getters are `Namespace.Thing.Get`, not `Namespace.GetThing`:** `Refoss.DeviceInfo.Get`, `Sys.Status.Get`, `WiFi.Config.Get`, `WiFi.Status.Get` (has `rssi`), `Em.Status.Get` and `Em.Config.Get` (both need `{"id": n}`). Shelly-style names like `Refoss.GetDeviceInfo` or `WiFi.GetConfig` make the device **close the connection with no reply**. That, not the network, is why the Mac "couldn't reach" the garage monitor on 2026-11-07: with the right method names, `curl -X POST http://<ip>/rpc` from the Mac works for both monitors.
+
+**Planned outage, lessons (2026-11-08):** `just lab-down` / `lab-up` worked, but the restart took over an hour. omni-server didn't power back on by itself, every node needed a manual power button, sm-node-03 hung at boot until power-cycled, and pc-node-05 came up briefly unreachable. `lab-up` then timed out because **osd.6 (SSD in sm-node-01) is not detected** ("no disk found with OSD ID 6"), and it waits for *all* OSDs. The remaining steps were run by hand with **`noout` left set** so Ceph doesn't start rebuilding osd.6 elsewhere. **Unset `noout` after osd.6 is reseated or removed.**
 
 Watch out: Namespaces are case-sensitive (`WiFi`, not `Wifi`), and an unknown one answers `200 invalid namespace`.
 
