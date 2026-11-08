@@ -116,7 +116,7 @@ Install the **garage EM06P first** and prove the whole path before touching the 
 | 5 | B2 | Under-bench outlets | 1 |
 | 6 | C2 | Tesla charger (L1 pole) | **2** |
 
-**Verification:** every channel read positive power at PF ≈ 0.85, so arrows and legs are right. The feeders balance: L1 ≈ mini split leg + under-bench, L2 ≈ mini split leg + a few watts of unmonitored receptacles. With factor 2, channel 4's *power* doubles while its *current* stays per-leg. Still unproven under load: lights (2) and Tesla (6).
+**Verification:** every channel read positive power at PF ≈ 0.85, so arrows and legs are right. The feeders balance: L1 ≈ mini split leg + under-bench, L2 ≈ mini split leg + a few watts of unmonitored receptacles. With factor 2, channel 4's *power* doubles while its *current* stays per-leg. Load-tested 2026-11-07: lights on → channel 2 rose about 196 W (from a ~10 W standby floor) with feeder L1 rising to match; Tesla charging → channel 6 read 11.6 kW (48 A × 240 V, so factor 2 is right). At that moment the four branch channels summed to 12,222 W against 12,269 W on the two feeders.
 
 **Device settings applied over its JSON-RPC API** (`POST http://<ip>/rpc` with `{"id":1,"src":"…","method":…,"params":…}`; method names come from the device's own `index.html.gz`):
 
