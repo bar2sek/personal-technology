@@ -129,7 +129,16 @@ In the UI: Cluster → Nodes lists all five nodes; a pod's Logs tab streams; Sec
 ## 🔑 SSO through Authentik (in progress)
 
 > [!NOTE]
-> **Status (2026-11-06): phases 1 to 3 of 5 done.** All three API servers trust Authentik and passed the token tests. Headlamp isn't configured yet, so token login is still the only login.
+> **Status (2026-11-08): paused, phases 1 to 4 applied.** All three API servers trust Authentik, and Headlamp shows **Sign In** next to **Use A Token** on both URLs. Nobody has signed in through a browser yet, so SSO is applied but not proven. Token login works as before.
+
+> [!TIP]
+> **Where we left off.** Pick up here:
+> 1. **Browser sign-in test** (not done): in a private window, sign in as `akadmin` at `https://headlamp.bar2sek.com`, then at `https://headlamp.tail6e33.ts.net`. Nodes and pod logs should load, Secrets should say forbidden, and **Use A Token** should still work. If it fails, check the [[#🩺 Troubleshooting|Troubleshooting]] table and the API server logs for `oidc: verify token`.
+> 2. **Off-LAN test** (not done): sign in once on phone data with Tailscale on, to confirm `auth.bar2sek.com` is reachable through Cloudflare.
+> 3. **Update this note:** remove the 2026-11-05 "token login not yet exercised" line, mark phase 4 done, and add a deployment journal milestone.
+> 4. **Phase 5, Entra** (later): [[407-azure-entra-id-authentik-federation|docs/407]].
+>
+> Since the 2026-11-08 restart, `sm-node-01` has a SATA fault ([[114-sm-node-01-sata-fault-osd6|docs/114]]). SSO doesn't depend on that node, but while it's off only two API servers are serving.
 
 Headlamp forwards whatever you log in with to the API server, so the API server has to trust the identity provider. That is why SSO needs a control-plane change and not only Headlamp flags.
 
@@ -271,6 +280,10 @@ kubectl -n identity exec deploy/authentik-worker -- ak apply_blueprint custom/he
 | Pod CrashLoops with a read-only filesystem error | Something needs a writable path besides `/tmp`. Check `kubectl -n headlamp logs deploy/headlamp` and add an `emptyDir` for that path. |
 | Node CPU/memory graphs empty | No metrics-server in the cluster. The RBAC already allows `metrics.k8s.io`; deploying metrics-server would light them up. |
 | Login says "unauthorized" | Token expired. `just headlamp-token`. |
+| "The cluster did not accept your sign-in" | The API server rejected the SSO token. Check `kubectl -n kube-system logs kube-apiserver-<node> \| grep oidc` for the reason (issuer, audience, claims). |
+| Signed in, but every page says forbidden | The `groups` claim is missing or not prefixed `authentik:`, or the user isn't in `headlamp-viewers` in the blueprint. |
+| 502 right after signing in on the LAN URL | The token cookie overflowed nginx's header buffer. Raise `proxy-buffer-size` on `headlamp-lan`. |
+| Authentik says the redirect URI is invalid | The callback isn't in `blueprints/headlamp.yaml`. Check it with the `/oidc` curl check in phase 4. |
 | `headlamp.bar2sek.com` doesn't resolve | Expected off the LAN (use the tailnet URL). At home: `just tf-apply unifi` hasn't run, or the client isn't using UniFi for DNS. Check with `dig +short headlamp.bar2sek.com`. |
 | URL times out right after deploy | The Tailscale proxy pod (`tailscale` namespace, `ts-headlamp-*`) is still joining the tailnet and getting its certificate. Took about a minute on first deploy. |
 
