@@ -941,6 +941,16 @@ The milestone entries below record how each of these got here. The section that 
 
 ---
 
+## 🎯 Milestone 44: sm-node-01 SATA Fault, osd.6 Out (2026-11-08)
+
+- **Problem:** after the lab-down/lab-up for the house EM16P install, osd.6 (MX500 `…AE052`, sm-node-01) never came back. `lab-up` timed out before its thaw step, which left `noout` set.
+- **Diagnosis:** that drive is not on the SATA bus at all. osd.2's MX500 and the SuperDOM on the same node show CRC errors on 1.5 Gb/s links. Their media counters are clean, and they had zero CRC errors until the restart. So the fault is in sm-node-01's SATA cabling, power or controller, not in a drive or in Rook.
+- **Done:** `osd out 6`, `unset noout`. All PGs `active+clean` in about eight minutes. osd.2 crashed five times on kernel I/O errors during the backfill.
+- **Open:** whether to take osd.2 out too; hardware visit to reseat or recable sm-node-01.
+- Details: [[114-sm-node-01-sata-fault-osd6|docs/114]].
+
+---
+
 ## 🎯 Immediate Next Actions & Infrastructure Backlog
 
 > [!NOTE]

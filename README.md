@@ -53,6 +53,7 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 - [111 - Storage Reshuffle Hardware Checklist](docs/111-storage-reshuffle-hardware-checklist.md)
 - [112 - Cluster Cold Stop & Start (Maintenance & Outages)](docs/112-cluster-cold-stop-start.md)
 - [113 - Headlamp: Read-Only Kubernetes Web UI](docs/113-headlamp-cluster-ui.md)
+- [114 - sm-node-01 SATA Fault: osd.6 Missing After the 2026-11-08 Restart](docs/114-sm-node-01-sata-fault-osd6.md)
 
 ### 🌐 Section 2: UniFi Networking & Infrastructure
 - [201 - UniFi Physical Cabling & Logical Topology Diagrams](docs/201-unifi-network-topology.md)
