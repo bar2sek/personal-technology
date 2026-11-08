@@ -195,6 +195,36 @@ The model lives in a package on the PVC, `/config/packages/midamerican_rs.yaml` 
 > [!TIP]
 > A one-month sanity check: on the next bill, compare its electric total with the Energy dashboard's grid cost for the same read dates. Expect agreement within a few dollars (differences come from the read-date approximation and the monitor's ±1 % accuracy).
 
+### 🌡️ Lennox S40 & Outdoor Temperature
+
+**Why:** heat pump balance-point tuning (the analysis plan lives in `home-projects`, `solar-battery/Load Analysis & Sizing.md`). It needs outdoor temperature, thermostat state and aux-heat state lined up with the Refoss strip (C1) and heat pump (C2) channels.
+
+**`lennoxs30` (installed 2026-11-08 from the Marketplace):** S40 software 4.75.0161 (minimum 04.25.0070), **local** connection to the thermostat's fixed UniFi IP over HTTPS 443. Checked from the HA pod before installing: TLS connects in about 66 ms. The S40 has no setting to stop Lennox software updates. If the integration goes unavailable after a thermostat update, check for a `lennoxs30` release first.
+
+| Option | Value | Why |
+| :--- | :--- | :--- |
+| Connection | Local, `cloud_connection: false` | S40 is local-only in this integration |
+| `create_diagnostic_sensors` / `create_inverter_power` | **off** | The README warns diagnostics can be unstable while the S40 is also on the Lennox cloud (the phone app). The Refoss already measures power |
+| `create_parameters` | **off** | When on, HA could change installer-level equipment parameters. Balance points stay set on the thermostat |
+| `app_id` | `homeassistant` (default) | Only one HA instance |
+
+37 entities (5 filter/maintenance reminders disabled by default). The useful ones:
+
+* `climate.lennox_thermostat`: mode, setpoint, `hvac_action`, **`aux`** (true while strips run)
+* `sensor.outside_lennox_heat_pump_lennox_signature_outdoor_temperature`: the heat pump's own outdoor sensor (`state_class: measurement`, so it's in long-term statistics)
+* `binary_sensor.house_lennox_s40_lennox_signature_auxheat_hi_ambient_lockout`: on above the **high** balance point (strips locked out)
+* `binary_sensor.house_lennox_s40_lennox_signature_hp_lo_ambient_lockout`: on below the **low** balance point (compressor locked out)
+* Zone 1 temperature and humidity
+
+Deprecation warnings at load (`temperature_unit`, `current_temperature`, etc. stop working in **HA 2027.11**) are the integration's to fix; update `lennoxs30` before upgrading HA past that.
+
+> [!WARNING]
+> **Installing from the Marketplace didn't restart HA**: the integration loaded live. Anything staged on the PVC in the meantime (here the outdoor package) only loads on a real restart, so restart after installs anyway.
+
+**Outdoor backup sensor:** `/config/packages/outdoor_weather.yaml` turns the met.no forecast attributes into `sensor.outdoor_temperature_met_no` and `sensor.outdoor_humidity_met_no` (`state_class: measurement`). `weather.home` keeps temperature only as an attribute, which long-term statistics ignore. First readings: heat pump 64 °F, met.no 63 °F.
+
+**S40 settings changed 2026-11-08:** low balance point 5 → **−20 °F**, Safety Protection **on**. High balance point stays at **50 °F** for a two-week baseline (review around 2026-11-22).
+
 ### If `refoss_rpc` is unreliable: MQTT
 
 Deploy Mosquitto with authentication, expose it on a MetalLB IP, add one IoT → broker rule on TCP 8883 or 1883, and point the monitors at it. Your notes rate this as more reliable across VLANs; it's the fallback because it adds a broker and a path from the IoT VLAN into the cluster.
@@ -369,7 +399,7 @@ Expected noise at boot: *"could not validate that the sqlite3 database was shutd
 - [ ] `refoss_rpc` with an entered IP across VLANs, on real hardware.
 - [ ] Create an IoT SSID on IOT-SMART-HOME (2.4 GHz), codify it in `terraform/unifi/`, move the EM06P to it from its web page, then add the K8S-CONTROL → IoT rule.
 - [ ] Prometheus/Grafana export for the heat-pump balance-point analysis.
-- [ ] Lennox S40 integration (`lennoxs30`).
+- [x] Lennox S40 integration (`lennoxs30`), 2026-11-08. See [[#🌡️ Lennox S40 & Outdoor Temperature]].
 - [ ] Garage mini split: build an ESPHome IR blaster (ESP32 + IR LED + IR receiver), capture the remote's codes, and keep the config in the repo. See [[#🌡️ Garage Mini Split: Freeze Guard & Pre-heat]].
 - [ ] Later: Faikout on `CN_S21` when a technician has the grille off.
 - [ ] Zigbee: choose ZHA or Zigbee2MQTT, deploy a network coordinator, add a garage relay device and temperature sensor.
