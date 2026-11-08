@@ -134,6 +134,86 @@ Watch out: Namespaces are case-sensitive (`WiFi`, not `Wifi`), and an unknown on
 
 Deploy Mosquitto with authentication, expose it on a MetalLB IP, add one IoT → broker rule on TCP 8883 or 1883, and point the monitors at it. Your notes rate this as more reliable across VLANs; it's the fallback because it adds a broker and a path from the IoT VLAN into the cluster.
 
+## 🌡️ Garage Mini Split: Freeze Guard & Pre-heat
+
+**Goal:** the garage is rarely used, and nothing in it needs heat. It only has to stay **above freezing**, and be warm **during work sessions**. Home Assistant becomes the thermostat: the unit is off most of the time and is turned on only when the garage nears freezing or before a session.
+
+**Status (2026-11-08):** **parked in the backlog**: [[backlog/garage-mini-split-ir-control|Backlog: Garage Mini Split Freeze Guard]] has the milestones, parts and pickup checklist. **Control method decided: ESPHome IR** (see below). No hardware bought. In the meantime the unit is kept **off with the remote, breaker on**: standby is ~6 W, and inverter outdoor units should be powered for several hours before running in the cold so the compressor oil stays warm. Fallback is manual: turn it on with the remote a few hours before a session. Last winter, with insulation and no heat, the garage stayed above freezing.
+
+### The unit
+
+| | |
+| :--- | :--- |
+| Model | Daikin **FTXC24AXVJU** (2 ton, 24k BTU/h, R32, built 2026-02) |
+| Circuit | 240 V, Refoss EM06P **channel 4** (factor 2) |
+| Heat setpoint range | **60–86 °F**: a firmware limit, not just the remote's |
+| Control ports | `CN_S21` (optional Wi-Fi adapter), `CN_NS` (optional wired controller): from the wiring label on the electrical box (part 3P599152-1 D) |
+
+> [!IMPORTANT]
+> **Neither the remote nor Daikin Wi-Fi can go below 60 °F.** Daikin's operating manual for the sibling FTX/FTK AXVJU models gives 60–86 °F for every mode, and says remote settings override the Wi-Fi app. A 40–45 °F freeze guard therefore has to be done by switching the unit **on/off** from an external sensor, not by setting a low temperature.
+
+### Baseline: what it cost holding ≥ 60 °F
+
+Measured from Home Assistant's recorder (channel 4) over the first 13.5 h after the EM06P install, 2026-11-07 17:42 → 2026-11-08 07:12, with 48–56 °F outside:
+
+| Metric | Value |
+| :--- | :--- |
+| Average power | **~300 W** |
+| Energy | **~7.2 kWh/day**, about **$26/month** at ~$0.12/kWh |
+| Duty cycle | **90%** running; 54 starts, median run ~13 min |
+| Running / idle draw | ~330 W (peaks ~440 W) / ~6 W |
+
+**Reading it:** ~330 W is close to the inverter's minimum output. It never "rests", because the garage leaks heat continuously and the unit replaces it. Short cycling means even its minimum output is more than the garage needs at a ~10–15 °F inside/outside difference. Expect this to grow a lot in midwinter: heat loss grows with that difference, and heat pump efficiency (COP) drops as it gets colder.
+
+**Setback vs. holding:** heat loss is proportional to the inside/outside difference, so a cold garage loses less, and the reheat only replaces what was lost while it was warm. Rough estimate for a session: reheat 40 → 65 °F in ~2–3 h at 1.5–2.5 kW ≈ **3–6 kWh**, against **7+ kWh/day** to hold 60 °F. Recovery at high compressor speed is less efficient, but this indoor unit has no resistance backup strips, so setback wins easily. Verify with the experiment below.
+
+### Planned design
+
+```mermaid
+graph LR
+    Z["Zigbee temp sensor<br/>(garage, chest height)"] --> HA["Home Assistant"]
+    R["Refoss EM06P ch.4<br/>running ~330 W / idle ~6 W"] --> HA
+    HA -->|"garage < 38 °F → HEAT, setpoint 60 °F"| F["ESPHome ESP32 + IR LED<br/>(line of sight to unit)"]
+    HA -->|"garage ≥ 45 °F → OFF"| F
+    HA -->|"pre-heat: HEAT 68 °F,<br/>~2 h before a session"| F
+    F -.->|"IR"| D["Daikin FTXC24AXVJU"]
+    D -.->|"power draw confirms command"| R
+```
+
+**Daikin control: ESPHome IR blaster.** An ESP32 with an IR LED copies the remote. Config lives in the repo (declarative, no vendor app), and the device talks to Home Assistant over the ESPHome native API.
+
+**Why IR is enough here:** the setup needs only three commands: **Off**, **freeze guard** (heat 60 °F, low fan) and **pre-heat** (heat 68 °F). Mini-split remotes send the unit's **complete state** with every press, so each command sets the unit exactly, whatever it was doing before. IR's usual weakness, not knowing whether the command arrived, is covered by Refoss channel 4: ~330 W means running, ~6 W means off. An automation resends if the power doesn't follow within a few minutes, then sends an alert.
+
+**What IR gives up:** the unit's own temperatures and error codes, and seeing changes made with the physical remote. The Refoss and the Zigbee sensor cover what matters.
+
+| Option | Verdict |
+| :--- | :--- |
+| **ESPHome IR** | ✅ **Chosen**: no need to open the unit, local, declarative |
+| Faikout on `CN_S21` | ⏸️ Later upgrade (two-way). The port is confirmed on the wiring label, but **the front grille would not release after its 3 screws were removed** (2026-11-08). Have an HVAC tech pull the grille and fit it during a service visit. Untested on the AXVJU series |
+| Broadlink RM4 Mini | Easier, but needs a vendor app for setup; not declarative |
+| Official Daikin Wi-Fi adapter | ❌ Part number unconfirmed for this model; newer adapters are cloud-only; needs the grille off |
+
+> [!NOTE]
+> **IR protocol is unknown.** ESPHome has Daikin climate IR platforms (`daikin`, `daikin_arc`, `daikin_brc`), but which one this remote speaks (if any) is unknown. Plan: build the ESP32 with an IR **receiver** too. Dump the remote's codes with `remote_receiver` (`dump: all`). Use a matching `climate` platform if one decodes them; otherwise replay the three captured raw codes as `remote_transmitter` buttons.
+
+**Room sensor: to be decided when the project is picked up.** Either a sensor wired to the same ESP32 (no Zigbee needed) or a Zigbee sensor; the backlog item compares them. For Zigbee, note there is no coordinator yet. Plan: an Ethernet/PoE network coordinator (SLZB-06 class), so there is no USB passthrough into the Home Assistant pod on Talos. Add one mains-powered Zigbee device in or near the garage to relay signals, plus a temperature/humidity sensor mounted away from the unit's airflow. The unit's own thermistor (`TH2`, on the display board) is near the ceiling, in its own airflow, so it reads high. ZHA vs. Zigbee2MQTT is still to be decided (Zigbee2MQTT means moving Mosquitto out of `teslamate` into a shared namespace, which [[507-frigate-nvr-cameras|Frigate]] wants anyway).
+
+### Opening the indoor unit (to reach `CN_S21`)
+
+> [!CAUTION]
+> **Tried 2026-11-08 and stopped.** With the front panel up and filters visible, there are **3 exposed screws** along the strip below the filters (left, middle, right). With them removed, the grille still **would not budge**: something else holds it (hidden top hooks or the front panel's hinge arms). Don't force it without the FTXC AXVJU service manual or a technician.
+
+1. Turn the unit off, then switch off its 2-pole breaker in the garage panel (channel 4 drops to 0 W). Wait a couple of minutes.
+2. Lift the front panel by its bottom corners. It hinges at the top, like opening it to clean the filters.
+3. The electrical box is on the right end, and the wiring label is on its cover. **The small cover on the right end only opens the field wiring compartment** (terminal block 1/2/3 + ground, seen 2026-11-08), not the control board. The board with `CN_S21` (a small white 5-pin connector) sits deeper inside the electrical box and probably needs the front grille removed. Check the model's installation or service manual for grille removal before forcing any clips.
+4. Don't touch the outdoor-unit terminal block (1/2/3 + G/Y, 240 V), the refrigerant connections, or the coil thermistor (`TH1`) clipped to the coil.
+
+### Experiment: measure a real pre-heat
+
+1. Leave the unit off for a few days and log the garage's low temperatures against outdoor temperatures (`weather.home`).
+2. Do one normal pre-heat to working temperature and read the kWh from channel 4's `today_energy`.
+3. Compare with the 7.2 kWh/day baseline above. Record the results here.
+
 ## 📈 History Retention
 
 Detailed history is kept for **180 days** (`recorder.purge_keep_days`), not the default 10, so the data survives for the heat pump cutoff analysis:
@@ -225,6 +305,11 @@ Expected noise at boot: *"could not validate that the sqlite3 database was shutd
 - [ ] Create an IoT SSID on IOT-SMART-HOME (2.4 GHz), codify it in `terraform/unifi/`, move the EM06P to it from its web page, then add the K8S-CONTROL → IoT rule.
 - [ ] Prometheus/Grafana export for the heat-pump balance-point analysis.
 - [ ] Lennox S40 integration (`lennoxs30`).
+- [ ] Garage mini split: build an ESPHome IR blaster (ESP32 + IR LED + IR receiver), capture the remote's codes, and keep the config in the repo. See [[#🌡️ Garage Mini Split: Freeze Guard & Pre-heat]].
+- [ ] Later: Faikout on `CN_S21` when a technician has the grille off.
+- [ ] Zigbee: choose ZHA or Zigbee2MQTT, deploy a network coordinator, add a garage relay device and temperature sensor.
+- [ ] Freeze-guard (38/45 °F) and pre-heat automations, kept declaratively in the Home Assistant config.
+- [ ] Run the pre-heat energy experiment and record the result.
 
 ---
 

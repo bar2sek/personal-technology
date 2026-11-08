@@ -89,6 +89,10 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 - [506 - In-Cluster CUPS Network Print Server & AirPrint Bridge](docs/506-cups-airprint-bridge.md)
 - [507 - Frigate NVR: Local Cameras & Object Detection (Planned)](docs/507-frigate-nvr-cameras.md)
 
+### 🗂️ Backlog (Researched & Parked)
+- [Backlog Index](docs/backlog/README.md) — parked projects with decisions, parts and pickup checklists
+- [Garage Mini Split Freeze Guard (ESPHome IR)](docs/backlog/garage-mini-split-ir-control.md)
+
 ### 💻 Section 6: Mac AI Workstation Architecture & USB Bootstrap
 - [Workstation Map of Content](nix-mac/Index.md) — Master Workstation Index & Navigation
 - [Declarative macOS Architecture](nix-mac/README.md) — `nix-darwin`, system-as-code & clean runtime principles
