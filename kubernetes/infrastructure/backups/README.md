@@ -119,7 +119,7 @@ Each job encrypts to the **public** recipient in [`configmap-backup-encryption.y
 IAM user `svc-aws-backup-uploader-prod-001` (`path = /service/`) may only `s3:PutObject` and `s3:AbortMultipartUpload` on `cluster-state/*.age` and `postgres/*.age`. It has no `GetObject`, `ListBucket`, or `DeleteObject`.
 
 > [!IMPORTANT]
-> The access key is **not** a Terraform resource. `bootstrap/aws` uses local state, and `aws_iam_access_key` would write the secret into it in plaintext. The key is minted with the CLI straight into the cluster (see Setup). Roadmap: replace it with IAM Roles Anywhere.
+> The access key is **not** a Terraform resource. `bootstrap/aws` uses local state, and `aws_iam_access_key` would write the secret into it in plaintext. The key is minted with the CLI straight into the cluster (see Setup). Roadmap: replace it with OIDC federation from the cluster's service-account issuer (hosted by Azure Arc workload identity), so the CronJobs call `AssumeRoleWithWebIdentity` and no static key exists. This supersedes the earlier IAM Roles Anywhere idea. Plan: Phase 7 of [[411-azure-mini-enterprise-architecture|docs/411]].
 
 ### 3. Immutability: Object Lock (governance)
 

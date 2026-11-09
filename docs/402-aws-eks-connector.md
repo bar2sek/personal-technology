@@ -9,6 +9,9 @@ tags:
 
 # AWS EKS Connector & Unified AWS Console Management
 
+> [!WARNING] Parked (2026-11-09): replaced by Azure Arc
+> Never activated. Under the [[411-azure-mini-enterprise-architecture#Cloud Placement Policy (AWS + Azure)|cloud placement policy]], hybrid Kubernetes management goes to Azure Arc (Phase 7 of docs/411), which does more (policy, Entra RBAC, extensions). The staged manifests in `kubernetes/infrastructure/aws-hybrid/` stay unapplied. Kept for reference and interview comparison.
+
 > [!NOTE] Architectural Reference / Staged Implementation
 > The EKS Connector manifests (`kubernetes/infrastructure/aws-hybrid/eks-connector.yaml`) and IAM role (`role-aws-eks-connector-prod-admin` in `infra-cloud-deployments/terraform/aws/iam.tf`) are codified and staged. Activation occurs when cluster registration against the AWS Console is triggered.
 

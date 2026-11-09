@@ -123,9 +123,8 @@ Azure identity and backend resources are declared in `bootstrap/azure/`:
 * **`azuread_application.github_actions`**: App registration `app-azure-github-actions-prod-001`.
 * **`azuread_service_principal.github_actions`**: Service principal `sp-azure-github-actions-prod-001`.
 * **`azuread_application_federated_identity_credential`**: Maps GitHub subject claims to Entra ID.
-* **`azurerm_role_assignment.github_actions_contributor`**: Grants `Contributor` permissions to the subscription.
-* **`azurerm_storage_account.tfstate`**: Remote state storage account (`stazutfstateprodcus001`) with Entra ID authentication enforced (`shared_access_key_enabled = false`).
-* **`azurerm_role_assignment.github_actions_tfstate`**: Grants `Storage Blob Data Contributor` to the runner service principal.
+* **`azurerm_role_assignment.github_actions_contributor`**: Grants `Contributor` on the identity platform subscription (to be re-scoped in Phase 1 of [[411-azure-mini-enterprise-architecture|docs/411]]).
+* **`azurerm_storage_account.tfstate`**: Since 2026-11-09 this is the **admin-only bootstrap** state account (`stazubootstrapprodcus001`, management subscription). It is keyless, and CI has **no** role on it. The old shared CI state account `stazutfstateprodcus001` was deleted in the Azure rebuild. A new CI state account arrives in Phase 1. Details: [[412-azure-lab-cost-guardrails|docs/412]].
 
 ---
 
@@ -164,6 +163,9 @@ graph LR
 **Verification.** Policies were checked with IAM Access Analyzer (`aws accessanalyzer validate-policy`: zero findings), and the escalation paths were tested with `aws iam simulate-custom-policy`. Creating a role without the boundary, or with a different one, is denied. So are rewriting its own trust policy, attaching a policy to itself, stripping a boundary, reading backup objects, and changing the state bucket's configuration. The actions Terraform needs are allowed.
 
 #### 3a. Amazon Bedrock permissions (added 2026-10-06)
+
+> [!WARNING] Being retired (2026-11-09)
+> The Bedrock gateway and its CDK groundwork are being decommissioned; nothing new should use them. Removal order and which statements below go away: [[413-bedrock-ai-gateway-decommission|docs/413]]. This section stays as a historical record until that runbook is done.
 
 The Bedrock lab in `infra-cloud-deployments` (Knowledge Base on S3 Vectors, Guardrails) needed three kinds of change. Each was applied here, by a human, before any Bedrock Terraform ran in CI.
 
@@ -239,6 +241,9 @@ aws iam simulate-principal-policy --policy-source-arn "$PLAN" \
 > - **`simulate-principal-policy` with several `--resource-arns` returns one aggregated `EvalDecision`**: one denied resource makes the whole action read `implicitDeny`. Query `EvaluationResults[].ResourceSpecificResults[].[EvalResourceName,EvalResourceDecision]` to see each resource separately.
 
 ### 4. AWS CDK pipeline roles for `bedrock-ai-gateway` (`bootstrap/aws/oidc-cdk-gateway.tf`, added 2026-10-10)
+
+> [!WARNING] Being retired (2026-11-09)
+> The Bedrock gateway and its CDK groundwork are being decommissioned; nothing new should use them. Removal order and which statements below go away: [[413-bedrock-ai-gateway-decommission|docs/413]]. This section stays as a historical record until that runbook is done.
 
 The [bedrock-ai-gateway](https://github.com/bar2sek/bedrock-ai-gateway) repository deploys with AWS CDK instead of Terraform. CDK needs its own groundwork first: `cdk bootstrap` creates the `CDKToolkit` stack, with an asset bucket and a set of roles named `cdk-hnb659fds-<purpose>-role-<account>-<region>`. The CDK CLI does its work by assuming those roles.
 
@@ -439,6 +444,9 @@ git push -u origin main
 
 ### Step 5: Bootstrap an AWS CDK repository (`bedrock-ai-gateway`)
 
+> [!WARNING] Being retired (2026-11-09)
+> The Bedrock gateway and its CDK groundwork are being decommissioned; nothing new should use them. Removal order and which statements below go away: [[413-bedrock-ai-gateway-decommission|docs/413]]. This section stays as a historical record until that runbook is done.
+
 The order used on 2026-10-10, and the order to follow when rebuilding from scratch. Each step depends on the one before it.
 
 ```mermaid
@@ -448,7 +456,7 @@ graph LR
   C --> D[4. Workflow via PR<br/>verify → approve → deploy]
 ```
 
-**Prerequisites:** AWS CLI signed in as an administrator (`aws login --remote`), `gh auth status` showing the owner account, and the repository already created (`gh repo create`, adopted by Terraform in step 3).
+**Prerequisites:** AWS CLI signed in as an administrator (`aws login`; see [[#6. `aws login` returns 400 Bad Request (or `--remote` returns 404)|troubleshooting #6]] if it fails), `gh auth status` showing the owner account, and the repository already created (`gh repo create`, adopted by Terraform in step 3).
 
 ```bash
 # 1 + 2. CDK groundwork and pipeline roles, both in bootstrap/aws.
@@ -489,7 +497,7 @@ The bootstrap roots and `terraform/unifi` run from the workstation and keep **lo
 
 | Root | Managed instances | What its state exposes |
 |---|---|---|
-| `bootstrap/azure` | 20 | **Highest risk.** Entra client secret, Arc agent TLS private key, storage account access keys and connection strings, Log Analytics shared keys |
+| `bootstrap/azure` | 20 | **Highest risk.** Entra client secret, Arc agent TLS private key, storage account access keys and connection strings, Log Analytics shared keys. *2026-11-09: the Azure resources are gone (rebuild), which leaves the Entra client secret. Moving to an admin-only Azure account: [[412-azure-lab-cost-guardrails#🔐 Admin-Only Bootstrap State|docs/412]].* |
 | `bootstrap/github` | 36 | The plaintext value of every GitHub Actions secret it manages (role ARNs, state bucket name) |
 | `bootstrap/aws` | 25 | AWS account ID (in every ARN), alert email address |
 | `terraform/unifi` | 26 | Nothing marked sensitive, but it holds the internal IP plan and client MAC addresses |
@@ -560,3 +568,24 @@ A workflow step tried to `git push` to `main`. This is blocked by design: CI job
 ### 5. `AccessDenied ... iam:PassRole` when creating a Bedrock Knowledge Base
 
 The KB's service role is outside the `role-aws-bedrock-*` namespace, or the role is being passed to a different service. Rename the role to match `role-aws-bedrock-*`; don't widen the PassRole statement. An `AccessDenied` from the KB *ingestion job* (rather than from Terraform) is the service role hitting the **workload boundary**: check that the source bucket is named `s3-aws-bedrock-*` and the vector bucket `s3v-aws-bedrock-*`.
+
+### 6. `aws login` returns 400 Bad Request (or `--remote` returns 404)
+
+*Found 2026-11-09.* **Symptom:** `aws login` opens the browser and the AWS sign-in page shows `400 Bad Request`. The CLI keeps waiting on `http://127.0.0.1:<port>/oauth/callback` and eventually times out.
+
+**Cause: cookies in the browser, not the CLI or `~/.aws/config`.** `aws login` (CLI ≥ 2.32) hands sign-in to whatever AWS console session the browser already has. If that browser is also signed in to a **different** AWS account or identity provider (for example, a work console session), the `/v1/authorize` request is rejected. Proof: the same URL fetched with `curl` (no cookies) returns a normal `302` to `/v1/sessions`, the "Sign in to AWS" picker.
+
+**Fix:**
+
+```bash
+aws login
+# When the 400 tab appears, copy the printed https://us-east-2.signin.aws.amazon.com/v1/authorize?... URL
+# into a PRIVATE window (or a browser profile used only for the homelab), sign in as admin-cli + FIDO.
+aws sts get-caller-identity --query Arn --output text   # expect …:user/admin-cli
+```
+
+The callback goes to `127.0.0.1` on the same Mac, so a private window still completes the flow. **Don't use `--remote` on the Mac.** It's the cross-device flow (open a URL on another device, paste a code back), and it isn't needed when the browser is local.
+
+**Diagnose:** `aws login --debug` prints the authorize URL and `Waiting for auth code at …/oauth/callback`. If the log stops there, the CLI is fine and the failure is in the browser.
+
+**Permanent fix:** Phase 8 of [[411-azure-mini-enterprise-architecture|docs/411]] (Entra ID → IAM Identity Center). Sign-in becomes `aws sso login` with longer, refreshable sessions, and Terraform reads the SSO cache natively, so the `export-credentials` bridge goes away.

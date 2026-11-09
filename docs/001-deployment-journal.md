@@ -953,6 +953,20 @@ The milestone entries below record how each of these got here. The section that 
 
 ---
 
+## 🎯 Milestone 45: Cloud Placement, Bedrock Retirement & AWS Access Hygiene (2026-11-09)
+
+- **Cloud placement decided:** what runs in AWS stays in AWS (S3 backups, OIDC roles; `bedrock-ai-gateway` is being retired; AWS Organizations turned out never to have been applied); new work goes to the best product or price, with Azure winning ties. The never-built EKS Connector, ACK and Authentik ↔ IAM Identity Center designs are parked or replaced (Arc, Terraform, Entra ID as the hub). The AWS-decommission plan in docs/410 is superseded. Roadmap gains Phase 8 (Entra → AWS SSO) and Phase 9 (new AI on Azure AI Foundry).
+- **Bedrock gateway retirement planned:** the CDK gateway, Knowledge Base, Guardrail and CDKToolkit will be removed in six stages (stack delete, CI PR, admin bucket deletes, repo archive, `bootstrap/aws` cleanup, verify). Stage 0: idle since 2026-10-10, $0 billed. **Stage 1 done:** `BedrockAiGateway` stack deleted, so the public endpoint is gone. **Stage 2 done:** Knowledge Base, Guardrail, index and KB role destroyed by CI (infra-cloud-deployments PR #11). **Stage 3 done:** both Bedrock buckets deleted by an admin. A README merge in the gateway repo accidentally redeployed the stack. It was deleted again the same evening (see the docs/413 Stage 4 caution). **Stage 4 done:** repo archived (still public), deploy secrets and environment removed. Runbook: [[413-bedrock-ai-gateway-decommission|docs/413]].
+- **AWS access hygiene:** the redeploy showed that pipeline gates don't cover direct CLI use. Four layers were added:
+  - `aws logout` habit.
+  - A read-only role (`role-aws-readonly-prod-001`) as the default for Claude Code's shell.
+  - Claude Code ask rules for mutating `aws`, `terraform`, `gh`, `kubectl`, `talosctl` and `git` commands.
+  - A Phase 8 SCP design. SCPs need a new management account with this account invited as a member.
+
+  Runbook: [[414-aws-access-hygiene|docs/414]].
+
+---
+
 ## 🎯 Immediate Next Actions & Infrastructure Backlog
 
 > [!NOTE]
