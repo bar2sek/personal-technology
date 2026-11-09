@@ -203,6 +203,32 @@ am alert add HomelabTestAlert severity=critical namespace=monitoring --end="$(da
 - `amtool config routes test --config.file=/dev/stdin` ignores the piped config and reports `null` for everything; use `amtool config routes --config.file=/dev/stdin` (prints the tree) instead.
 - The iPhone app attaches a saved login only when its *Service URL* matches the subscription's server exactly (`https://ntfy.tail6e33.ts.net`, no trailing slash). "Not authorized to read this topic" can also simply mean a wrong password: check with `curl -su ryan https://ntfy.tail6e33.ts.net/v1/account`.
 - Keep Tailscale on the phone always connected (On Demand). Without it the push still arrives, but the app cannot fetch the message text.
+- **Pod filesystem is read-only**, so `amtool check-config` can't be pointed at a file written inside the pod. Render and test locally instead (temporary `amtool` from nixpkgs, nothing installed):
+  ```bash
+  helm template kube-prometheus-stack prometheus-community/kube-prometheus-stack --version 91.4.1 -n monitoring \
+    -f kubernetes/infrastructure/monitoring/values.yaml --show-only templates/alertmanager/secret.yaml   # base64 alertmanager.yaml → decode to am.yaml
+  nix shell nixpkgs#prometheus-alertmanager -c amtool check-config am.yaml
+  nix shell nixpkgs#prometheus-alertmanager -c amtool config routes test --config.file=am.yaml alertname=KubeNodeUnreachable severity=warning node=sm-node-01
+  ```
+
+### Long-term muted node: sm-node-01 (2026-11-09)
+
+sm-node-01 is powered off on purpose ([[114-sm-node-01-sata-fault-osd6|docs/114]]). Instead of renewing `amtool` silences forever, `values.yaml` routes its alerts to the `null` receiver. The routes sit right after Watchdog/InfoInhibitor, before the ntfy routes; Alertmanager takes the first matching route, so these win.
+
+| Route matches | Mutes | Scope |
+| :--- | :--- | :--- |
+| `node = sm-node-01` | KubeNodeUnreachable, KubeletInstanceUnreachable, any other node-labelled alert | sm-node-01 only |
+| `deployment` / `pod =~ rook-ceph-osd-(2\|6\|10)…` | ReplicasMismatch, PodNotReady for its out-but-not-purged OSDs | Those three OSDs |
+| `KubePodNotReady` + exact pod names | Its Pending DaemonSet pods (flannel, kube-proxy, node-exporter, CephFS CSI) | Those pods; a recreated pod alerts again |
+| `KubeDaemonSet(RolloutStuck\|MisScheduled)` + those DaemonSets | The DaemonSets that are one pod short | ⚠️ **All nodes** (no node label) |
+| `TargetDown` + `job = kubelet` | The kubelet scrape target being down | ⚠️ **All nodes** |
+
+**The trade-off:** the last two rows can't be narrowed to one node, so a stuck rollout of those DaemonSets or a second kubelet down won't page through *those* alerts. A second node going down still pages through `KubeNodeUnreachable` / `KubeletInstanceUnreachable`, which are muted only for sm-node-01. Ceph alerts are not muted.
+
+**Verified 2026-11-09:** `amtool check-config` SUCCESS; `routes test` sent sm-node-01 alerts to `null` and the same alerts for sm-node-02/pc-node-05, `TargetDown` for node-exporter, Ceph critical and Watchdog to their usual receivers. After `just monitoring-apply` and expiring the maintenance silences, the live `/api/v2/alerts` listed all 18 sm-node-01 alerts with receiver `null` and Watchdog → `healthchecks`.
+
+> [!IMPORTANT]
+> **Delete these routes when sm-node-01 returns**, then `just monitoring-apply`. Left in, they would hide real problems on that node.
 
 **Adding a panel:** test the PromQL against Prometheus first (`kubectl port-forward -n monitoring svc/kube-prometheus-stack-prometheus 9090` and the `/api/v1/query` endpoint), then add it to the JSON and `kubectl apply` the ConfigMap. The sidecar reloads it within a minute.
 

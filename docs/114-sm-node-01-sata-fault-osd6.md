@@ -122,7 +122,10 @@ kubectl -n rook-ceph exec deploy/rook-ceph-tools -- ceph osd primary-affinity os
 | 00:41Z | | **497/497 PGs `active+clean`**, about 4 minutes |
 | 00:48Z | Operator: *mon "i" NOT found in quorum after timeout. Mon pod is not scheduled. Retrying* | **No failover.** Rook doesn't fail over a mon whose pod is still `Pending`; it treats that as a scheduling delay and restarts the timer. mon.i is pinned to sm-node-01 (`nodeSelector`), so it would wait forever |
 | 00:52Z | `kubectl -n rook-ceph scale deploy rook-ceph-mon-i --replicas=0` | Rook's documented way to force a failover: with no pod, the next 10-minute timeout replaces the mon |
-| _pending_ | Replacement mon | _see below_ |
+| 01:00Z | Operator fails over: canary on pc-node-05, *ensuring removal of unhealthy monitor i* | **mon.m on pc-node-05**, quorum `j,l,m`. The `rook-ceph-mon-i` deployment is gone |
+| 01:01Z | `ceph crash archive-all` (the five osd.2 crashes, already recorded above) | **`HEALTH_OK`**, 497/497 `active+clean` |
+
+Mons now: j (sm-node-03), l (pc-node-04), m (pc-node-05). Ceph no longer depends on sm-node-01 in any way.
 
 **Left alone on purpose:**
 
@@ -130,7 +133,9 @@ kubectl -n rook-ceph exec deploy/rook-ceph-tools -- ceph osd primary-affinity os
 * **The Kubernetes node object** stays (cordoned, `NotReady`). Omni would re-register it anyway. DaemonSet pods (flannel, kube-proxy, node-exporter) and Rook's per-node pods show `Pending` for it; that's expected noise.
 * **The OSDs aren't purged.** They're `down`+`out` and hold no PG copies. If the node comes back with its disks intact they rejoin with `ceph osd in`; if not, purge them then.
 
-**Bringing it back later:** do Step B. After the node is healthy: `kubectl uncordon sm-node-01`, check the disks per Step B §3, then `ceph osd in 2 10` (and `6` once it's visible). Rook manages mon placement; the mon placement rule prefers pc-node-04/05 and only weights sm-node-01 at 50.
+**Alerts:** muted declaratively with `null` routes in `kubernetes/infrastructure/monitoring/values.yaml` (applied 2026-11-09 01:30Z; the temporary maintenance silences were expired). Scope and trade-offs: *Long-term muted node* in [[106-observability-prometheus-grafana|docs/106]].
+
+**Bringing it back later:** do Step B. After the node is healthy, **remove the sm-node-01 `null` routes from `values.yaml` and run `just monitoring-apply`**. Then: `kubectl uncordon sm-node-01`, check the disks per Step B §3, then `ceph osd in 2 10` (and `6` once it's visible). Rook manages mon placement; the mon placement rule prefers pc-node-04/05 and only weights sm-node-01 at 50.
 
 ### Step B: hardware visit on sm-node-01 (mutating, Tier 2, planned window)
 

@@ -167,6 +167,31 @@ alertmanager:
           repeat_interval: 1m
         - receiver: 'null'
           matchers: ['alertname = InfoInhibitor']
+        # sm-node-01 is a long-term down node (docs/114, 2026-11-09). Its alerts
+        # go nowhere until it returns. DELETE THESE ROUTES when it does.
+        # Node-labelled alerts: muted for sm-node-01 only.
+        - receiver: 'null'
+          matchers: ['node = sm-node-01']
+        # Its out-but-not-purged OSDs, whose deployments stay Pending.
+        - receiver: 'null'
+          matchers: ['deployment =~ rook-ceph-osd-(2|6|10)']
+        - receiver: 'null'
+          matchers: ['pod =~ rook-ceph-osd-(2|6|10)-.+']
+        # Its DaemonSet pods, by exact name: if one is ever recreated, the alert
+        # comes back instead of a whole DaemonSet staying hidden.
+        - receiver: 'null'
+          matchers:
+            - alertname = KubePodNotReady
+            - pod =~ kube-flannel-s6xnn|kube-proxy-xfx97|kube-prometheus-stack-prometheus-node-exporter-67kk9|rook-ceph.cephfs.csi.ceph.com-nodeplugin-6p67v
+        # Trade-off: these have no node label, so they're muted for every node.
+        # Another node going down still alerts via KubeNodeUnreachable and
+        # KubeletInstanceUnreachable (not muted for other nodes).
+        - receiver: 'null'
+          matchers:
+            - alertname =~ KubeDaemonSetRolloutStuck|KubeDaemonSetMisScheduled
+            - daemonset =~ kube-flannel|kube-proxy|kube-prometheus-stack-prometheus-node-exporter|rook-ceph.cephfs.csi.ceph.com-nodeplugin|rook-ceph.rbd.csi.ceph.com-nodeplugin
+        - receiver: 'null'
+          matchers: ['alertname = TargetDown', 'job = kubelet']
         # Loud, any time; reminds every 4h while still firing.
         - receiver: ntfy-critical
           matchers: ['severity = critical']
