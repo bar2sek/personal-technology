@@ -14,6 +14,9 @@ aliases:
 # 🩺 sm-node-01 SATA Fault: osd.6 Missing After the 2026-11-08 Restart
 
 > [!IMPORTANT]
+> **Current status (2026-11-09): sm-node-01 is a long-term down node, by choice.** The hardware fix is parked; there are higher-priority projects. Ceph was switched to long-outage mode so it no longer depends on the node: all its OSDs are out and every PG has three copies on the other hosts again. See [[#Long-term outage mode (2026-11-09)]]. Step B stays documented below for whenever the node comes back.
+
+> [!IMPORTANT]
 > **Update 2026-11-08 22:29Z: Step A done, all 497 PGs `active+clean`, three copies everywhere.** `ceph osd out 6` and `ceph osd unset noout` ran at 22:20Z; recovery took about eight minutes. During it **osd.2 crashed five times** (22:20–22:25Z, crash `KernelDevice::_aio_thread got r=-5 (Input/output error)`): under backfill load the kernel returned I/O errors from the bad SATA link and BlueStore aborts on purpose rather than risk bad data. It restarted each time and is up now, but it will keep doing this under load until the hardware is fixed. See *Step A result* in section 4. Step B (hardware) is still open.
 >
 > **Original status (2026-11-08, read-only diagnosis).** osd.6's SSD is not visible to the kernel on sm-node-01 at all, and the two SATA devices that *are* visible on that node (osd.2's SSD and the SuperDOM boot disk) are throwing interface CRC errors on links that fell back from 6.0 to 1.5 Gb/s. Media health is clean on both. This is a **SATA connection fault on sm-node-01** (cables, power or the onboard controller), which appeared during the planned power-down for the house EM16P install. It is not a Rook or Ceph bug and probably not a dead drive. Fix steps below wait for approval.
@@ -107,6 +110,27 @@ kubectl -n rook-ceph exec deploy/rook-ceph-tools -- ceph osd primary-affinity os
 - 2026-11-08 evening: **paused by the user; node left powered off.** Cluster state at the pause: sm-node-01 cordoned, per-node `noout` set, Rook operator at 0, mon quorum j+l (mon.i down), silences expire about 01:40Z on 2026-11-09. Switching to long-outage mode (clear the node's `noout` so Ceph rebuilds three copies, operator back to 1 so it replaces mon.i) was offered and **declined: left as is on purpose.** Until the node returns, the affected PGs have two copies and there are two monitors, so do not take down sm-node-02 or sm-node-03.
 
 **Resume here:** power off, unplug osd.6's drive's data cable, power on. If POST is quick and Del works, the drive, its cable or port 1 is the culprit. If not, unplug osd.2's drive too, then check the SuperDOM. Note the POST code (bottom-right of the logo screen) during the stall. A physical USB keyboard catches Del more reliably than iKVM. Once in the BIOS, check the SuperDOM is on port 0 and first among the disks in the boot order (network PXE stays first overall, docs/103).
+
+### Long-term outage mode (2026-11-09)
+
+**Decision:** leave sm-node-01 powered off indefinitely rather than finish Step B now. Why it's safe: without sm-node-01, each device class still spans three hosts, which is what `size 3` / `failureDomain: host` needs (SSD: pc-node-04, sm-node-02, sm-node-03; NVMe: pc-node-04, pc-node-05, sm-node-02; HDD never had OSDs on sm-node-01). Only ~60 GiB of data is stored, so capacity isn't a concern.
+
+| Time (UTC) | Action | Result |
+| :--- | :--- | :--- |
+| 00:37Z | `ceph osd unset-group noout sm-node-01` · `ceph osd out 2 10` (osd.6 was already out) | Backfill onto the other hosts |
+| 00:37Z | `kubectl -n rook-ceph scale deploy rook-ceph-operator --replicas=1` | Operator back, mon health checks resume |
+| 00:41Z | | **497/497 PGs `active+clean`**, about 4 minutes |
+| 00:48Z | Operator: *mon "i" NOT found in quorum after timeout. Mon pod is not scheduled. Retrying* | **No failover.** Rook doesn't fail over a mon whose pod is still `Pending`; it treats that as a scheduling delay and restarts the timer. mon.i is pinned to sm-node-01 (`nodeSelector`), so it would wait forever |
+| 00:52Z | `kubectl -n rook-ceph scale deploy rook-ceph-mon-i --replicas=0` | Rook's documented way to force a failover: with no pod, the next 10-minute timeout replaces the mon |
+| _pending_ | Replacement mon | _see below_ |
+
+**Left alone on purpose:**
+
+* **etcd membership.** sm-node-01's etcd member stays registered. With 3 members and 1 down, quorum is 2 of 3; removing it would give 2 of 2. Both survive zero more failures, and removing it makes the rejoin harder. **While sm-node-01 is down, the cluster has no control-plane redundancy: sm-node-02 and sm-node-03 must both stay up** (no rolling Talos/Kubernetes upgrades or `lab-down` of either without accepting a control-plane outage).
+* **The Kubernetes node object** stays (cordoned, `NotReady`). Omni would re-register it anyway. DaemonSet pods (flannel, kube-proxy, node-exporter) and Rook's per-node pods show `Pending` for it; that's expected noise.
+* **The OSDs aren't purged.** They're `down`+`out` and hold no PG copies. If the node comes back with its disks intact they rejoin with `ceph osd in`; if not, purge them then.
+
+**Bringing it back later:** do Step B. After the node is healthy: `kubectl uncordon sm-node-01`, check the disks per Step B §3, then `ceph osd in 2 10` (and `6` once it's visible). Rook manages mon placement; the mon placement rule prefers pc-node-04/05 and only weights sm-node-01 at 50.
 
 ### Step B: hardware visit on sm-node-01 (mutating, Tier 2, planned window)
 

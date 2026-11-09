@@ -397,7 +397,7 @@ Expected noise at boot: *"could not validate that the sqlite3 database was shutd
 
 - [ ] Doc 201's firewall matrix doesn't match Terraform on VLAN numbering for IoT. Confirm the live rules in UniFi, then correct the doc.
 - [ ] `refoss_rpc` with an entered IP across VLANs, on real hardware.
-- [ ] Create an IoT SSID on IOT-SMART-HOME (2.4 GHz), codify it in `terraform/unifi/`, move the EM06P to it from its web page, then add the K8S-CONTROL → IoT rule.
+- [ ] Create an IoT SSID on IOT-SMART-HOME (2.4 GHz), codify it in `terraform/unifi/`, then add the K8S-CONTROL → IoT rule. **Scope is the whole house, not just the monitors:** first inventory every smart device on the trusted Wi-Fi from the UniFi client list (Refoss ×2, Lennox S40, and the rest), decide per device whether it needs internet, then move them in batches. For the Refoss units: turn on roaming on the EM06P first, and add the IoT SSID to `sta_2` before switching, so a typo can't strand them.
 - [ ] Prometheus/Grafana export for the heat-pump balance-point analysis.
 - [x] Lennox S40 integration (`lennoxs30`), 2026-11-08. See [[#🌡️ Lennox S40 & Outdoor Temperature]].
 - [ ] Garage mini split: build an ESPHome IR blaster (ESP32 + IR LED + IR receiver), capture the remote's codes, and keep the config in the repo. See [[#🌡️ Garage Mini Split: Freeze Guard & Pre-heat]].
