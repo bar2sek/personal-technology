@@ -1,0 +1,4 @@
+name: homelab_corp
+base_archetype: corp
+policy_assignments_to_remove:
+  - Deploy-Private-DNS-Zones  # needs the hub's Private DNS zones; re-add in Phase 2

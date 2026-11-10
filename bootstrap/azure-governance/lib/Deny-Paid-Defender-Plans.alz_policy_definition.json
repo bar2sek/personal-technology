@@ -1,0 +1,57 @@
+{
+  "name": "Deny-Paid-Defender-Plans",
+  "type": "Microsoft.Authorization/policyDefinitions",
+  "apiVersion": "2021-06-01",
+  "scope": null,
+  "properties": {
+    "policyType": "Custom",
+    "mode": "All",
+    "displayName": "Deny paid Microsoft Defender for Cloud plans",
+    "description": "Blocks setting any Defender for Cloud plan (Microsoft.Security/pricings) to the Standard (paid) tier, except plans listed in allowedStandardPlans. Discovery and FoundationalCspm always report Standard but are free. Prevents a repeat of the 2026-10 incident where an ALZ DINE policy re-enabled every paid plan (personal-technology docs/412, docs/417).",
+    "metadata": {
+      "version": "1.0.0",
+      "category": "Security Center",
+      "source": "personal-technology/bootstrap/azure-governance"
+    },
+    "parameters": {
+      "effect": {
+        "type": "String",
+        "metadata": {
+          "displayName": "Effect",
+          "description": "Deny blocks the change; Audit only reports it."
+        },
+        "allowedValues": ["Audit", "Deny", "Disabled"],
+        "defaultValue": "Deny"
+      },
+      "allowedStandardPlans": {
+        "type": "Array",
+        "metadata": {
+          "displayName": "Plans allowed on the Standard tier",
+          "description": "Plan names (pricing resource names) that may be Standard. Defaults to the two free ones."
+        },
+        "defaultValue": ["Discovery", "FoundationalCspm"]
+      }
+    },
+    "policyRule": {
+      "if": {
+        "allOf": [
+          {
+            "field": "type",
+            "equals": "Microsoft.Security/pricings"
+          },
+          {
+            "field": "Microsoft.Security/pricings/pricingTier",
+            "equals": "Standard"
+          },
+          {
+            "field": "name",
+            "notIn": "[parameters('allowedStandardPlans')]"
+          }
+        ]
+      },
+      "then": {
+        "effect": "[parameters('effect')]"
+      }
+    }
+  }
+}

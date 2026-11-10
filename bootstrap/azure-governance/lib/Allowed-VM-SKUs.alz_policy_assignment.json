@@ -1,0 +1,27 @@
+{
+  "type": "Microsoft.Authorization/policyAssignments",
+  "apiVersion": "2022-06-01",
+  "name": "Allowed-VM-SKUs",
+  "location": "${default_location}",
+  "dependsOn": [],
+  "properties": {
+    "description": "Only small burstable VM sizes, so a typo can't start a large VM. Covers VMSS and AKS node pools.",
+    "displayName": "Allowed virtual machine size SKUs",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/cccc23c7-8427-4f53-ad12-b6a63eb452b3",
+    "enforcementMode": "Default",
+    "nonComplianceMessages": [
+      {
+        "message": "VM size {enforcementMode} be on the lab's allowed list (docs/417)."
+      }
+    ],
+    "scope": "/providers/Microsoft.Management/managementGroups/placeholder",
+    "notScopes": [],
+    "parameters": {
+      "listOfAllowedSKUs": {
+        "value": [
+          "Standard_B1s"
+        ]
+      }
+    }
+  }
+}

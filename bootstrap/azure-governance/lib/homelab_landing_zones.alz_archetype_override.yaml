@@ -1,0 +1,15 @@
+# Landing zones MG: same removals as platform, plus the workload-only ones.
+name: homelab_landing_zones
+base_archetype: landing_zones
+policy_assignments_to_remove:
+  - Deploy-MDFC-DefSQL-AMA
+  - Deploy-VM-ChangeTrack
+  - Deploy-VMSS-ChangeTrack
+  - Deploy-vmArc-ChangeTrack
+  - Deploy-VM-Monitoring
+  - Deploy-VMSS-Monitoring
+  - Deploy-vmHybr-Monitoring
+  - Deploy-AzSqlDb-Auditing   # SQL auditing into Log Analytics
+  - Deploy-SQL-Threat         # SQL Advanced Threat Protection = Defender for SQL (paid)
+  - Deploy-VM-Backup          # Recovery Services vault + fees
+  - Enable-DDoS-VNET          # DDoS Network Protection plan

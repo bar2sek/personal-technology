@@ -656,6 +656,9 @@ lab-up:
 #                     (one per root: it also holds the backend/module metadata)
 #   * TF_PLUGIN_CACHE_DIR -> ~/.terraform.d/plugin-cache, shared by all roots,
 #                     so a re-init links the cached binary instead of downloading
+#   * ALZLIB_DIR   -> <TF_DATA_DIR>/alzlib: the Azure/alz provider otherwise caches
+#                     the whole ALZ policy library (~800 files) in `<root>/.alzlib/`
+#                     (bootstrap/azure-governance, docs/416)
 #   * auto-runs `terraform init` when the root's data dir has no providers yet
 #   * passes a gitignored `backend.hcl` (partial backend config) to init when the
 #     root has one, so remote-state coordinates never need to be committed
@@ -673,6 +676,7 @@ _tf dir cmd *args:
     else echo "Error: Directory terraform/$dir or bootstrap/$dir not found" >&2; exit 1; fi
     export TF_DATA_DIR="{{ tf_data_root }}/${root//\//-}"
     export TF_PLUGIN_CACHE_DIR="${TF_PLUGIN_CACHE_DIR:-$HOME/.terraform.d/plugin-cache}"
+    export ALZLIB_DIR="${ALZLIB_DIR:-$TF_DATA_DIR/alzlib}"
     # Same default as the nix-mac `terraform` alias (shell aliases don't apply inside just).
     export AWS_PROFILE="${AWS_PROFILE:-terraform}"
     mkdir -p "$TF_DATA_DIR" "$TF_PLUGIN_CACHE_DIR"

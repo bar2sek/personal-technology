@@ -973,6 +973,18 @@ The milestone entries below record how each of these got here. The section that 
 
 ---
 
+## 🎯 Milestone 46: Azure Phase 1 Code: Management Groups, Cost-Safe ALZ Policy & Split CI Identities (2026-11-09)
+
+- **Decided:** new root `bootstrap/azure-governance` (admin-applied, own state key in the bootstrap account) for MGs + policy + MG-scope CI RBAC; split plan/apply GitHub OIDC identities; CI state account `stazutfciprodcus001` in the management subscription; custom Deny on paid Defender plans.
+- **Hierarchy:** the ALZ default tree minus `local`: 11 MGs under the intermediate root `mg-azure-homelab-prod-0bb5`; the 4 subscriptions are placed into identity/management/connectivity/security by their name's `<category>` node (no IDs in code).
+- **Policy:** `avm-ptn-alz` 0.22.0 + ALZ library `platform/alz/2026.11.0` + a custom `lib/`. **30 cost-bearing assignments removed** via archetype overrides. **Finding:** six `Enforce-GR-*` "guardrail" initiatives hide DINE members that turn on paid per-resource Defender plans (Storage, Cosmos DB, MySQL, PostgreSQL, SQL MI, Synapse) plus a DDoS Modify; those members are set to `Disabled`. MCSB v2's `*_DINE` members are all pinned to `AuditIfNotExists` (safe). Six custom guardrails added (regions, VM SKUs, denied resource types, keyless storage, paid Defender deny). All 98 assignments start `DoNotEnforce`; `policy_enabled = false` is the one-apply rollback.
+- **CI:** the old app becomes `…-apply-prod-001` in place (`moved` blocks, same client ID), trusted only for `environment:production`; new `…-plan-prod-001` for PRs/main. Old Contributor on the identity subscription removed. Azure CI was already broken (its state account went in the teardown), so nothing live is affected.
+- **Plans (read-only, `-lock=false`):** governance M2 22 add; M3 425 add / 0 change / 0 destroy, no warnings; `bootstrap/azure` 12 add / 2 change (renames) / 3 destroy. **Not applied yet.**
+- **Next:** operator applies M2 → M3 → M4, then M5 enforce per MG and the Defender-deny test; `infra-cloud-deployments` workflow update ([[418-azure-ci-rbac-and-state|docs/418]]); hierarchy settings (default MG = sandbox) need Owner at Tenant Root, so deferred.
+- Details: [[416-azure-management-groups-and-policy|docs/416]], [[417-azure-policy-cost-safe-alz|docs/417]], [[418-azure-ci-rbac-and-state|docs/418]].
+
+---
+
 ## 🎯 Immediate Next Actions & Infrastructure Backlog
 
 > [!NOTE]

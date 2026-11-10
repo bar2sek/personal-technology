@@ -1,0 +1,23 @@
+# Intermediate root (mg-azure-homelab-prod-*). Keeps the ALZ root archetype's
+# definitions, initiatives, custom roles and audit/deny assignments, and removes
+# every assignment that creates something billable. Reasoning per line: docs/417.
+name: homelab_root
+base_archetype: root
+policy_assignments_to_remove:
+  - Deploy-MDFC-Config-H224   # switches on every paid Defender plan: the Phase 0 incident (docs/412)
+  - Deploy-MDFC-OssDb         # Defender for open-source relational DBs (paid)
+  - Deploy-MDFC-SqlAtp        # Defender for SQL (paid)
+  - Deploy-MDEndpoints        # Defender for Endpoint agent: needs Defender for Servers (paid)
+  - Deploy-MDEndpointsAMA     # same, AMA variant
+  - Deploy-AzActivity-Log     # needs a Log Analytics workspace (Phase 5)
+  - Deploy-Diag-LogsCat       # diagnostic logs of every resource into Log Analytics (ingestion billed)
+  - Deploy-SvcHealth-BuiltIn  # creates RGs + alert rules in every sub; revisit with monitoring (Phase 5)
+policy_definitions_to_add:
+  - Deny-Paid-Defender-Plans
+policy_assignments_to_add:
+  - Allowed-Locations
+  - Allowed-RG-Locations
+  - Allowed-VM-SKUs
+  - Deny-Costly-ResTypes
+  - Deny-Storage-SharedKey
+  - Deny-Paid-Defender

@@ -88,24 +88,47 @@ resource "azuread_group" "member" {
 }
 
 # ------------------------------------------------------------------------------
-# Entra ID App Registration & OIDC Federation for GitHub Actions CI/CD
+# GitHub Actions CI/CD: split PLAN and APPLY identities (Phase 1 M4, docs/418)
 # ------------------------------------------------------------------------------
+# One identity per job, like bootstrap/aws's plan/apply roles:
+#   plan  : trusted for pull_request + main runs. Reader on the workload MGs,
+#           read-only on the CI state container. A malicious PR can run code in
+#           the plan job, so that job must not be able to change anything.
+#   apply : trusted ONLY for the GitHub environment `production` (reviewers and
+#           branch rules are enforced there). Contributor on the workload MGs.
+# The role assignments at MG scope live in bootstrap/azure-governance, which owns
+# the management groups. This root holds no subscription-level RBAC for CI.
 
-resource "azuread_application" "github_actions" {
-  display_name     = local.app_github_actions_name
+# The former single CI identity becomes the apply identity in place (same client
+# ID, no recreate). Only its display name changes.
+moved {
+  from = azuread_application.github_actions
+  to   = azuread_application.github_apply
+}
+moved {
+  from = azuread_service_principal.github_actions
+  to   = azuread_service_principal.github_apply
+}
+moved {
+  from = azuread_application_federated_identity_credential.github_env_prod
+  to   = azuread_application_federated_identity_credential.github_apply_env_prod
+}
+
+resource "azuread_application" "github_apply" {
+  display_name     = local.app_github_apply_name
   sign_in_audience = "AzureADMyOrg"
-  description      = "Workload identity for GitHub Actions CI/CD in ${var.github_repo_name}"
+  description      = "GitHub Actions APPLY identity (environment: production) for ${var.github_repo_name}"
 }
 
-resource "azuread_service_principal" "github_actions" {
-  client_id                    = azuread_application.github_actions.client_id
+resource "azuread_service_principal" "github_apply" {
+  client_id                    = azuread_application.github_apply.client_id
   app_role_assignment_required = false
-  description                  = "Enterprise service principal for GitHub Actions deployment runner"
+  description                  = "GitHub Actions apply identity: Contributor on workload management groups"
 }
 
-# OIDC Trust for GitHub Environment 'production' (Immutable ID format)
-resource "azuread_application_federated_identity_credential" "github_env_prod" {
-  application_id = azuread_application.github_actions.id
+# Only the protected environment can mint an apply token (Immutable ID format).
+resource "azuread_application_federated_identity_credential" "github_apply_env_prod" {
+  application_id = azuread_application.github_apply.id
   display_name   = "github-env-production"
   description    = "OIDC trust for GitHub Actions production environment deployment"
   audiences      = ["api://AzureADTokenExchange"]
@@ -113,9 +136,36 @@ resource "azuread_application_federated_identity_credential" "github_env_prod" {
   subject        = "repo:${local.github_repo_immutable}:environment:production"
 }
 
-# OIDC Trust for Pull Requests (PR Validation & Planning - Immutable ID format)
-resource "azuread_application_federated_identity_credential" "github_pr" {
-  application_id = azuread_application.github_actions.id
+# The old app's pull_request and main credentials are not moved: they are
+# destroyed (removed blocks below) and recreated on the plan app, so apply
+# rights no longer reach PR runs.
+removed {
+  from = azuread_application_federated_identity_credential.github_pr
+  lifecycle {
+    destroy = true
+  }
+}
+removed {
+  from = azuread_application_federated_identity_credential.github_branch_main
+  lifecycle {
+    destroy = true
+  }
+}
+
+resource "azuread_application" "github_plan" {
+  display_name     = local.app_github_plan_name
+  sign_in_audience = "AzureADMyOrg"
+  description      = "GitHub Actions PLAN identity (pull requests, main) for ${var.github_repo_name}"
+}
+
+resource "azuread_service_principal" "github_plan" {
+  client_id                    = azuread_application.github_plan.client_id
+  app_role_assignment_required = false
+  description                  = "GitHub Actions plan identity: Reader on workload management groups"
+}
+
+resource "azuread_application_federated_identity_credential" "github_plan_pr" {
+  application_id = azuread_application.github_plan.id
   display_name   = "github-pull-request"
   description    = "OIDC trust for GitHub Actions pull request validation and planning"
   audiences      = ["api://AzureADTokenExchange"]
@@ -123,20 +173,22 @@ resource "azuread_application_federated_identity_credential" "github_pr" {
   subject        = "repo:${local.github_repo_immutable}:pull_request"
 }
 
-# OIDC Trust for Branch 'main' (Direct workflow dispatch / push - Immutable ID format)
-resource "azuread_application_federated_identity_credential" "github_branch_main" {
-  application_id = azuread_application.github_actions.id
+resource "azuread_application_federated_identity_credential" "github_plan_main" {
+  application_id = azuread_application.github_plan.id
   display_name   = "github-branch-main"
-  description    = "OIDC trust for GitHub Actions main branch runs"
+  description    = "OIDC trust for GitHub Actions main branch runs (drift-detection plans)"
   audiences      = ["api://AzureADTokenExchange"]
   issuer         = "https://token.actions.githubusercontent.com"
   subject        = "repo:${local.github_repo_immutable}:ref:refs/heads/main"
 }
 
-# Assign Contributor role on the target Azure Subscription
-resource "azurerm_role_assignment" "github_actions_contributor" {
-  scope                = "/subscriptions/${var.subscription_id}"
-  role_definition_name = "Contributor"
-  principal_id         = azuread_service_principal.github_actions.object_id
+# Removed 2026-11-09 (Phase 1 M4): Contributor on the identity subscription.
+# It gave CI write rights on a PLATFORM subscription; CI rights now come only
+# from the workload management groups (bootstrap/azure-governance/ci_rbac.tf).
+removed {
+  from = azurerm_role_assignment.github_actions_contributor
+  lifecycle {
+    destroy = true
+  }
 }
 

@@ -1,0 +1,30 @@
+{
+  "type": "Microsoft.Authorization/policyAssignments",
+  "apiVersion": "2022-06-01",
+  "name": "Deny-Costly-ResTypes",
+  "location": "${default_location}",
+  "dependsOn": [],
+  "properties": {
+    "description": "Blocks resource types that are expensive by design and never needed in the lab (DDoS plans, ExpressRoute, AVS, SQL MI).",
+    "displayName": "Not allowed resource types (cost)",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/6c112d4e-5bc7-47ae-a041-ea2d9dccd749",
+    "enforcementMode": "Default",
+    "nonComplianceMessages": [
+      {
+        "message": "This resource type {enforcementMode} be deployed in the lab (cost guardrail, docs/417)."
+      }
+    ],
+    "scope": "/providers/Microsoft.Management/managementGroups/placeholder",
+    "notScopes": [],
+    "parameters": {
+      "effect": {
+        "value": "Deny"
+      },
+      "listOfResourceTypesNotAllowed": {
+        "value": [
+          "Microsoft.Network/ddosProtectionPlans"
+        ]
+      }
+    }
+  }
+}

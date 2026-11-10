@@ -1,0 +1,4 @@
+name: homelab_identity
+base_archetype: identity
+policy_assignments_to_remove:
+  - Deploy-VM-Backup          # creates a Recovery Services vault + protected-instance fees (Phase 3 does backup on purpose)

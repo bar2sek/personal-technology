@@ -1,0 +1,4 @@
+name: homelab_connectivity
+base_archetype: connectivity
+policy_assignments_to_remove:
+  - Enable-DDoS-VNET          # attaches VNets to a DDoS Network Protection plan (~$2,944/mo)

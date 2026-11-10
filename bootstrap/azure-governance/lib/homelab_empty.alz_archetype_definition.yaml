@@ -1,0 +1,6 @@
+# No policy at all. Used by the homelab-hierarchy architecture (M2 / rollback).
+name: homelab_empty
+policy_assignments: []
+policy_definitions: []
+policy_set_definitions: []
+role_definitions: []

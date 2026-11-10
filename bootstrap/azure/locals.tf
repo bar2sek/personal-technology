@@ -6,10 +6,16 @@ locals {
   tenant_4            = length(local.effective_tenant_id) >= 4 ? substr(local.effective_tenant_id, 0, 4) : "0000"
 
   # Standardized Entra ID Application & Service Principal Names
-  app_authentik_name      = "app-${var.platform}-authentik-${var.env}-${var.iteration}"
-  sp_authentik_name       = "sp-${var.platform}-authentik-${var.env}-${var.iteration}"
-  app_github_actions_name = "app-${var.platform}-github-actions-${var.env}-${var.iteration}"
-  sp_github_actions_name  = "sp-${var.platform}-github-actions-${var.env}-${var.iteration}"
+  app_authentik_name = "app-${var.platform}-authentik-${var.env}-${var.iteration}"
+  sp_authentik_name  = "sp-${var.platform}-authentik-${var.env}-${var.iteration}"
+  # GitHub Actions: one identity per job (docs/418). bootstrap/azure-governance
+  # looks these up by display name, so keep the two in sync.
+  app_github_plan_name  = "app-${var.platform}-github-actions-plan-${var.env}-${var.iteration}"
+  app_github_apply_name = "app-${var.platform}-github-actions-apply-${var.env}-${var.iteration}"
+
+  # CI state (docs/418): separate from the admin-only bootstrap account.
+  ci_tfstate_rg_name      = "rg-${var.platform}-tfstate-ci-${var.env}-${var.location_short}-${var.iteration}"
+  ci_tfstate_storage_name = "stazutfci${var.env}${var.location_short}${var.iteration}"
 
   # Admin-only bootstrap remote state (per docs/105-naming-conventions.md).
   # Storage account names: 3-24 lowercase alphanumerics, globally unique.

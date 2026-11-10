@@ -26,6 +26,10 @@ override.tf.json
 # Ignore transient lock info files created by terraform apply
 .terraform.tfstate.lock.info
 
+# Azure/alz provider library cache. The Justfile redirects it to ALZLIB_DIR
+# outside the vault; this catches a bare `terraform` run in the root.
+.alzlib/
+
 # Include override files you do wish to add to version control using negated pattern
 # !example_override.tf
 

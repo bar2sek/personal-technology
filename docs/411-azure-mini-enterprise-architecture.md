@@ -137,7 +137,7 @@ graph TD
 | Phase | Scope | Monthly cost | Status |
 |---|---|---|---|
 | **0** | Budgets + anomaly alerts on all subscriptions; admin-only bootstrap state; `azurerm` 4.x; Terraform ≥ 1.9 | ~$0.05 | ✅ Complete 2026-11-09 (applied, state migrated to Azure) |
-| **1** | Management groups, Azure Policy (audit → enforce) via `avm-ptn-alz` with cost-bearing policies removed, scoped RBAC for CI, Defender Foundational CSPM only | $0 | ⏳ |
+| **1** | Management groups, Azure Policy (audit → enforce) via `avm-ptn-alz` with cost-bearing policies removed, scoped RBAC for CI, Defender Foundational CSPM only | $0 | 🔨 Code ready 2026-11-09, plans clean, awaiting apply ([[416-azure-management-groups-and-policy\|docs/416]]) |
 | **2** | Hub-and-spoke VNets, NSGs, Azure DNS delegated from Cloudflare, Private DNS zones | ~$1 | ⏳ |
 | **3** | Key Vault, managed identities, Azure Backup with restore drills | ~$6 | ⏳ |
 | **4** | ACR, Container Apps, Functions, App Service | ~$5 | ⏳ |
@@ -151,8 +151,9 @@ Each phase is a checkpoint: plan output reviewed, then an explicit approval befo
 
 ### Code locations
 
-- **`bootstrap/azure/`** (this repo, applied locally): tenant-level and identity work CI must not hold rights for (Entra apps, OIDC trust, budgets, admin-only state, and from Phase 1 management groups and CI RBAC).
-- **Workload roots** (Phase 1 on): applied through GitHub Actions OIDC with PR-time plans. Which repository hosts them is decided at the start of Phase 1.
+- **`bootstrap/azure/`** (this repo, applied locally): identity work CI must not hold rights for: Entra apps, OIDC trust for the split plan/apply CI identities, budgets, the admin-only state account and the CI state account ([[418-azure-ci-rbac-and-state|docs/418]]).
+- **`bootstrap/azure-governance/`** (this repo, applied locally, decided 2026-11-09): management groups, subscription placement, Azure Policy (`avm-ptn-alz`) and CI role assignments at MG scope ([[416-azure-management-groups-and-policy|docs/416]]). A separate root so policy churn never re-plans the root holding the SSO secret.
+- **Workload roots:** `infra-cloud-deployments`, applied through GitHub Actions OIDC (plan identity on PRs, apply identity behind the `production` environment). CI's rights cover only the landingzones and sandbox MGs.
 
 ---
 

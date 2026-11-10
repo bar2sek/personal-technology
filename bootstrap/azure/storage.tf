@@ -4,10 +4,12 @@
 # Applies the findings in docs/409 "Known Risk: Bootstrap State":
 #   1. Dedicated account, never shared with CI state. This root's state holds the
 #      Authentik client secret; PR plan jobs must not be able to read it.
-#   2. CI must hold no management-plane rights over it. The GitHub Actions SP has
-#      Contributor on the IDENTITY subscription only. Contributor on this account
-#      could re-enable shared keys, list them, and read every blob. So it lives in
-#      the MANAGEMENT subscription, where CI has no role at all.
+#   2. CI must hold no management-plane rights over it. Since Phase 1 (docs/418)
+#      the GitHub Actions identities only hold roles on the workload management
+#      groups, plus a blob role on the CI state container (ci_state.tf).
+#      Contributor on this account could re-enable shared keys, list them, and
+#      read every blob. So it lives in the MANAGEMENT subscription, where CI has
+#      no management-plane role at all.
 #   3. Versioning on, with noncurrent versions purged after 30 days so old copies
 #      of rotated secrets don't accumulate. No immutability (it would block that purge).
 #
@@ -15,7 +17,7 @@
 # Step 1 applies with local state; step 2 adds `backend "azurerm"` and runs
 # `just tf-init azure -migrate-state`. Runbook: docs/412-azure-lab-cost-guardrails.md.
 #
-# The CI pipeline's own state account is a separate Phase 1 resource.
+# The CI pipeline's own state account is separate: ci_state.tf (docs/418).
 
 resource "azurerm_resource_group" "tfstate" {
   provider = azurerm.management

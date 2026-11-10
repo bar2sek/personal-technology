@@ -86,6 +86,9 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 - [413 - Bedrock AI Gateway Decommission Runbook](docs/413-bedrock-ai-gateway-decommission.md)
 - [414 - AWS Access Hygiene: Read-Only Default & Agent Guardrails](docs/414-aws-access-hygiene.md)
 - [415 - Entra ID Client Secret Rotation: Zero-Downtime Rotation Ring](docs/415-entra-client-secret-rotation.md)
+- [416 - Azure Mini Enterprise Phase 1: Management Groups, Policy & CI RBAC](docs/416-azure-management-groups-and-policy.md)
+- [417 - Cost-Safe ALZ Policy: What Was Removed, Hidden Defender Traps & Guardrails](docs/417-azure-policy-cost-safe-alz.md)
+- [418 - Azure CI RBAC & State: Split Plan/Apply OIDC Identities](docs/418-azure-ci-rbac-and-state.md)
 - [410 - Azure Cloud & AI Transformation Roadmap: Homelab Hybrid Architecture](docs/410-azure-cloud-and-ai-transformation-roadmap.md) *(superseded by doc 411)*
 
 ### 📦 Section 5: Self-Hosted Application Suite

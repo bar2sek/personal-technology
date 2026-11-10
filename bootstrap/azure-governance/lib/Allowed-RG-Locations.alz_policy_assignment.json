@@ -1,0 +1,28 @@
+{
+  "type": "Microsoft.Authorization/policyAssignments",
+  "apiVersion": "2022-06-01",
+  "name": "Allowed-RG-Locations",
+  "location": "${default_location}",
+  "dependsOn": [],
+  "properties": {
+    "description": "Resource groups may only be created in the lab's approved regions.",
+    "displayName": "Allowed locations for resource groups",
+    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/e765b5de-1225-4ba3-bd56-1ac6695af988",
+    "enforcementMode": "Default",
+    "nonComplianceMessages": [
+      {
+        "message": "Resource groups {enforcementMode} be created in an approved region."
+      }
+    ],
+    "scope": "/providers/Microsoft.Management/managementGroups/placeholder",
+    "notScopes": [],
+    "parameters": {
+      "listOfAllowedLocations": {
+        "value": [
+          "centralus",
+          "eastus2"
+        ]
+      }
+    }
+  }
+}

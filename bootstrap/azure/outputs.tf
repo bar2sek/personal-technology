@@ -48,14 +48,23 @@ output "entra_group_member_id" {
 # GitHub Actions CI/CD & Remote State Storage
 # ------------------------------------------------------------------------------
 
-output "github_actions_client_id" {
-  description = "Client ID for GitHub Actions OIDC Workload Identity Federation (app-azure-github-actions-prod-001)"
-  value       = azuread_application.github_actions.client_id
+output "github_plan_client_id" {
+  description = "AZURE_CLIENT_ID for the GitHub Actions PLAN job (pull_request, main): app-azure-github-actions-plan-prod-001"
+  value       = azuread_application.github_plan.client_id
 }
 
-output "github_actions_sp_object_id" {
-  description = "Enterprise Service Principal Object ID for GitHub Actions"
-  value       = azuread_service_principal.github_actions.object_id
+output "github_apply_client_id" {
+  description = "AZURE_CLIENT_ID for the GitHub Actions APPLY job (environment: production): app-azure-github-actions-apply-prod-001"
+  value       = azuread_application.github_apply.client_id
+}
+
+output "ci_tfstate" {
+  description = "Backend coordinates for CI Terraform roots (infra-cloud-deployments). Subscription: management."
+  value = {
+    resource_group_name  = azurerm_resource_group.ci_tfstate.name
+    storage_account_name = azurerm_storage_account.ci_tfstate.name
+    container_name       = azurerm_storage_container.ci_tfstate.name
+  }
 }
 
 output "tfstate_resource_group_name" {

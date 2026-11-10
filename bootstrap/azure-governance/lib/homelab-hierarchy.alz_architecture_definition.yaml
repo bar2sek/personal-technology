@@ -1,0 +1,71 @@
+# Phase 1 M2: hierarchy only, no policy (policy_enabled = false). Also the rollback architecture.
+# Generated from one list so both files keep the SAME tree; edit both or neither.
+# IDs follow docs/105: mg-azure-<category>-prod-<tenant-4>.
+name: homelab-hierarchy
+management_groups:
+  - id: mg-azure-homelab-prod-0bb5
+    display_name: mg-azure-homelab-prod-0bb5
+    parent_id: null
+    exists: false
+    archetypes:
+      - homelab_empty
+  - id: mg-azure-platform-prod-0bb5
+    display_name: mg-azure-platform-prod-0bb5
+    parent_id: mg-azure-homelab-prod-0bb5
+    exists: false
+    archetypes:
+      - homelab_empty
+  - id: mg-azure-identity-prod-0bb5
+    display_name: mg-azure-identity-prod-0bb5
+    parent_id: mg-azure-platform-prod-0bb5
+    exists: false
+    archetypes:
+      - homelab_empty
+  - id: mg-azure-management-prod-0bb5
+    display_name: mg-azure-management-prod-0bb5
+    parent_id: mg-azure-platform-prod-0bb5
+    exists: false
+    archetypes:
+      - homelab_empty
+  - id: mg-azure-connectivity-prod-0bb5
+    display_name: mg-azure-connectivity-prod-0bb5
+    parent_id: mg-azure-platform-prod-0bb5
+    exists: false
+    archetypes:
+      - homelab_empty
+  - id: mg-azure-security-prod-0bb5
+    display_name: mg-azure-security-prod-0bb5
+    parent_id: mg-azure-platform-prod-0bb5
+    exists: false
+    archetypes:
+      - homelab_empty
+  - id: mg-azure-landingzones-prod-0bb5
+    display_name: mg-azure-landingzones-prod-0bb5
+    parent_id: mg-azure-homelab-prod-0bb5
+    exists: false
+    archetypes:
+      - homelab_empty
+  - id: mg-azure-corp-prod-0bb5
+    display_name: mg-azure-corp-prod-0bb5
+    parent_id: mg-azure-landingzones-prod-0bb5
+    exists: false
+    archetypes:
+      - homelab_empty
+  - id: mg-azure-online-prod-0bb5
+    display_name: mg-azure-online-prod-0bb5
+    parent_id: mg-azure-landingzones-prod-0bb5
+    exists: false
+    archetypes:
+      - homelab_empty
+  - id: mg-azure-sandbox-prod-0bb5
+    display_name: mg-azure-sandbox-prod-0bb5
+    parent_id: mg-azure-homelab-prod-0bb5
+    exists: false
+    archetypes:
+      - homelab_empty
+  - id: mg-azure-decommissioned-prod-0bb5
+    display_name: mg-azure-decommissioned-prod-0bb5
+    parent_id: mg-azure-homelab-prod-0bb5
+    exists: false
+    archetypes:
+      - homelab_empty

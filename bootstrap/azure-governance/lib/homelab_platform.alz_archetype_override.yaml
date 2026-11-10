@@ -1,0 +1,13 @@
+# Platform MG. The Enforce-GR-* guardrail initiatives stay, with their paid
+# Defender members set to Disabled in main.tf (assignment_parameters).
+name: homelab_platform
+base_archetype: platform
+policy_assignments_to_remove:
+  - DenyAction-DeleteUAMIAMA  # protects an AMA managed identity that doesn't exist (Phase 5)
+  - Deploy-MDFC-DefSQL-AMA    # Defender for SQL on VMs (paid) + Log Analytics
+  - Deploy-VM-ChangeTrack     # AMA + DCR -> Log Analytics ingestion
+  - Deploy-VMSS-ChangeTrack
+  - Deploy-vmArc-ChangeTrack
+  - Deploy-VM-Monitoring      # VM Insights -> Log Analytics ingestion
+  - Deploy-VMSS-Monitoring
+  - Deploy-vmHybr-Monitoring

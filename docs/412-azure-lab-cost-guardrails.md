@@ -75,6 +75,8 @@ az rest --method get \
 
 > [!TIP] Lesson for Phase 1
 > Before deploying `avm-ptn-alz`, remove or set to `DoNotEnforce` every assignment that **creates billable things**: `Deploy-MDFC-Config*` (Defender plans), `Enable-DDoS-VNET` (a DDoS plan is ~$2,944/mo), `Deploy-VM-Backup`, `Deploy-MDFC-DefSQL-AMA`. With a $5/day plan switched on, the anomaly alert above would fire within about a day.
+>
+> **Done in Phase 1:** 30 assignments removed, six hidden paid-Defender members inside ALZ `Enforce-GR-*` initiatives disabled, and a custom `Deny-Paid-Defender` policy added ([[417-azure-policy-cost-safe-alz|docs/417]]).
 
 ---
 

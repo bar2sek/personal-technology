@@ -1,0 +1,8 @@
+# Copy to backend.hcl (gitignored) and fill in. Same admin-only account as
+# bootstrap/azure, separate state key.
+subscription_id      = "<management-subscription-id>"
+resource_group_name  = "rg-azure-tfstate-bootstrap-prod-cus-001"
+storage_account_name = "stazubootstrapprodcus001"
+container_name       = "tfstate"
+key                  = "bootstrap/azure-governance/terraform.tfstate"
+use_azuread_auth     = true
