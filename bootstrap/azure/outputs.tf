@@ -19,9 +19,14 @@ output "entra_app_client_id" {
 }
 
 output "entra_app_client_secret" {
-  description = "Client Secret for Authentik OpenID Connect Source"
-  value       = azuread_application_password.authentik_secret.value
+  description = "CURRENT client secret for the Authentik OpenID Connect Source (newest ring label)"
+  value       = azuread_application_password.authentik[local.authentik_secret_current].value
   sensitive   = true
+}
+
+output "entra_app_client_secret_versions" {
+  description = "Live Authentik client secrets: label => expiry (no secret values)"
+  value       = { for k, p in azuread_application_password.authentik : k => p.end_date }
 }
 
 output "entra_group_admin_id" {

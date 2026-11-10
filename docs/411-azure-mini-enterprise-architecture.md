@@ -136,7 +136,7 @@ graph TD
 
 | Phase | Scope | Monthly cost | Status |
 |---|---|---|---|
-| **0** | Budgets + anomaly alerts on all subscriptions; admin-only bootstrap state; `azurerm` 4.x; Terraform ≥ 1.9 | ~$0.05 | 🟢 Applied 2026-11-09; state migration (step 2) pending |
+| **0** | Budgets + anomaly alerts on all subscriptions; admin-only bootstrap state; `azurerm` 4.x; Terraform ≥ 1.9 | ~$0.05 | ✅ Complete 2026-11-09 (applied, state migrated to Azure) |
 | **1** | Management groups, Azure Policy (audit → enforce) via `avm-ptn-alz` with cost-bearing policies removed, scoped RBAC for CI, Defender Foundational CSPM only | $0 | ⏳ |
 | **2** | Hub-and-spoke VNets, NSGs, Azure DNS delegated from Cloudflare, Private DNS zones | ~$1 | ⏳ |
 | **3** | Key Vault, managed identities, Azure Backup with restore drills | ~$6 | ⏳ |

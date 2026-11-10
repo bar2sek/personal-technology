@@ -85,6 +85,7 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 - [412 - Azure Lab Cost Guardrails & Admin-Only Bootstrap State (Phase 0)](docs/412-azure-lab-cost-guardrails.md)
 - [413 - Bedrock AI Gateway Decommission Runbook](docs/413-bedrock-ai-gateway-decommission.md)
 - [414 - AWS Access Hygiene: Read-Only Default & Agent Guardrails](docs/414-aws-access-hygiene.md)
+- [415 - Entra ID Client Secret Rotation: Zero-Downtime Rotation Ring](docs/415-entra-client-secret-rotation.md)
 - [410 - Azure Cloud & AI Transformation Roadmap: Homelab Hybrid Architecture](docs/410-azure-cloud-and-ai-transformation-roadmap.md) *(superseded by doc 411)*
 
 ### 📦 Section 5: Self-Hosted Application Suite

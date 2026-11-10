@@ -16,10 +16,11 @@ terraform {
     }
   }
 
-  # Phase 0 step 2: uncomment AFTER the first apply has created the account, then
-  # run `just tf-init azure -migrate-state`. Coordinates (incl. the management
-  # subscription ID) come from the gitignored backend.hcl. Runbook: docs/412.
-  # backend "azurerm" {}
+  # Admin-only remote state (Phase 0 step 2, docs/412). Partial configuration:
+  # the coordinates, including the management subscription ID, come from the
+  # gitignored backend.hcl, which `just tf-init azure` passes automatically.
+  # Locking uses a blob lease on the state file.
+  backend "azurerm" {}
 }
 
 # Default provider: the identity platform subscription (var.subscription_id).

@@ -35,12 +35,34 @@ resource "azuread_service_principal" "authentik" {
   app_role_assignment_required = false
 }
 
-# Client Secret for Authentik OpenID Connect OAuth Source
-resource "azuread_application_password" "authentik_secret" {
+# ------------------------------------------------------------------------------
+# Client secrets for the Authentik OpenID Connect OAuth Source (rotation ring)
+# ------------------------------------------------------------------------------
+# One secret per label in var.authentik_secret_versions. Zero-downtime rotation
+# (runbook: docs/415-entra-client-secret-rotation.md):
+#   1. ADD a new label and apply        -> old + new secret are both valid
+#   2. Put the new secret in Authentik, test sign-in
+#   3. REMOVE the old label and apply   -> old secret revoked in Entra ID
+# The newest label (sorted) is the one exposed by output.entra_app_client_secret.
+resource "azuread_application_password" "authentik" {
+  for_each = var.authentik_secret_versions
+
   application_id = azuread_application.authentik.id
-  display_name   = "Authentik SSO OIDC Secret"
-  # Valid for 1 year
-  end_date_relative = "8760h"
+  display_name   = "Authentik SSO OIDC Secret ${each.key}"
+
+  # Explicit expiry, computed once at creation. azuread 2.53 accepted
+  # end_date_relative but Entra applied its 2-year default anyway (2026-11
+  # secret), so the end date is now sent as an absolute timestamp.
+  end_date = timeadd(timestamp(), var.authentik_secret_lifetime)
+
+  lifecycle {
+    # Every argument of azuread_application_password (v2) forces replacement.
+    # Without this, changing the lifetime or naming scheme would destroy and
+    # recreate EVERY live secret at once: an instant SSO outage. end_date is
+    # here too because timestamp() changes on every plan. New settings apply
+    # to newly added labels only, which is exactly what rotation wants.
+    ignore_changes = [display_name, end_date, end_date_relative]
+  }
 }
 
 # ------------------------------------------------------------------------------

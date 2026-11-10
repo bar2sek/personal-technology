@@ -104,7 +104,7 @@ just tf-plan azure      # review: budgets x4, anomaly alerts x4, state RG/accoun
 just tf-apply azure
 ```
 
-**Step 2: migrate the state into the new account.**
+**Step 2: migrate the state into the new account.** ✅ Done 2026-11-09: 22 resources moved (serial 53 → 54, since the migration write bumps it), `plan` shows no changes, the blob lease releases after each run, and the local `terraform.tfstate*` files were deleted from the vault. The interactive `yes` prompt was answered with `-force-copy`, which was safe because the container was empty.
 
 ```bash
 # a) Back up the local state OUTSIDE Google Drive first.

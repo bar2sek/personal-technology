@@ -130,8 +130,8 @@ Inside Authentik's Administration UI (**System > Sources > Create OpenID Connect
 | :--- | :--- | :--- |
 | **Name** | `Microsoft Entra ID` | Display name on the login stage |
 | **Slug** | `entra-id` | Matches callback URL `/source/oauth/callback/entra-id/` |
-| **Consumer Key (Client ID)** | Output from `terraform output entra_client_id` | Identifies Authentik to Entra |
-| **Consumer Secret** | Output from `terraform output -raw entra_client_secret` | Authenticates client token requests |
+| **Consumer Key (Client ID)** | Output from `just tf azure output entra_app_client_id` | Identifies Authentik to Entra |
+| **Consumer Secret** | Output from `just tf azure output -raw entra_app_client_secret` (rotation: [[415-entra-client-secret-rotation|docs/415]]) | Authenticates client token requests |
 | **Authorization URL** | `https://login.microsoftonline.com/<tenant-id>/oauth2/v2.0/authorize` | OIDC Authorization Endpoint |
 | **Token URL** | `https://login.microsoftonline.com/<tenant-id>/oauth2/v2.0/token` | OIDC Token Issuance Endpoint |
 | **OIDC JWKS URL** | `https://login.microsoftonline.com/<tenant-id>/discovery/v2.0/keys` | Public keys verifying Entra signatures |

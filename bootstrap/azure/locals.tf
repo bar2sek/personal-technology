@@ -25,6 +25,9 @@ locals {
   # GitHub Immutable ID Format (GitHub Actions OIDC assertion)
   github_repo_immutable = "bar2sek@6226865/infra-cloud-deployments@1378897273"
 
+  # Newest rotation-ring label: YYYY-MM sorts chronologically.
+  authentik_secret_current = reverse(sort(tolist(var.authentik_secret_versions)))[0]
+
   common_tags = {
     platform    = var.platform
     environment = var.env

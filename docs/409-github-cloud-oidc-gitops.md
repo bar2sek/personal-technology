@@ -497,7 +497,7 @@ The bootstrap roots and `terraform/unifi` run from the workstation and keep **lo
 
 | Root | Managed instances | What its state exposes |
 |---|---|---|
-| `bootstrap/azure` | 20 | **Highest risk.** Entra client secret, Arc agent TLS private key, storage account access keys and connection strings, Log Analytics shared keys. *2026-11-09: the Azure resources are gone (rebuild), which leaves the Entra client secret. Moving to an admin-only Azure account: [[412-azure-lab-cost-guardrails#🔐 Admin-Only Bootstrap State|docs/412]].* |
+| `bootstrap/azure` | 20 | **Highest risk.** Entra client secret, Arc agent TLS private key, storage account access keys and connection strings, Log Analytics shared keys. *2026-11-09: the Azure resources are gone (rebuild), which leaves the Entra client secret. **Resolved:** state moved to an admin-only Azure account and the local copies were deleted ([[412-azure-lab-cost-guardrails#🔐 Admin-Only Bootstrap State|docs/412]]). Rotate the secret to invalidate copies in Drive version history.* |
 | `bootstrap/github` | 36 | The plaintext value of every GitHub Actions secret it manages (role ARNs, state bucket name) |
 | `bootstrap/aws` | 25 | AWS account ID (in every ARN), alert email address |
 | `terraform/unifi` | 26 | Nothing marked sensitive, but it holds the internal IP plan and client MAC addresses |

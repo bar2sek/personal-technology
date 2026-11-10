@@ -57,6 +57,28 @@ variable "authentik_redirect_uri" {
   default     = "https://auth.bar2sek.com/source/oauth/callback/entra-id/"
 }
 
+variable "authentik_secret_versions" {
+  description = "Rotation ring for the Authentik Entra client secret: one live secret per label (YYYY-MM). Add a label to rotate in, remove one to revoke. See docs/415."
+  type        = set(string)
+  default     = ["2026-11"]
+
+  validation {
+    condition     = length(var.authentik_secret_versions) >= 1 && length(var.authentik_secret_versions) <= 2
+    error_message = "Keep 1 secret (steady state) or 2 (mid-rotation). An empty set would revoke the live SSO secret."
+  }
+
+  validation {
+    condition     = alltrue([for v in var.authentik_secret_versions : can(regex("^[0-9]{4}-[0-9]{2}$", v))])
+    error_message = "Labels must be YYYY-MM so the newest sorts last."
+  }
+}
+
+variable "authentik_secret_lifetime" {
+  description = "Lifetime of NEWLY created Authentik secrets (timeadd duration, hours). 6 months keeps rotation a regular habit."
+  type        = string
+  default     = "4380h"
+}
+
 variable "github_repo_name" {
   description = "GitHub repository (owner/repo) authorized for OIDC Workload Identity Federation"
   type        = string
