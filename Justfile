@@ -657,6 +657,8 @@ lab-up:
 #   * TF_PLUGIN_CACHE_DIR -> ~/.terraform.d/plugin-cache, shared by all roots,
 #                     so a re-init links the cached binary instead of downloading
 #   * auto-runs `terraform init` when the root's data dir has no providers yet
+#   * passes a gitignored `backend.hcl` (partial backend config) to init when the
+#     root has one, so remote-state coordinates never need to be committed
 # Local state (terraform.tfstate) is unaffected and stays next to the code.
 tf_data_root := env_var_or_default("TF_DATA_ROOT", env_var("HOME") / ".terraform-data") / "personal-technology"
 
@@ -675,9 +677,16 @@ _tf dir cmd *args:
     export AWS_PROFILE="${AWS_PROFILE:-terraform}"
     mkdir -p "$TF_DATA_DIR" "$TF_PLUGIN_CACHE_DIR"
     cd "$root"
-    if [ "$cmd" != "init" ] && [ ! -d "$TF_DATA_DIR/providers" ]; then
+    backend_args=()
+    if [ -f backend.hcl ] && [[ " $* " != *" -backend=false "* ]]; then
+        backend_args=(-backend-config=backend.hcl)
+    fi
+    if [ "$cmd" = "init" ]; then
+        exec terraform init ${backend_args[@]+"${backend_args[@]}"} "$@"
+    fi
+    if [ ! -d "$TF_DATA_DIR/providers" ]; then
         echo "===> $root: no provider cache in $TF_DATA_DIR, running terraform init"
-        terraform init -input=false
+        terraform init -input=false ${backend_args[@]+"${backend_args[@]}"}
     fi
     # UniFi provider crashes on concurrent refresh (see deployment journal): run it serially.
     if [ "$dir" = "unifi" ] && [[ "$cmd" =~ ^(plan|apply|destroy|refresh)$ ]]; then

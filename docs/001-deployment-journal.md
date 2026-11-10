@@ -953,8 +953,13 @@ The milestone entries below record how each of these got here. The section that 
 
 ---
 
-## 🎯 Milestone 45: Cloud Placement, Bedrock Retirement & AWS Access Hygiene (2026-11-09)
+## 🎯 Milestone 45: Cloud Placement, Bedrock Retirement, AWS Access Hygiene & Azure Phase 0 (2026-11-09)
 
+- **Problem:** a few dollars a month on an almost-empty Azure estate. The cause was Defender CSPM billing for the old Terraform-state storage account. The ALZ policy `Deploy-MDFC-Config-H224` kept re-enabling every paid Defender plan.
+- **Done:** Defender policies set to `DoNotEnforce`, then all paid plans set to Free in 4 subscriptions. The whole ALZ footprint was torn down with the Azure CLI: 120 policy assignments, 191 custom definitions, 5 custom roles, ~220 role assignments, 12 resource groups and 12 management groups. The 4 subscriptions and all Entra ID objects were kept.
+- **Phase 0 applied (2026-11-09, step 1 of 2):** `bootstrap/azure` moves to `azurerm` 4.x, adds budgets and cost-anomaly alerts on all 4 subscriptions, and adds an admin-only bootstrap state account in the management subscription, with CI holding no role on it. `arc.tf` is removed and CI Terraform is now 1.16.3.
+- **Subscriptions renamed** to the docs/105 pattern `subscr-azure-<category>-homelab-prod-0bb5`. doc 105 now uses the `subscr-` prefix and allows `lab` as a disposable env. The security rename returned 403 (`Microsoft.Subscription/subscriptions/rename/action`) despite Owner, so it is being renamed in the portal.
+- **Open:** 7 old 2019–2023 app registrations still hold Contributor on the connectivity subscription (all their secrets have expired). Rotate the Authentik client secret after the state migration.
 - **Cloud placement decided:** what runs in AWS stays in AWS (S3 backups, OIDC roles; `bedrock-ai-gateway` is being retired; AWS Organizations turned out never to have been applied); new work goes to the best product or price, with Azure winning ties. The never-built EKS Connector, ACK and Authentik ↔ IAM Identity Center designs are parked or replaced (Arc, Terraform, Entra ID as the hub). The AWS-decommission plan in docs/410 is superseded. Roadmap gains Phase 8 (Entra → AWS SSO) and Phase 9 (new AI on Azure AI Foundry).
 - **Bedrock gateway retirement planned:** the CDK gateway, Knowledge Base, Guardrail and CDKToolkit will be removed in six stages (stack delete, CI PR, admin bucket deletes, repo archive, `bootstrap/aws` cleanup, verify). Stage 0: idle since 2026-10-10, $0 billed. **Stage 1 done:** `BedrockAiGateway` stack deleted, so the public endpoint is gone. **Stage 2 done:** Knowledge Base, Guardrail, index and KB role destroyed by CI (infra-cloud-deployments PR #11). **Stage 3 done:** both Bedrock buckets deleted by an admin. A README merge in the gateway repo accidentally redeployed the stack. It was deleted again the same evening (see the docs/413 Stage 4 caution). **Stage 4 done:** repo archived (still public), deploy secrets and environment removed. Runbook: [[413-bedrock-ai-gateway-decommission|docs/413]].
 - **AWS access hygiene:** the redeploy showed that pipeline gates don't cover direct CLI use. Four layers were added:
@@ -964,6 +969,7 @@ The milestone entries below record how each of these got here. The section that 
   - A Phase 8 SCP design. SCPs need a new management account with this account invited as a member.
 
   Runbook: [[414-aws-access-hygiene|docs/414]].
+- Details: [[411-azure-mini-enterprise-architecture|docs/411]], [[412-azure-lab-cost-guardrails|docs/412]].
 
 ---
 

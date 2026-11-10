@@ -81,6 +81,8 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 - [407 - Microsoft Entra ID & Authentik Enterprise Identity Federation](docs/407-azure-entra-id-authentik-federation.md)
 - [408 - Azure Arc-Enabled Kubernetes & Zero-Cost Cloud Monitoring](docs/408-azure-arc-hybrid-kubernetes.md)
 - [409 - GitHub Actions & Multi-Cloud OIDC GitOps Deployment Engine](docs/409-github-cloud-oidc-gitops.md)
+- [411 - Azure Mini Enterprise: Low-Cost CAF Lab Architecture, Cloud Placement & Roadmap](docs/411-azure-mini-enterprise-architecture.md)
+- [412 - Azure Lab Cost Guardrails & Admin-Only Bootstrap State (Phase 0)](docs/412-azure-lab-cost-guardrails.md)
 - [413 - Bedrock AI Gateway Decommission Runbook](docs/413-bedrock-ai-gateway-decommission.md)
 - [414 - AWS Access Hygiene: Read-Only Default & Agent Guardrails](docs/414-aws-access-hygiene.md)
 - [410 - Azure Cloud & AI Transformation Roadmap: Homelab Hybrid Architecture](docs/410-azure-cloud-and-ai-transformation-roadmap.md) *(superseded by doc 411)*
@@ -119,7 +121,7 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 ├── bootstrap/                 # Day-0 cloud & CI/CD bootstrap roots (before deployment repo takes over)
 │   ├── aws/                   # AWS OIDC role & remote state storage
 │   ├── aws_organization/      # Multi-account landing zone & account provisioning
-│   ├── azure/                 # Azure Entra ID, OIDC workload identity & storage
+│   ├── azure/                 # Entra ID, OIDC workload identity, budgets & admin-only state
 │   └── github/                # GitHub deployment repository, environments & multi-cloud OIDC variables
 ├── nix-mac/                   # Workstation configuration & USB bootstrap suite
 │   ├── START_HERE.html        # Offline visual bootstrap guide for new Mac setup

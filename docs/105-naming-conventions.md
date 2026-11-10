@@ -21,6 +21,16 @@ All lowercase split with dashes:
 
 `<#description#>` node can be added to aid in human readability. Multiple description nodes are allowed but mind overall pattern character limits.
 
+### Environment values (`<env>`)
+
+| Value | Meaning |
+|---|---|
+| `prod` | Long-lived and depended on. Data and configuration must survive. Platform and foundation containers (management groups, platform subscriptions, state, identity) are always `prod`, even in a lab estate. |
+| `nonprod` | Long-lived pre-production or tooling that mirrors prod but isn't depended on. |
+| `lab` | **Disposable.** Can be torn down at any time, keeps no data that matters, and may be destroyed by automation (e.g. the nightly on-demand teardown). Added 2026-11-09. |
+
+The product stays a single node (`homelab`). The environment carries the lifecycle, so it's `azure-homelab-prod` and `azure-homelab-lab`, never `home-prod` / `home-lab`.
+
 ---
 
 ## 🔐 IDP Access Group Naming Standard for All Platforms
@@ -53,7 +63,7 @@ ou-<platform>-<product/org-category>-[<#description#>-]<env>-<root-id>
 
 - Must be 1 to 128 characters long.
 - `org-category` examples: `security`, `infrastructure`, `network`, `general`, `workloads`.
-- Only `prod` and `nonprod` environments allowed.
+- Environments: `prod` and `nonprod`; `lab` only for sandbox OUs whose accounts are disposable (see *Environment values* above).
 - `root-id` is taken from AWS Organizations `r-****` value in the management account.
 
 ### Foundation OUs:
@@ -117,14 +127,16 @@ In Azure, hierarchy containers anchor governance, policy boundaries, and RBAC:
 
 ```html
 mg-azure-<category>-<env>-<tenant-4>
-subcr-azure-<product/category>-<env>-<tenant-4>
+subscr-azure-<category>-<product>-<env>-<tenant-4>
 ```
 
 - `<tenant-4>` is the **first 4 characters of the Azure Tenant ID GUID**, serving as the Azure root anchor equivalent to AWS's `r-****` suffix (e.g., `a1b2`).
 - **Management Groups (`mg-`)**: Top-level policy and governance groupings.
   - Examples: `mg-azure-infrastructure-prod-a1b2`, `mg-azure-landingzone-prod-a1b2`
-- **Subscriptions (`subcr-`)**: Mandatory `subcr-` prefix for subscription identity.
-  - Examples: `subcr-azure-homelab-prod-a1b2`, `subcr-azure-management-prod-a1b2`
+- **Subscriptions (`subscr-`)**: Mandatory `subscr-` prefix for subscription identity (changed from `subcr-` on 2026-11-09). `<category>` is the CAF function, mirroring the AWS OU shape `ou-aws-security-tooling-nonprod-73t0`.
+  - Platform (always `prod`): `subscr-azure-identity-homelab-prod-a1b2`, `subscr-azure-management-homelab-prod-a1b2`, `subscr-azure-connectivity-homelab-prod-a1b2`, `subscr-azure-security-homelab-prod-a1b2`
+  - Disposable workloads: `subscr-azure-sandbox-homelab-lab-a1b2`
+  - Display names can be renamed in place (the subscription ID never changes), so Terraform selects subscriptions by the `subscr-azure-` prefix and never hard-codes IDs.
 
 ---
 

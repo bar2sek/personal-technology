@@ -1,10 +1,12 @@
 # ==============================================================================
 # Azure & Entra ID Homelab - Terraform Variables Example
-# Copy to terraform.tfvars and populate with your Azure subscription & tenant details
+# Copy to terraform.tfvars (gitignored) and fill in real values.
 # ==============================================================================
 
-# Your Azure Subscription ID (from portal.azure.com or `az account show`)
-subscription_id = "00000000-0000-0000-0000-000000000000"
+# Identity platform subscription (default provider) and management platform
+# subscription (remote-state account). `az account list -o table` lists them.
+subscription_id            = "00000000-0000-0000-0000-000000000000"
+management_subscription_id = "00000000-0000-0000-0000-000000000000"
 
 # Your Microsoft Entra ID Tenant ID (from Entra Admin Center or `az account show`)
 tenant_id = "00000000-0000-0000-0000-000000000000"
@@ -22,5 +24,12 @@ iteration = "001"
 # Inbound OIDC callback URL for Authentik running on your Talos cluster
 authentik_redirect_uri = "https://auth.bar2sek.com/source/oauth/callback/entra-id/"
 
-# Daily Log Analytics Ingestion Ceiling (0.16 GB = ~4.8 GB/month to guarantee $0 cost under 5 GB Free Tier)
-daily_quota_gb = 0.16
+# Budget + cost-anomaly alert recipients (personal data: tfvars only, never git)
+alert_emails = ["you@example.com"]
+
+# Optional: budget overrides (USD/month) keyed by the <category> name node; others use
+# default_monthly_budget_by_env (prod 5, nonprod 5, lab 3)
+# monthly_budgets = {
+#   connectivity = 15
+#   management   = 10
+# }
