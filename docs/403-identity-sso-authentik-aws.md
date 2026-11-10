@@ -11,6 +11,9 @@ tags:
 
 # Single Sign-On (SSO) & AWS SAML 2.0 Identity Federation
 
+> [!WARNING] Replaced (2026-11-09): Entra ID becomes the identity hub
+> The direct Authentik → AWS IAM Identity Center federation below was never activated. Under the [[411-azure-mini-enterprise-architecture#Cloud Placement Policy (AWS + Azure)|cloud placement policy]], Entra ID is the single IdP for both clouds: Authentik ↔ Entra ([[407-azure-entra-id-authentik-federation|407]]), then Entra → IAM Identity Center via SAML + SCIM (Phase 8 of docs/411). The Authentik in-cluster SSO parts of this doc are still current.
+
 > [!NOTE] Architectural Reference / Staged Implementation
 > Authentik is active and running in the cluster (`kubernetes/infrastructure/authentik/`) serving local SSO (e.g. Grafana). The upstream SAML 2.0 federation with AWS IAM Identity Center documented below is an enterprise reference design staged for activation.
 

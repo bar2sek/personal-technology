@@ -71,15 +71,21 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 - [307 - Garage Synology NAS: Tier-3 Local DR & Time Machine](docs/307-garage-synology-dr-time-machine.md)
 
 ### ☁️ Section 4: Hybrid Multi-Cloud (AWS + Azure Arc & Entra ID)
-- [401 - AWS Controllers for Kubernetes (ACK) Architecture](docs/401-aws-ack-hybrid-architecture.md)
-- [402 - AWS EKS Connector & Unified AWS Console Management](docs/402-aws-eks-connector.md)
-- [403 - Authentik Master IdP & AWS SAML 2.0 Identity Federation](docs/403-identity-sso-authentik-aws.md)
+> Cloud placement (2026-11-09): what runs in AWS stays in AWS; new work goes to the best product or price, with Azure winning ties. See the placement policy in doc 411.
+
+- [401 - AWS Controllers for Kubernetes (ACK) Architecture](docs/401-aws-ack-hybrid-architecture.md) *(dropped)*
+- [402 - AWS EKS Connector & Unified AWS Console Management](docs/402-aws-eks-connector.md) *(parked, replaced by Azure Arc)*
+- [403 - Authentik Master IdP & AWS SAML 2.0 Identity Federation](docs/403-identity-sso-authentik-aws.md) *(AWS federation replaced by Entra ID, doc 411 Phase 8)*
 - [404 - AWS Multi-Account Landing Zone (Organizations, IAM Identity Center & Terraform)](docs/404-aws-landing-zone-organizations-terraform.md)
 - [405 - AWS Account Factory for Terraform (AFT) vs GitHub Actions GitOps](docs/405-aws-account-factory-terraform.md)
 - [407 - Microsoft Entra ID & Authentik Enterprise Identity Federation](docs/407-azure-entra-id-authentik-federation.md)
 - [408 - Azure Arc-Enabled Kubernetes & Zero-Cost Cloud Monitoring](docs/408-azure-arc-hybrid-kubernetes.md)
 - [409 - GitHub Actions & Multi-Cloud OIDC GitOps Deployment Engine](docs/409-github-cloud-oidc-gitops.md)
-- [410 - Azure Cloud & AI Transformation Roadmap: Homelab Hybrid Architecture](docs/410-azure-cloud-and-ai-transformation-roadmap.md)
+- [411 - Azure Mini Enterprise: Low-Cost CAF Lab Architecture, Cloud Placement & Roadmap](docs/411-azure-mini-enterprise-architecture.md)
+- [412 - Azure Lab Cost Guardrails & Admin-Only Bootstrap State (Phase 0)](docs/412-azure-lab-cost-guardrails.md)
+- [413 - Bedrock AI Gateway Decommission Runbook](docs/413-bedrock-ai-gateway-decommission.md)
+- [414 - AWS Access Hygiene: Read-Only Default & Agent Guardrails](docs/414-aws-access-hygiene.md)
+- [410 - Azure Cloud & AI Transformation Roadmap: Homelab Hybrid Architecture](docs/410-azure-cloud-and-ai-transformation-roadmap.md) *(superseded by doc 411)*
 
 ### 📦 Section 5: Self-Hosted Application Suite
 - [501 - TeslaMate Vehicle Telemetry & Analytics Platform](docs/501-teslamate-telemetry-deployment.md)
@@ -115,7 +121,7 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 ├── bootstrap/                 # Day-0 cloud & CI/CD bootstrap roots (before deployment repo takes over)
 │   ├── aws/                   # AWS OIDC role & remote state storage
 │   ├── aws_organization/      # Multi-account landing zone & account provisioning
-│   ├── azure/                 # Azure Entra ID, OIDC workload identity & storage
+│   ├── azure/                 # Entra ID, OIDC workload identity, budgets & admin-only state
 │   └── github/                # GitHub deployment repository, environments & multi-cloud OIDC variables
 ├── nix-mac/                   # Workstation configuration & USB bootstrap suite
 │   ├── START_HERE.html        # Offline visual bootstrap guide for new Mac setup
@@ -148,7 +154,7 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 │   │   ├── omni/              # Sidero Omni, Dex & Booter manifests
 │   │   ├── arc/               # Actions Runner Controller AutoscalingRunnerSet
 │   │   ├── authentik/         # Authentik master IdP & PostgreSQL
-│   │   └── aws-hybrid/        # AWS ACK (S3, Route53) & EKS Connector
+│   │   └── aws-hybrid/        # AWS ACK & EKS Connector (staged, never applied)
 │   └── apps/                  # Containerized self-hosted application suite
 │       ├── immich/            # Immich photo library (LAN + tailnet only, docs/504)
 │       ├── teslamate/         # Tesla telemetry, MQTT, PostgreSQL, Grafana

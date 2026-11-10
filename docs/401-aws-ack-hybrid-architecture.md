@@ -9,6 +9,9 @@ tags:
 
 # AWS Controllers for Kubernetes (ACK) Hybrid Architecture
 
+> [!WARNING] Dropped (2026-11-09)
+> Never deployed and not planned. Cloud resources stay in Terraform, so neither ACK nor its Azure twin (Azure Service Operator) is adopted. DNS is on Cloudflare, so the Route53 `RecordSet` manifests (placeholder zone ID) were never usable. See the [[411-azure-mini-enterprise-architecture#Cloud Placement Policy (AWS + Azure)|cloud placement policy]]. Kept for reference.
+
 > [!NOTE] Architectural Reference / Future Roadmap
 > This design documents the hybrid integration between on-premise Kubernetes CRDs and AWS cloud services via ACK. In accordance with our single-plane boundary rules, AWS production cloud resources (S3, IAM) currently remain codified via Terraform in `infra-cloud-deployments`.
 

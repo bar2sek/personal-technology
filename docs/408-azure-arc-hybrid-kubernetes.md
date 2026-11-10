@@ -18,6 +18,9 @@ aliases:
 
 # 🌐 Azure Arc-Enabled Kubernetes & Zero-Cost Cloud Monitoring
 
+> [!WARNING] Superseded design (2026-11-09)
+> This design was never onboarded: the Arc resource was never in state and the cluster has no `azure-arc` namespace. Its Log Analytics workspace was deleted in the Azure rebuild, and `bootstrap/azure/arc.tf` was removed. Arc returns as Phase 7 of [[411-azure-mini-enterprise-architecture|the Azure Mini Enterprise]] (connect + Entra RBAC, Key Vault secrets / workload identity, Azure Policy in audit mode and capped Container Insights; no Arc Flux, data services or Defender for Containers; see the Phase 7 shortlist in docs/411). Kept for reference.
+
 > [!NOTE] Architectural Reference / Staged Implementation
 > This document details the declarative integration connecting our Talos cluster to Microsoft Azure Arc. All Terraform definitions and helm chart parameters are codified and staged for activation.
 

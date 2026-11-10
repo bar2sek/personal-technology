@@ -1,40 +1,16 @@
 # ==============================================================================
-# Outputs for Microsoft Entra ID & Azure Arc Integration
+# Outputs: Entra ID identity, remote state, cost guardrails
 # ==============================================================================
 
 output "tenant_id" {
   description = "Microsoft Entra ID Tenant ID"
   value       = local.effective_tenant_id
+  sensitive   = true
 }
 
 output "tenant_4" {
   description = "Four-character root anchor derived from the Azure Tenant ID"
   value       = local.tenant_4
-}
-
-output "resource_group_name" {
-  description = "Standardized Azure Resource Group name"
-  value       = azurerm_resource_group.homelab.name
-}
-
-output "log_analytics_workspace_name" {
-  description = "Standardized Log Analytics Workspace name"
-  value       = azurerm_log_analytics_workspace.monitoring.name
-}
-
-output "log_analytics_workspace_id" {
-  description = "Log Analytics Workspace Resource ID"
-  value       = azurerm_log_analytics_workspace.monitoring.id
-}
-
-output "arc_cluster_name" {
-  description = "Standardized Azure Arc Connected Cluster name"
-  value       = azurerm_arc_kubernetes_cluster.talos.name
-}
-
-output "arc_cluster_id" {
-  description = "Azure Arc Connected Cluster Resource ID"
-  value       = azurerm_arc_kubernetes_cluster.talos.id
 }
 
 output "entra_app_client_id" {
@@ -64,7 +40,7 @@ output "entra_group_member_id" {
 }
 
 # ------------------------------------------------------------------------------
-# GitHub Actions CI/CD & Remote State Storage Outputs
+# GitHub Actions CI/CD & Remote State Storage
 # ------------------------------------------------------------------------------
 
 output "github_actions_client_id" {
@@ -78,7 +54,7 @@ output "github_actions_sp_object_id" {
 }
 
 output "tfstate_resource_group_name" {
-  description = "Resource group holding Terraform remote state"
+  description = "Resource group holding the admin-only bootstrap state (management subscription)"
   value       = azurerm_resource_group.tfstate.name
 }
 
@@ -92,3 +68,11 @@ output "tfstate_container_name" {
   value       = azurerm_storage_container.tfstate.name
 }
 
+# ------------------------------------------------------------------------------
+# Cost Guardrails
+# ------------------------------------------------------------------------------
+
+output "budgets" {
+  description = "Monthly budget (USD) per lab subscription"
+  value       = { for k, b in azurerm_consumption_budget_subscription.lab : k => b.amount }
+}

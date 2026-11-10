@@ -13,6 +13,7 @@ locals {
   iam_policy_workload_boundary_name = "policy-${var.platform}-workload-boundary-${var.env}-${var.iteration}"
   s3_tfstate_bucket_name            = "s3-${var.platform}-tfstate-${var.env}-${var.region_code}-${local.account_id}"
   iam_user_backup_uploader_name     = "svc-${var.platform}-backup-uploader-${var.env}-${var.iteration}"
+  iam_role_readonly_human_name      = "role-${var.platform}-readonly-${var.env}-${var.iteration}"
 
   # bedrock-ai-gateway (AWS CDK) pipeline roles — see oidc-cdk-gateway.tf
   github_gateway_repo_immutable        = "bar2sek@6226865/bedrock-ai-gateway@1413642267"

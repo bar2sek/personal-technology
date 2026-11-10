@@ -52,3 +52,8 @@ output "github_gateway_deploy_role_arn" {
   description = "bedrock-ai-gateway deploy role ARN -> GitHub environment secret AWS_DEPLOY_ROLE_ARN"
   value       = aws_iam_role.github_gateway_deploy.arn
 }
+
+output "readonly_human_role_arn" {
+  description = "Read-only role for day-to-day CLI and agent sessions -> ~/.aws/config [profile readonly] role_arn"
+  value       = aws_iam_role.readonly_human.arn
+}

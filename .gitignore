@@ -102,3 +102,6 @@ omni-inventory.json
 result
 result-*
 nix-mac/result*
+# Partial Terraform backend configs (remote-state coordinates incl. subscription IDs)
+backend.hcl
+*.backend.hcl

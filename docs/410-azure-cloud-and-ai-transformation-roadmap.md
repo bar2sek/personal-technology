@@ -9,7 +9,7 @@ tags:
   - terraform
   - az-305
   - ai-102
-status: in-progress
+status: archive
 aliases:
   - "Azure Homelab Roadmap"
   - "Azure Cloud Transformation"
@@ -17,6 +17,9 @@ aliases:
 ---
 
 # 🔷 Azure Cloud & AI Transformation Roadmap: Homelab Hybrid Architecture
+
+> [!WARNING] Superseded (2026-11-09): no AWS migration or decommission
+> This plan moved everything to Azure and destroyed the AWS estate. It is replaced by the [[411-azure-mini-enterprise-architecture#Cloud Placement Policy (AWS + Azure)|cloud placement policy in docs/411]]: what runs in AWS **stays** (S3 backups, OIDC roles), new work goes to the best product or price, with Azure winning ties, and never-built AWS designs are replaced by their Azure equivalents. Specifically, Phase 1 (backup cutover to Blob), Phase 3's gateway port, and Phase 4 (AWS decommission) below are **cancelled**. `bedrock-ai-gateway` is **retired, not ported** ([[413-bedrock-ai-gateway-decommission|docs/413]]). The AI services described here (AI Search, Content Safety, APIM) move to Phase 9 of docs/411 as **new** workloads. Kept for reference.
 
 > [!IMPORTANT] Strategic Transformation Objective
 > This document establishes the master architectural blueprint and execution roadmap for migrating our hybrid cloud integrations from AWS to **Microsoft Azure**. The goal is twofold: operational alignment with enterprise Azure hybrid design, and hands-on preparation for the **AZ-104 (Administrator)**, **AZ-305 (Solutions Architect Expert)**, and **AI-102 (Azure AI Engineer Associate)** certifications.
