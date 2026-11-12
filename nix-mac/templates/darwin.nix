@@ -47,7 +47,6 @@
     brews = [
       "awscli"                   # AWS CLI
       "aws-cdk"                  # AWS Cloud Development Kit CLI (cdk)
-      "azure-cli"                # Microsoft Azure CLI (az)
       "hashicorp/tap/terraform"  # HashiCorp Terraform CLI
       "node"                     # Node.js runtime & npm
       "typescript"               # TypeScript compiler & CLI (tsc)
@@ -71,12 +70,14 @@
 
       # Media & Entertainment
       "spotify"
+      "zwift" # Indoor cycling (pkg installer)
 
       # 3D Printing & Digital Fabrication
       "bambu-studio"
 
       # Developer, AI & Remote Access
       "antigravity"
+      "azure-cli" # Microsoft Azure CLI (az); moved from formula to cask upstream
       "claude"
       "ghostty"
       "orbstack"
@@ -132,6 +133,7 @@
         "/System/Applications/Notes.app"
         "/Applications/Microsoft OneNote.app"
         "/Applications/Spotify.app"
+        "/Applications/Zwift.app"
 
         # 3. 3D Fabrication, AI & Developer Tools (Farthest Right)
         "/Applications/BambuStudio.app"
