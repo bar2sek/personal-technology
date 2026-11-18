@@ -50,7 +50,7 @@ bash templates/bootstrap.sh
 
 ## 🧠 Cloud AI Model Routing
 
-This workstation is **cloud-first**: day-to-day inference is remote, which keeps the 48 GB of unified memory available for builds, containers, and Nix derivations. Local Qwen 2.5 Coder 32B via Apple MLX runs **on demand only** (`just serve-qwen-32b`, ~22 GB while active); see [[Local LLMs with MLX]]. *(The MLX setup is due for a revisit.)*
+This workstation is **cloud-first**: day-to-day inference is remote, which keeps the 48 GB of unified memory available for builds, containers, and Nix derivations. Local Qwen 3.8 27B via Apple MLX runs **on demand only** (`just serve-qwen-27b`, ~18–19 GB while active); see [[Local LLMs with MLX]].
 
 ### Model Tiering
 * **`claude-haiku-4-5`** — tab autocomplete, where latency dominates quality.

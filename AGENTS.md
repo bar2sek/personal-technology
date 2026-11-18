@@ -78,7 +78,7 @@ Whether operating at the root vault level or inside any child repository, you **
 * **Python Discipline**: Never install Python packages globally or mutate macOS system Python. Use **`uv`** and **`uvx`** exclusively for isolated, ephemeral environments.
 * **Cloud-First AI Standard**:
   * Primary intelligence, deep refactoring, and agentic pairing are powered by cloud models: Gemini (Antigravity extension in VS Code, Antigravity Desktop, `agy` CLI), Anthropic Claude (Sonnet/Opus), and xAI Grok (via Roo Code).
-  * Workstation RAM and storage are reserved for native development workloads, Nix builds, and container runtimes. Local model weights run only on demand (Apple MLX, `just serve-qwen-32b`) and are deleted when not in use.
+  * Workstation RAM and storage are reserved for native development workloads, Nix builds, and container runtimes. Local model weights run only on demand (Apple MLX, `just serve-qwen-27b`) and are deleted when not in use.
 
 ---
 
@@ -149,7 +149,7 @@ To maximize knowledge transfer and keep the user actively engaged without causin
   * **Automated PDF Engine**: Built via headless Chromium browser using `python3 render_pdf.py`.
   * **Artifact Tracking**: Markdown sources and final `.pdf` files are tracked; `.chrome_profile/` and `resume_preview.html` are strictly gitignored.
 
-### E. Health, Diet & Nutrition (`food-diet-nutrition`)
+### E. Health, Diet & Nutrition (`personal-health`)
 * **Evidence-Based Structure**: Organize around macro/micronutrient science, dietary protocols, high-yield recipes, and pantry sourcing.
 * **Biometric & Health Privacy**: Personal lab results, DEXA scans, and private medical markers MUST reside strictly in `private/` (gitignored).
 * **Recipe Standard**: All recipes include standardized ingredient specs, prep workflows, and estimated macronutrient breakdowns (Protein, Fat, Carbs, Calories).

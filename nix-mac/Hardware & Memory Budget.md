@@ -28,26 +28,26 @@ The **48 GB Unified Memory Architecture (UMA)** shares one pool between CPU, GPU
 | **macOS + system daemons** | ~6.0 GB | ~6.0 GB | Baseline; grows with login items |
 | **VS Code (+ Antigravity / Roo Code extensions)** | ~2.5 GB | ~2.5 GB | Per window; language servers & agent canvas |
 | **Browser** | ~3.0 GB | ~3.0 GB | Scales with tab count |
-| **Local MLX (Qwen 2.5 Coder 32B 4-bit)** | — | **~22.0 GB** | On-demand weights (~19.5GB) + KV cache (~2.5GB) |
+| **Local MLX (Qwen 3.8 27B 4-bit)** | — | **~18–19 GB** | On-demand weights (~16.1 GB) + KV cache (~2–3 GB) |
 | **OrbStack VM + containers** | ~4.0 GB | ~4.0 GB (up to ~8 GB) | Databases and Dev Containers |
 | **Nix builds / compilers** | ~2.0 GB | ~2.0 GB (up to ~6 GB) | Parallel `nix build` and compilation spikes |
-| **Available Headroom** | **~30 GB** | **~8–10 GB** | Absorbs peaks without swapping |
+| **Available Headroom** | **~30 GB** | **~11–13 GB** | Absorbs peaks without swapping |
 
-The key architectural invariant is that **local inference holds NO permanent reservation**. It runs ephemerally via `just serve-qwen-32b`. When closed, all ~22 GB is immediately released back to macOS, leaving 30+ GB free for heavy container stacks and parallel compilation.
+The key architectural invariant is that **local inference holds NO permanent reservation**. It runs ephemerally via `just serve-qwen-27b`. When closed, all ~18–19 GB is immediately released back to macOS, leaving 30+ GB free for heavy container stacks and parallel compilation.
 
 ---
 
-## On-Demand Sizing: Qwen 2.5 Coder 32B (4-bit)
+## On-Demand Sizing: Qwen 3.8 27B (4-bit)
 
-* **Why 4-bit instead of 6/8-bit?**
-  * At 6-bit or 8-bit, weights consume 26–34 GB, squeezing total headroom down to 5–10 GB total for everything else.
-  * At 4-bit, weights consume ~19.5 GB. Qwen 2.5 Coder retains near-full benchmark fidelity at 4-bit while leaving a comfortable **26 GB buffer** for simultaneous IDE, browser, and lightweight container operation.
+* **Why 4-bit instead of 8-bit?**
+  * At 8-bit, weights consume ~30 GB, squeezing headroom down for everything else.
+  * At 4-bit, weights consume ~16.1 GB (`14.97 GiB`), leaving a comfortable **~29–30 GB buffer** for simultaneous IDE, browser, and container operation.
 
 > [!TIP] Diagnosing memory pressure
 > Watch the **Memory Pressure** graph in Activity Monitor, not the "Memory Used" figure — macOS deliberately uses free RAM for file cache, so high usage is normal and not itself a problem. Yellow or red pressure, or a rising swap figure, is the real signal. `vm_stat 5` shows compressor and pageout activity live.
 
 > [!NOTE] Storage
-> Qwen 2.5 Coder 32B (4-bit) weights occupy ~20 GB in `~/.cache/huggingface/hub/`. To reclaim this space when not experimenting locally, simply remove the cache directory (see [[Local LLMs with MLX]]).
+> Qwen 3.8 27B (4-bit) weights occupy ~16.1 GB (`14.97 GiB`) in `~/.cache/huggingface/hub/`. To reclaim this space when not experimenting locally, simply remove the cache directory (see [[Local LLMs with MLX]]).
 
 ---
 

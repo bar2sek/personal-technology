@@ -52,16 +52,16 @@ gc:
 # Local LLM Serving (Apple MLX via uvx - Zero Bloat)
 # ------------------------------------------------------------------------------
 
-# Launch Qwen 2.5 Coder 32B (4-bit) MLX Server for Roo Code chat & refactoring (port 8080)
-serve-qwen-32b:
+# Launch Qwen 3.8 27B (4-bit) MLX Server for Roo Code chat & refactoring (port 8080)
+serve-qwen-27b:
     uvx --from mlx-lm mlx_lm.server \
-      --model mlx-community/Qwen2.5-Coder-32B-Instruct-4bit \
+      --model mlx-community/Qwen3.8-27B-4bit \
       --port 8080
 
-# Quick CLI prompt test against local Qwen 32B via MLX
+# Quick CLI prompt test against local Qwen 3.8 27B via MLX
 test-prompt:
     uvx --from mlx-lm mlx_lm.generate \
-      --model mlx-community/Qwen2.5-Coder-32B-Instruct-4bit \
+      --model mlx-community/Qwen3.8-27B-4bit \
       --prompt "Write a Python script that benchmarks GPU memory bandwidth on Apple Silicon."
 
 # ------------------------------------------------------------------------------

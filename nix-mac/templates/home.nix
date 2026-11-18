@@ -332,7 +332,7 @@
     };
   };
 
-  # Roo Code multi-model profiles: Grok (xAI), local MLX (Qwen 2.5 Coder 32B on
+  # Roo Code multi-model profiles: Grok (xAI), local MLX (Qwen 3.8 27B on
   # port 8080), AWS Bedrock. Claude runs through the Claude Code extension instead.
   # No API keys here: anything in Nix is readable by every user via /nix/store.
   home.file.".config/roo-code/settings.json".text = ''
@@ -346,12 +346,12 @@
             "apiKey": "",
             "apiModelId": "grok-2"
           },
-          "Local MLX (Qwen 2.5 Coder 32B)": {
-            "id": "local-mlx-qwen-32b",
+          "Local MLX (Qwen 3.8 27B)": {
+            "id": "local-mlx-qwen-27b",
             "apiProvider": "openai",
             "openAiBaseUrl": "http://localhost:8080/v1",
             "openAiApiKey": "local",
-            "openAiModelId": "mlx-community/Qwen2.5-Coder-32B-Instruct-4bit",
+            "openAiModelId": "mlx-community/Qwen3.8-27B-4bit",
             "openAiCustomModelInfo": {
               "contextWindow": 32768,
               "maxTokens": 8192,

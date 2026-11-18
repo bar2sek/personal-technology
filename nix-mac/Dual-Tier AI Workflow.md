@@ -64,8 +64,8 @@ Routing work across **frontier cloud providers** inside a single unified canvas 
 ## Tier 4: Local Playground & Offline Coder (Apple MLX via Roo Code)
 * **Goal:** Zero-cost experimentation, offline coding, and playing with open-weights without cloud quotas.
 * **Provider:** Apple MLX running on Apple Silicon Metal GPU via `uvx` (`http://localhost:8080/v1`).
-* **Model:** `mlx-community/Qwen2.5-Coder-32B-Instruct-4bit` (~22 GB footprint active).
-* **Lifecycle:** On-demand via `just serve-qwen-32b` — memory is freed immediately upon exiting.
+* **Model:** `mlx-community/Qwen3.8-27B-4bit` (~18–19 GB footprint active).
+* **Lifecycle:** On-demand via `just serve-qwen-27b` — memory is freed immediately upon exiting.
 * **Guide:** see [[Local LLMs with MLX]] for server commands and hardware sizing.
 
 ---

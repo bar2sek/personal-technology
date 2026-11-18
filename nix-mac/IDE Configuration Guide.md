@@ -71,13 +71,13 @@ Roo Code profiles are managed **declaratively** via `~/.config/roo-code/settings
 - **Model ID:** `grok-2`
 - **Use Case:** High-speed code generation, live web-grounded queries, and an alternative reasoning perspective.
 
-### Profile 2: Local MLX (Qwen 2.5 Coder 32B Playground)
+### Profile 2: Local MLX (Qwen 3.8 27B Playground)
 
 - **Provider:** `OpenAI-Compatible`
 - **Base URL:** `http://localhost:8080/v1`
 - **API Key:** `local`
-- **Model ID:** `mlx-community/Qwen2.5-Coder-32B-Instruct-4bit`
-- **Lifecycle:** Start on-demand via `just serve-qwen-32b` (see [[Local LLMs with MLX]])
+- **Model ID:** `mlx-community/Qwen3.8-27B-4bit`
+- **Lifecycle:** Start on-demand via `just serve-qwen-27b` (see [[Local LLMs with MLX]])
 - **Use Case:** Offline coding, zero-cost experimentation, open-weights testing without internet or quotas.
 
 ### Profile 3: AWS Bedrock (Enterprise Cloud Inference)
