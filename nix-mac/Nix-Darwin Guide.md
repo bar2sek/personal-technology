@@ -171,7 +171,7 @@ nix-collect-garbage -d
 The live workstation configuration in `templates/` is split into three focused files:
 - [[templates/flake.nix|flake.nix]] — Flake inputs (`nixpkgs`, `nix-darwin`, `home-manager`, `nix-vscode-extensions`) and system output wiring.
 - [[templates/darwin.nix|darwin.nix]] — Machine-scope configuration (Homebrew casks/brews, `system.defaults`, firewall, fonts, ZSA Voyager HID mapping, network printer).
-- [[templates/home.nix|home.nix]] — User-scope configuration (`home.packages`, Git, GitHub CLI, SSH, Zsh, `fzf`, `eza`, `bat`, `zoxide`, `direnv`, Ghostty, VS Code, and Roo Code).
+- [[templates/home.nix|home.nix]] — User-scope configuration (`home.packages`, Git, GitHub CLI, SSH, Zsh, `fzf`, `eza`, `bat`, `zoxide`, `direnv`, Ghostty, VS Code, and Continue).
 
 Running `just switch` automatically syncs all files from `templates/` into `~/.config/nix-darwin/` and activates both layers together. See [[Home Manager Guide]] for full details, verification steps, and gotchas.
 

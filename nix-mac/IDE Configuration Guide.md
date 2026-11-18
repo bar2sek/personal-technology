@@ -14,10 +14,10 @@ aliases: []
 
 # ⚡ Visual Studio Code + Antigravity Multi-Model Setup
 
-**Visual Studio Code** (`visual-studio-code`) paired with the **Antigravity extension** (`Google.google-antigravity`) is your primary development environment on macOS—combining official VS Code with Google's native agentic architecture, **Claude Code**, and **Roo Code** as a multi-model backup switcher.
+**Visual Studio Code** (`visual-studio-code`) paired with the **Antigravity extension** (`Google.google-antigravity`) is your primary development environment on macOS—combining official VS Code with Google's native agentic architecture, **Claude Code**, and **Continue** as a multi-model backup switcher.
 
 - **Unified Agent Canvas:** Seamlessly integrates native Antigravity agent workflows (Gemini Flash/Pro) directly inside VS Code alongside visual diffs and the integrated terminal.
-- **Multi-Model Switcher (Claude Code + Roo Code):** Provides instant access to Claude via your subscription (`anthropic.claude-code`) plus xAI Grok, Local MLX, and AWS Bedrock via Roo Code.
+- **Multi-Model Switcher (Claude Code + Continue):** Provides instant access to Claude via your subscription (`anthropic.claude-code`) plus xAI Grok, Local MLX, and AWS Bedrock via Continue.
 - **Single-IDE Footprint:** VS Code is the only editor; every agent runs as an extension inside it.
 
 ---
@@ -45,7 +45,7 @@ Extensions are owned by home-manager (`programs.vscode` in `templates/home.nix`)
 
 | Group | Extensions |
 |---|---|
-| AI assistants | `google.google-antigravity`, `anthropic.claude-code` (Claude.ai subscription, no per-token charges), `rooveterinaryinc.roo-cline` (Grok, local MLX, AWS Bedrock) |
+| AI assistants | `google.google-antigravity`, `anthropic.claude-code` (Claude.ai subscription, no per-token charges), `continue.continue` (Grok, local MLX, AWS Bedrock) |
 | Theme & icons | `enkia.tokyo-night`, `pkief.material-icon-theme` |
 | Infrastructure & cloud | `jnoortheen.nix-ide`, `hashicorp.terraform`, `ms-azuretools.vscode-docker` (+ `vscode-containers`), `ms-kubernetes-tools.vscode-kubernetes-tools`, `redhat.vscode-yaml` |
 | Languages & formatting | `dbaeumer.vscode-eslint`, `esbenp.prettier-vscode`, `golang.go`, `ms-python.python` (+ `vscode-pylance`, `debugpy`, `vscode-python-envs`) |
@@ -55,26 +55,26 @@ Extensions are owned by home-manager (`programs.vscode` in `templates/home.nix`)
 
 ---
 
-## 🤖 Step 3: Configuring Roo Code as the Alternative Model Switcher
+## 🤖 Step 3: Configuring Continue as the Alternative Model Switcher
 
-> [!NOTE] Why Claude is NOT in Roo Code
-> Rather than incurring per-token Anthropic API billing in Roo Code, **Claude is accessed via the official Claude Code VS Code extension** (`anthropic.claude-code`), which authenticates against your existing **Claude.ai paid subscription** (Pro/Team/Enterprise).
+> [!NOTE] Why Claude is NOT in Continue
+> Rather than incurring per-token Anthropic API billing in Continue, **Claude is accessed via the official Claude Code VS Code extension** (`anthropic.claude-code`), which authenticates against your existing **Claude.ai paid subscription** (Pro/Team/Enterprise).
 >
-> Roo Code is reserved exclusively as a multi-model switchboard for **xAI Grok**, your **local MLX model**, and **AWS Bedrock**.
+> Continue is reserved exclusively as a multi-model switchboard for **xAI Grok**, your **local MLX model**, and **AWS Bedrock**.
 
-Roo Code profiles are managed **declaratively** via `~/.config/roo-code/settings.json` (written by home-manager, read-only) and automatically imported into VS Code on startup via `"roo-cline.autoImportSettingsPath"`.
+Continue models are managed **declaratively** via `~/.continue/config.yaml` (written by home-manager, read-only), with `continue.enableTabAutocomplete = false` and `continue.telemetryEnabled = false`.
 
 ### Profile 1: Grok (xAI Real-Time & Velocity)
 
 - **Provider:** `xAI`
-- **API Key:** Read from the environment (`XAI_API_KEY`)
+- **API Key:** Resolved via Continue secrets (`${{ secrets.XAI_API_KEY }}`)
 - **Model ID:** `grok-2`
 - **Use Case:** High-speed code generation, live web-grounded queries, and an alternative reasoning perspective.
 
 ### Profile 2: Local MLX (Qwen 3.8 27B Playground)
 
-- **Provider:** `OpenAI-Compatible`
-- **Base URL:** `http://localhost:8080/v1`
+- **Provider:** `openai` (OpenAI-Compatible)
+- **Base URL (`apiBase`):** `http://localhost:8080/v1`
 - **API Key:** `local`
 - **Model ID:** `mlx-community/Qwen3.8-27B-4bit`
 - **Lifecycle:** Start on-demand via `just serve-qwen-27b` (see [[Local LLMs with MLX]])
@@ -82,14 +82,14 @@ Roo Code profiles are managed **declaratively** via `~/.config/roo-code/settings
 
 ### Profile 3: AWS Bedrock (Enterprise Cloud Inference)
 
-- **Provider:** `Bedrock`
-- **Authentication:** AWS Profile (`default` or homelab profile) or AWS environment variables
+- **Provider:** `bedrock`
+- **Authentication:** AWS Profile (`default` or `bedrock`) or AWS environment variables
 - **Region:** `us-east-2`
-- **Model ID:** Configured foundation model or private deployed model ARN (with plans to host OpenAI models on AWS Bedrock)
-- **Use Case:** Enterprise VPC isolation, corporate accounts, private cloud quota, and eventually routing to OpenAI models hosted directly inside AWS Bedrock.
+- **Model ID:** `anthropic.claude-3-5-sonnet-20241022-v2:0` (or private deployed model ARN)
+- **Use Case:** Enterprise VPC isolation, corporate accounts, private cloud quota, and routing to foundation models inside AWS Bedrock.
 
 > [!TIP] Native Antigravity Tab Autocomplete
-> In-editor inline code completion as you type is handled seamlessly by **Antigravity Tab** (Google's native speculative decoding). Roo Code operates as an autonomous agent canvas, so local MLX is preserved purely for conversational reasoning, tests, and refactors.
+> In-editor inline code completion as you type is handled seamlessly by **Antigravity Tab** (Google's native speculative decoding). Continue's own tab autocomplete is disabled so local MLX is preserved purely for conversational reasoning, tests, and refactors.
 
 ---
 
@@ -142,10 +142,10 @@ User settings (`~/Library/Application Support/Code/User/settings.json`) are owne
 │    • Authenticated via Claude.ai subscription (no API fees) │
 │    • Full repo indexing, interactive chat, and diffs        │
 │                                                             │
-│ 4. Alternative Models, Offline Coding & AWS in ROO CODE:    │
+│ 4. Alternative Models, Offline Coding & AWS in CONTINUE:    │
 │    • Toggle Grok (xAI) for rapid second opinions            │
-│    • Toggle Local MLX (Qwen 32B) for offline / zero quota   │
-│    • Toggle AWS Bedrock for enterprise & hosted OpenAI models│
+│    • Toggle Local MLX (Qwen 3.8 27B) for offline/zero quota │
+│    • Toggle AWS Bedrock for enterprise & hosted Claude      │
 └─────────────────────────────────────────────────────────────┘
 ```
 

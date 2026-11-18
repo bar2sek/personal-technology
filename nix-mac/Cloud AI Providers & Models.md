@@ -11,7 +11,7 @@ aliases:
 
 # ☁️ Cloud AI Providers & Models
 
-The workstation is **cloud-first**: day-to-day inference is remote, over provider APIs. Local MLX (now Qwen 3.8 27B) was removed in September 2026 and reinstated as an on-demand Roo Code profile (`just serve-qwen-27b`); see [[Local LLMs with MLX]]. This note is the reference for which model to reach for, which tool routes to which provider, and how credentials are handled.
+The workstation is **cloud-first**: day-to-day inference is remote, over provider APIs. Local MLX (now Qwen 3.8 27B) was removed in September 2026 and reinstated as an on-demand Continue profile (`just serve-qwen-27b`); see [[Local LLMs with MLX]]. This note is the reference for which model to reach for, which tool routes to which provider, and how credentials are handled.
 
 > [!IMPORTANT] Why cloud-first
 > A 48 GB M5 Pro can host a 32B model at 6-bit, but only by surrendering 25–34 GB of unified memory that native builds, OrbStack containers, and Nix derivations need. Frontier cloud models outperform anything that fits locally, and the memory stays available for actual development work. Retiring local serving reclaimed ~59 GB of SSD alongside that memory.
@@ -41,7 +41,7 @@ Each editor reaches a different provider. Knowing which is which avoids configur
 | :--- | :--- | :--- |
 | **Antigravity (VS Code extension, Desktop, `agy` CLI)** | Google Gemini | Native agent canvas. Antigravity Tab uses Google's proprietary speculative decoding for autocomplete. |
 | **Claude Code Extension** | Anthropic Claude | Official IDE extension (`anthropic.claude-code`) authenticated directly via **Claude.ai subscription** (zero per-token charges). |
-| **Roo Code** | xAI Grok, Local MLX, AWS Bedrock | Multi-model switchboard in the IDE for real-time Grok, on-demand local Qwen 3.8 27B, and AWS Bedrock (with future plans to host OpenAI models in Bedrock). |
+| **Continue** | xAI Grok, Local MLX, AWS Bedrock | Multi-model switchboard in the IDE for real-time Grok, on-demand local Qwen 3.8 27B, and AWS Bedrock (with future plans to host OpenAI models in Bedrock). |
 | **Claude Code (CLI)** | Anthropic Claude | Terminal-native agent, installed declaratively via `pkgs.claude-code` in the flake. |
 | **Claude Desktop** | Anthropic Claude | Official macOS desktop application, installed declaratively via Homebrew cask `claude`. |
 
@@ -51,7 +51,7 @@ Each editor reaches a different provider. Knowing which is which avoids configur
 
 API keys are the one genuinely sensitive part of this setup.
 
-* **Never commit a key.** The Roo Code profiles written by `flake.nix` hold no keys (`"apiKey": ""`); enter them in the extension or export them in your shell profile.
+* **Never commit a key.** The Continue config written by `home.nix` holds no keys (`${{ secrets.XAI_API_KEY }}`); enter them in Continue secrets or export them in your shell profile.
 * **Prefer the environment.** Export `ANTHROPIC_API_KEY` / `GEMINI_API_KEY` / `XAI_API_KEY` in your shell profile, or let the tool store them in the macOS keychain.
 * **Treat this repository as public** regardless of its current visibility — a key in git history is compromised the moment it lands, and rotating it is the only remedy.
 

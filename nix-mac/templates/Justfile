@@ -52,11 +52,17 @@ gc:
 # Local LLM Serving (Apple MLX via uvx - Zero Bloat)
 # ------------------------------------------------------------------------------
 
-# Launch Qwen 3.8 27B (4-bit) MLX Server for Roo Code chat & refactoring (port 8080)
+# Launch Qwen 3.8 27B (4-bit) MLX Server for Continue chat & refactoring (port 8080)
+# Disable thinking mode + set Qwen instruct sampling so responses stream straight to delta.content
 serve-qwen-27b:
     uvx --from mlx-lm mlx_lm.server \
       --model mlx-community/Qwen3.8-27B-4bit \
-      --port 8080
+      --port 8080 \
+      --temp 0.7 \
+      --top-p 0.8 \
+      --top-k 20 \
+      --max-tokens 8192 \
+      --chat-template-args '{"enable_thinking":false}'
 
 # Quick CLI prompt test against local Qwen 3.8 27B via MLX
 test-prompt:

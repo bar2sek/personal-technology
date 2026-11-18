@@ -21,7 +21,7 @@ The workstation is a **thin client for inference and a heavy host for builds**. 
 │                                                             │
 │   ┌──────────────────────────────────────────────────────┐  │
 │   │  Editors & Agents (thin clients, no model weights)   │  │
-│   │  • VS Code + Antigravity / Claude Code / Roo Code    │  │
+│   │  • VS Code + Antigravity / Claude Code / Continue    │  │
 │   │  • Antigravity Desktop + agy CLI (agent missions)    │  │
 │   │  • Claude Code (terminal-native agent)               │  │
 │   └──────────────────────────┬───────────────────────────┘  │

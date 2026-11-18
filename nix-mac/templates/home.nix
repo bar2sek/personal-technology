@@ -45,7 +45,6 @@
   # ----------------------------------------------------------------------
   home.sessionPath = [
     "$HOME/.local/bin"
-    "$HOME/.omlx/bin"
   ];
 
   home.sessionVariables = {
@@ -158,7 +157,7 @@
       if [ -x "/opt/homebrew/bin/brew" ]; then
         eval "$(/opt/homebrew/bin/brew shellenv)"
       fi
-      export PATH="$HOME/.local/bin:$HOME/.omlx/bin:$PATH"
+      export PATH="$HOME/.local/bin:$PATH"
 
       source ${pkgs.zsh-powerlevel10k}/share/zsh-powerlevel10k/powerlevel10k.zsh-theme
       [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
@@ -273,7 +272,7 @@
         # AI assistants
         google.google-antigravity
         anthropic.claude-code
-        rooveterinaryinc.roo-cline
+        continue.continue
 
         # Theme & icons
         enkia.tokyo-night
@@ -319,7 +318,8 @@
         "scm.alwaysShowRepositories" = true;
         "scm.repositories.visible" = 10;
         "scm.repositories.selectionMode" = "multiple";
-        "roo-cline.autoImportSettingsPath" = "~/.config/roo-code/settings.json";
+        "continue.telemetryEnabled" = false;
+        "continue.enableTabAutocomplete" = false; # Handled by Antigravity Tab
         "files.watcherExclude" = {
           "**/.git/objects/**" = true;
           "**/.git/subtree-cache/**" = true;
@@ -332,53 +332,55 @@
     };
   };
 
-  # Roo Code multi-model profiles: Grok (xAI), local MLX (Qwen 3.8 27B on
-  # port 8080), AWS Bedrock. Claude runs through the Claude Code extension instead.
+  # Continue multi-model config: local MLX (Qwen 3.8 27B on port 8080),
+  # Grok (xAI), AWS Bedrock. Claude runs through the Claude Code extension instead.
   # No API keys here: anything in Nix is readable by every user via /nix/store.
-  home.file.".config/roo-code/settings.json".text = ''
-    {
-      "providerProfiles": {
-        "currentApiConfigName": "Grok (xAI)",
-        "apiConfigs": {
-          "Grok (xAI)": {
-            "id": "grok-xai",
-            "apiProvider": "xai",
-            "apiKey": "",
-            "apiModelId": "grok-2"
-          },
-          "Local MLX (Qwen 3.8 27B)": {
-            "id": "local-mlx-qwen-27b",
-            "apiProvider": "openai",
-            "openAiBaseUrl": "http://localhost:8080/v1",
-            "openAiApiKey": "local",
-            "openAiModelId": "mlx-community/Qwen3.8-27B-4bit",
-            "openAiCustomModelInfo": {
-              "contextWindow": 32768,
-              "maxTokens": 8192,
-              "supportsImages": false,
-              "supportsPromptCache": false
-            }
-          },
-          "AWS Bedrock": {
-            "id": "bedrock-hosted-llm",
-            "apiProvider": "bedrock",
-            "apiModelId": "anthropic.claude-3-5-sonnet-20241022-v2:0",
-            "awsRegion": "us-east-2"
-          }
-        }
-      },
-      "globalSettings": {}
-    }
-  '';
+  home.file.".continue/config.yaml".text = ''
+    name: Mac AI Workstation
+    version: 1.0.0
+    schema: v1
 
-  # Roo Code custom modes: a pure Chat mode with zero tools, for local LLMs.
-  # Read-only: edit modes here, not in Roo's UI.
-  home.file."Library/Application Support/Code/User/globalStorage/rooveterinaryinc.roo-cline/settings/custom_modes.yaml".text = ''
-    customModes:
-      - slug: "chat"
-        name: "💬 Chat / Pair Programmer"
-        roleDefinition: "You are an expert pair programmer and software architect. Answer questions, provide clear explanations, and write clean, idiomatic code without executing tools."
-        groups: []
-        customInstructions: "Answer all questions directly in clear markdown with code blocks. Do not attempt to invoke tools or execute terminal commands."
+    models:
+      - name: Local MLX (Qwen 3.8 27B)
+        provider: openai
+        model: mlx-community/Qwen3.8-27B-4bit
+        apiBase: http://localhost:8080/v1
+        apiKey: local
+        contextLength: 65536
+        # Match mlx_lm.server flags in Justfile; without maxTokens here,
+        # Continue defaults to 4096 and overrides the server's --max-tokens 8192.
+        defaultCompletionOptions:
+          maxTokens: 8192
+          temperature: 0.7
+          topP: 0.8
+        # mlx_lm.server returns native OpenAI tool_calls for Qwen; without this,
+        # Continue can't tell and falls back to text-based tool prompts, which
+        # the model prints instead of executing in Agent mode.
+        capabilities:
+          - tool_use
+        roles:
+          - chat
+          - edit
+          - apply
+
+      - name: Grok (xAI)
+        provider: xAI
+        model: grok-2
+        apiKey: ''${{ secrets.XAI_API_KEY }}
+        roles:
+          - chat
+          - edit
+          - apply
+
+      - name: AWS Bedrock (Claude)
+        provider: bedrock
+        model: anthropic.claude-3-5-sonnet-20241022-v2:0
+        env:
+          region: us-east-2
+          profile: default
+        roles:
+          - chat
+          - edit
+          - apply
   '';
 }

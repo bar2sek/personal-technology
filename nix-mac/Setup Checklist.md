@@ -87,7 +87,7 @@ Follow this step-by-step checklist when unboxing your new MacBook Pro to ensure 
   ```bash
   which code
   ```
-- [ ] Sign in to the **Claude Code** extension with your Claude.ai subscription and confirm the Roo Code profiles loaded (see [[IDE Configuration Guide]]).
+- [ ] Sign in to the **Claude Code** extension with your Claude.ai subscription and confirm the Continue config loaded (see [[IDE Configuration Guide]]).
 - [ ] Verify **Antigravity CLI (`agy`)** and Desktop app are installed (automated via `bootstrap.sh`):
   ```bash
   agy --version

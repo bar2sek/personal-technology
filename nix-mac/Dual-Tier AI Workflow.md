@@ -12,7 +12,7 @@ aliases: []
 
 # ⚡ The Unified Agentic Developer Workflow
 
-Routing work across **frontier cloud providers** inside a single unified canvas (**VS Code** with the Antigravity, Claude Code and Roo Code extensions) balances speed, cost, and depth of reasoning. The tiers below are ordered by how often you should reach for them, not by capability — escalate only when the cheaper tier stalls.
+Routing work across **frontier cloud providers** inside a single unified canvas (**VS Code** with the Antigravity, Claude Code and Continue extensions) balances speed, cost, and depth of reasoning. The tiers below are ordered by how often you should reach for them, not by capability — escalate only when the cheaper tier stalls.
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
@@ -20,11 +20,11 @@ Routing work across **frontier cloud providers** inside a single unified canvas 
 ├────────────────────────────────────────────────────────────────────────┤
 │                   WORKSPACE CANVAS: VISUAL STUDIO CODE                 │
 ├────────────────────────────┬────────────────────────────┬──────────────┤
-│ PRIMARY: Native AGY Agent  │ EXTENSION: Claude Code     │ ROO CODE     │
+│ PRIMARY: Native AGY Agent  │ EXTENSION: Claude Code     │ CONTINUE     │
 ├────────────────────────────┼────────────────────────────┼──────────────┤
 │ • Gemini Flash/Pro (Cloud) │ • Claude 3.7 / Sonnet      │ • Grok (xAI) │
 │ • Native Tab Autocomplete  │ • Claude.ai Subscription   │ • Local MLX  │
-│ • Multi-file Planning      │ • Zero per-token API fees  │   (Qwen 32B) │
+│ • Multi-file Planning      │ • Zero per-token API fees  │   (Qwen 27B) │
 │ • Terminal Sandbox Tools   │ • Deep code refactoring    │ • AWS Bedrock│
 │ • Autonomous Subagents     │ • Graphical chat & diffs   │   (Hosted)   │
 └────────────────────────────┴────────────────────────────┴──────────────┘
@@ -54,14 +54,14 @@ Routing work across **frontier cloud providers** inside a single unified canvas 
 
 ---
 
-## Tier 3: Real-Time & High-Velocity Coding (xAI Grok via Roo Code)
+## Tier 3: Real-Time & High-Velocity Coding (xAI Grok via Continue)
 * **Goal:** Fast, state-of-the-art coding and real-time knowledge queries without burning primary quotas.
 * **Provider:** xAI API (`grok-2` / `grok-code`).
-* **Environment:** Configured in Roo Code provider profiles.
+* **Environment:** Configured in `~/.continue/config.yaml`.
 
 ---
 
-## Tier 4: Local Playground & Offline Coder (Apple MLX via Roo Code)
+## Tier 4: Local Playground & Offline Coder (Apple MLX via Continue)
 * **Goal:** Zero-cost experimentation, offline coding, and playing with open-weights without cloud quotas.
 * **Provider:** Apple MLX running on Apple Silicon Metal GPU via `uvx` (`http://localhost:8080/v1`).
 * **Model:** `mlx-community/Qwen3.8-27B-4bit` (~18–19 GB footprint active).
@@ -70,11 +70,11 @@ Routing work across **frontier cloud providers** inside a single unified canvas 
 
 ---
 
-## Tier 5: Enterprise Cloud Inference (AWS Bedrock via Roo Code)
+## Tier 5: Enterprise Cloud Inference (AWS Bedrock via Continue)
 * **Goal:** Enterprise security boundary, provisioned models, and private cloud quota.
 * **Provider:** AWS Bedrock (IAM credentials or AWS profile from `~/.aws/credentials`).
 * **Model Roadmap:** Current foundation models, with future plans to host and route **OpenAI models inside AWS Bedrock** (via Bedrock provisioned throughput / custom model import ARNs).
-* **Environment:** Configured in Roo Code provider profiles (`us-east-2`).
+* **Environment:** Configured in `~/.continue/config.yaml` (`us-east-2`).
 
 ---
 
