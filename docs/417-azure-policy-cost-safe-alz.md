@@ -94,9 +94,19 @@ These stay **assigned** (the other ~20 members of each are useful Deny/Modify gu
 
 ---
 
+### ⚠️ Open finding: unused privileged roles on the MCSB v2 identity (accepted 2026-11-09)
+
+The alz provider grants each DINE/Modify assignment's managed identity every role its member definitions *declare*, whatever their effective effect. `Deploy-MCSB2-Monitoring` has no deploying members (all pinned to `AuditIfNotExists`), yet its identity received **8 roles at `mg-azure-homelab-prod-0bb5`, including User Access Administrator** (9 after Microsoft added *Guest Configuration Resource Contributor* to a built-in member in November 2026, see [[416-azure-management-groups-and-policy#🛠️ Troubleshooting & Gotchas|416]]), plus Backup Contributor and Log Analytics Contributor. Nobody can sign in as a policy assignment's system-assigned identity, but anyone able to edit the assignment (MG Owner, Resource Policy Contributor) could turn it into an escalation path, and an access review would flag standing UAA on a non-human identity.
+
+Applied as the ALZ default for now. **Fix when wanted:** set `role_assignments_enabled = false` for `Deploy-MCSB2-Monitoring` in `local.policy_assignments_to_modify` (`main.tf`). The assignment, identity and compliance data stay; the 8 grants are destroyed. Re-check if a library upgrade gives MCSB v2 a real DINE member.
+
+```bash
+az role assignment list --all --assignee "$(az ad sp list --display-name Deploy-MCSB2-Monitoring --query '[0].id' -o tsv)" --query "[].roleDefinitionName" -o tsv
+```
+
 ## ➕ Custom Cost Guardrails (added at the intermediate root)
 
-All `lib/*.alz_policy_assignment.json`, added through `homelab_root`'s `policy_assignments_to_add`. List values come from Terraform variables, so they're changed in `variables.tf`, not JSON.
+All `lib/*.alz_policy_assignment.json`, added through `homelab_root`'s `policy_assignments_to_add`. List values come from Terraform variables, so they're changed in `variables.tf`, not JSON. Each file pins `definitionVersion` to the built-in's current major version (`2.*.*` for the resource-type and shared-key policies, `1.*.*` for the rest). A missing pin defaults to `1.*.*` and fails on v2 built-ins ([[416-azure-management-groups-and-policy#🛠️ Troubleshooting & Gotchas|416]]).
 
 | Assignment | Policy | Effect | Value |
 |---|---|---|---|
@@ -124,8 +134,9 @@ Everything starts `DoNotEnforce` (`policy_enforcement_default`). Flip per MG wit
 4. **Intermediate root last** (`homelab = "Default"`), because it carries the custom denies that reach every subscription. Then **test the Defender deny** in the security subscription with the cheapest plan (Key Vault, billed per transaction):
    ```bash
    az security pricing create -n KeyVaults --tier standard --subscription subscr-azure-security-homelab-prod-0bb5
-   # expect: RequestDisallowedByPolicy ... Deny-Paid-Defender
-   # if it SUCCEEDS, the deny doesn't work on pricings: set it straight back and record it here
+   ```
+   Expect `RequestDisallowedByPolicy` naming `Deny-Paid-Defender`. If it **succeeds**, the deny doesn't work on pricings: set the plan straight back and record the result here.
+   ```bash
    az security pricing create -n KeyVaults --tier free --subscription subscr-azure-security-homelab-prod-0bb5
    ```
 5. Once everything is enforced, set `policy_enforcement_default = "Default"` and drop the per-MG map.
@@ -141,11 +152,9 @@ Everything starts `DoNotEnforce` (`policy_enforcement_default`). Flip per MG wit
 mkdir -p /tmp/alzlib && curl -sL \
   https://codeload.github.com/Azure/Azure-Landing-Zones-Library/tar.gz/refs/tags/platform/alz/<new-ref> | tar xz -C /tmp/alzlib
 python3 -I bootstrap/azure-governance/scripts/alz_inventory.py /tmp/alzlib/*/platform/alz > /tmp/alz-new.txt
-# Compare against this note: any NEW assignment or deploying member on root, platform,
-# landing_zones, identity, connectivity, corp, sandbox or decommissioned needs a decision.
 ```
 
-Then bump `ref` in `providers.tf`, plan, and read the diff. The plan is the second safety net, because a new assignment shows up as `will be created`.
+Compare `/tmp/alz-new.txt` against this note: any **new** assignment or deploying member on root, platform, landing_zones, identity, connectivity, corp, sandbox or decommissioned needs a decision. Then bump `ref` in `providers.tf`, plan, and read the diff. The plan is the second safety net, because a new assignment shows up as `will be created`.
 
 ---
 

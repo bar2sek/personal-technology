@@ -8,6 +8,7 @@
     "description": "Resource groups may only be created in the lab's approved regions.",
     "displayName": "Allowed locations for resource groups",
     "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/e765b5de-1225-4ba3-bd56-1ac6695af988",
+    "definitionVersion": "1.*.*",
     "enforcementMode": "Default",
     "nonComplianceMessages": [
       {

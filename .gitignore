@@ -35,6 +35,8 @@ override.tf.json
 
 # Include tfplan files to ignore the plan output of command: terraform plan -out=tfplan
 # example: *tfplan*
+# Plan files embed full state (incl. sensitive values like the Authentik client secret): never track them.
+*.tfplan
 
 # Ignore CLI configuration files
 .terraformrc

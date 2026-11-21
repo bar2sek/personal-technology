@@ -8,6 +8,7 @@
     "description": "Only small burstable VM sizes, so a typo can't start a large VM. Covers VMSS and AKS node pools.",
     "displayName": "Allowed virtual machine size SKUs",
     "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/cccc23c7-8427-4f53-ad12-b6a63eb452b3",
+    "definitionVersion": "1.*.*",
     "enforcementMode": "Default",
     "nonComplianceMessages": [
       {

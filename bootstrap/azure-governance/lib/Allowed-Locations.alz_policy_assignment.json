@@ -8,6 +8,7 @@
     "description": "Resources may only be created in the lab's approved regions (global resources are exempt).",
     "displayName": "Allowed locations",
     "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/e56962a6-4747-49cd-b67b-bf8b01975c4c",
+    "definitionVersion": "1.*.*",
     "enforcementMode": "Default",
     "nonComplianceMessages": [
       {

@@ -99,6 +99,7 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 - [505 - Home Assistant Smart Home & IoT Automation Platform](docs/505-home-assistant-smart-home.md)
 - [506 - In-Cluster CUPS Network Print Server & AirPrint Bridge](docs/506-cups-airprint-bridge.md)
 - [507 - Frigate NVR: Local Cameras & Object Detection (Planned)](docs/507-frigate-nvr-cameras.md)
+- [508 - Self-Hosted Drive: Product Options & Trial Plan (Planned)](docs/508-self-hosted-drive.md)
 
 ### 🗂️ Backlog (Researched & Parked)
 - [Backlog Index](docs/backlog/README.md) — parked projects with decisions, parts and pickup checklists

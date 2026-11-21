@@ -82,28 +82,37 @@ Why a **separate** account, and why **container-scope data roles** only:
 ## 🚀 Apply Order
 
 ```bash
-just tf-plan azure        # 12 add, 2 change (display-name renames), 3 destroy
+just tf-plan azure
 just tf-apply azure
-# bootstrap/azure-governance/terraform.tfvars:  ci_rbac_enabled = true
-just tf-plan azure-governance   # 4 role assignments
+```
+
+Expect 12 add, 2 change (display-name renames), 3 destroy. Then set `ci_rbac_enabled = true` in `bootstrap/azure-governance/terraform.tfvars` and run:
+
+```bash
+just tf-plan azure-governance
 just tf-apply azure-governance
 just tf azure output github_plan_client_id
 just tf azure output github_apply_client_id
 just tf azure output ci_tfstate
 ```
 
+The governance plan should add 4 role assignments (`github-plan-reader-*`, `github-apply-contributor-*`). Because of the naming fix (`role_assignment_name_use_random_uuid`, see [[416-azure-management-groups-and-policy#🛠️ Troubleshooting & Gotchas|416]]), each also brings a `random_uuid`, so 8. The first run on 2026-11-21 showed **11** in total: the other 3 were *Guest Configuration Resource Contributor* grants that appeared because Microsoft updated built-in policies ([[416-azure-management-groups-and-policy#🛠️ Troubleshooting & Gotchas|416 gotcha]]).
+
 The 3 destroys are the old app's `pull_request` and `main` federated credentials (recreated on the plan app) and the old Contributor on the identity subscription. Nothing live used them: the CI repo's Azure workflow pointed at a state account that the teardown deleted.
 
 ### Verify
 
+`az role assignment list --all` only covers the current subscription and below, so it shows **nothing** for MG-scope grants. Query each MG scope instead. Expected (verified 2026-11-21): plan = Reader and apply = Contributor on landingzones and sandbox; nothing on platform or homelab.
+
 ```bash
-# Each SP's role assignments (expect MG scopes + the CI container only)
 for n in plan apply; do
   id=$(az ad sp list --display-name app-azure-github-actions-$n-prod-001 --query "[0].id" -o tsv)
-  az role assignment list --assignee "$id" --all --query "[].{role:roleDefinitionName, scope:scope}" -o table
+  for mg in landingzones sandbox platform homelab; do
+    echo "$n @ $mg"
+    az role assignment list --assignee "$id" --scope "/providers/Microsoft.Management/managementGroups/mg-azure-$mg-prod-0bb5" --query "[].{role:roleDefinitionName, scope:scope}" -o table
+  done
 done
 
-# OIDC subjects per app
 for n in plan apply; do
   az ad app federated-credential list --id "$(az ad app list --display-name app-azure-github-actions-$n-prod-001 --query '[0].id' -o tsv)" --query "[].subject" -o tsv
 done

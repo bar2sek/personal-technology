@@ -136,41 +136,55 @@ Each milestone is a separate apply, run by the operator. Plans below were checke
 
 ### Prerequisites
 
+Run every command from the `personal-technology` repo root (`just` resolves `bootstrap/<dir>`).
+
 ```bash
-# run from the personal-technology repo root (just resolves bootstrap/<dir>)
-cp bootstrap/azure-governance/backend.hcl.example bootstrap/azure-governance/backend.hcl   # fill in the management sub ID
+cp bootstrap/azure-governance/backend.hcl.example bootstrap/azure-governance/backend.hcl
 just tf-init azure-governance
 ```
+
+- `cp bootstrap/azure-governance/backend.hcl.example bootstrap/azure-governance/backend.hcl`: Fill in the management sub ID
 
 Your account needs Owner on the 4 subscriptions (moving a subscription needs it on the source) and the right to create MGs under Tenant Root (allowed by default). The creator of a management group becomes its Owner, which covers the policy and role-assignment writes below it.
 
 ### M2: hierarchy + placement (no policy)
 
 ```bash
-just tf-plan azure-governance        # expect: 22 to add (11 MGs, 4 placements, module helpers)
+just tf-plan azure-governance
 just tf-apply azure-governance
 ```
+
+- `just tf-plan azure-governance`: Expect: 22 to add (11 MGs, 4 placements, module helpers)
 
 ### M3: trimmed policy, audit only
 
 Add `policy_enabled = true` to `bootstrap/azure-governance/terraform.tfvars` (gitignored; nothing in it is secret, but it keeps the switches local).
 
 ```bash
-just tf-plan azure-governance        # expect: 425 to add, 0 change, 0 destroy, no warnings
-just tf-apply azure-governance       # 150 definitions, 44 initiatives, 5 roles, 98 assignments, 106 role assignments
+just tf-plan azure-governance
+just tf-apply azure-governance
 ```
+
+- `just tf-plan azure-governance`: after M2, expect **405 to add, 1 to change, 2 to destroy**, no warnings (425 / 0 / 0 only from an empty state). The 2 destroys and 2 of the adds are the module's `time_sleep` timers being replaced because their triggers changed; the 1 change is `terraform_data.naming_guard` (`homelab-hierarchy` → `homelab`). All 15 MG and placement resources must be no-op.
+- `just tf-apply azure-governance`: 150 definitions, 44 initiatives, 5 roles, 98 assignments, 106 role assignments
 
 ### M4: CI identities + state, then CI RBAC
 
 Order matters: governance looks the plan identity up by name, so it must exist first.
 
 ```bash
-just tf-plan azure    # expect: 12 add, 2 change (renames), 3 destroy (2 old OIDC creds + old Contributor)
+just tf-plan azure
 just tf-apply azure
-# then set ci_rbac_enabled = true in bootstrap/azure-governance/terraform.tfvars
-just tf-plan azure-governance        # expect: 4 role assignments to add
+```
+
+The `bootstrap/azure` plan should show 12 add, 2 change (renames), 3 destroy (2 old OIDC credentials + the old Contributor). Then set `ci_rbac_enabled = true` in `bootstrap/azure-governance/terraform.tfvars` and run:
+
+```bash
+just tf-plan azure-governance
 just tf-apply azure-governance
 ```
+
+Expect 4 role assignments to add.
 
 ### M5: enforce
 
@@ -180,22 +194,20 @@ Per [[417-azure-policy-cost-safe-alz#🚦 Audit → Enforce Plan (M5)|docs/417]]
 
 ## ✅ Verification
 
+In order: hierarchy and placement; assignments and their enforcement mode; compliance (first results about 30 min after assignment, or force a scan on one subscription); and a check that no paid Defender plan exists anywhere (only `Discovery` and `FoundationalCspm` should print). After M2, also run `just tf-plan azure-governance` and expect **No changes**.
+
 ```bash
-# Hierarchy and placement
 az account management-group show -n mg-azure-homelab-prod-0bb5 -e -r \
   --query "children[].{name:name, children:children[].name}" -o json
 just tf azure-governance output subscription_placement
 
-# Assignments and their enforcement mode at a scope
 az policy assignment list --scope /providers/Microsoft.Management/managementGroups/mg-azure-homelab-prod-0bb5 \
   --query "[].{name:name, mode:enforcementMode}" -o table
 
-# Compliance (first results ~30 min after assignment; force a scan on one sub)
 az policy state trigger-scan --subscription subscr-azure-identity-homelab-prod-0bb5 --no-wait
 az policy state summarize --management-group mg-azure-homelab-prod-0bb5 \
   --query "policyAssignments[?results.nonCompliantResources>\`0\`].{a:policyAssignmentId, n:results.nonCompliantResources}" -o table
 
-# Still no paid Defender plan anywhere (expect only Discovery + FoundationalCspm)
 for s in $(az account list --query "[?starts_with(name,'subscr-azure-')].id" -o tsv); do
   az rest --method get --url "https://management.azure.com/subscriptions/$s/providers/Microsoft.Security/pricings?api-version=2024-01-01" \
     --query "value[?properties.pricingTier=='Standard'].name" -o tsv
@@ -213,6 +225,9 @@ done
 - **DINE/Modify assignments need a managed identity and role assignments.** The module creates both (106 role assignments). They can take minutes to propagate; a remediation started immediately after apply may fail with `AuthorizationFailed`. Wait and retry.
 - **Destroying the root moves subscriptions out first.** `subscription_placement_destroy_behavior = "default"` sends them to the tenant's default MG (Tenant Root, since no hierarchy settings are configured) before their MG is deleted.
 - **Hierarchy settings are deliberately not set yet.** Making `sandbox` the default MG for new subscriptions and requiring authorization for MG creation are both good controls, but they write to Tenant Root and need Owner or Management Group Contributor there. Backlog item, not Phase 1.
+- **`PolicyDefinitionVersionNotFound … matches '1.*.*'`** (hit on the first M3 apply, 2026-11-09). An assignment without `definitionVersion` is sent as `1.*.*`, but Microsoft had moved two built-ins to v2: *Not allowed resource types* (`2.0.0`) and *Storage accounts should prevent shared key access* (`2.1.0`). The plan can't catch it, because only ARM checks versions at create time. Every custom assignment in `lib/` now pins `definitionVersion`. Check versions with `az policy definition show -n <guid> --query versions`. When an assignment fails, the module also skips **all** policy role assignments, since they wait for every assignment, so expect a large re-plan (108 adds here). Fix, re-plan, apply; the assignments that succeeded show as no-op.
+- **"Drift" with no one touching Azure** (found 2026-11-21, 12 days after M3). A plan wanted 3 new `policy_role_assignments` (*Guest Configuration Resource Contributor*) for `Deploy-ASC-Monitoring`, `Deploy-MCSB2-Monitoring` and `Enforce-ACSB`. Microsoft had updated **built-in** definitions inside those initiatives to declare a new role. The alz provider reads built-ins live from Azure at plan time, so pinning the library `ref` doesn't freeze them; only `definitionVersion` on an assignment pins a built-in's major version. Read every plan, even when nothing changed on your side. Harmless here (the roles let Guest Configuration audit VMs; free on Azure VMs, billed only on Arc servers), so it was applied with M4.
+- **Same role assignment name on two MGs** (found in M4). `avm-ptn-alz`'s `management_group_role_assignments` names each assignment `uuidv5(principal + role)` and leaves the **scope** out, so "plan identity + Reader" on landingzones and on sandbox both got `91ace139…`. Role assignment names (GUIDs) must be unique across the tenant, so the second create would fail. Fix: `role_assignment_name_use_random_uuid = true` on the module (a `random_uuid` per assignment, kept in state). Check `name` values in a plan whenever one principal gets the same role at several scopes.
 - **Plans need no lock.** Reviewing with `just tf-plan azure-governance -lock=false` writes nothing to state, not even a lease.
 
 ---

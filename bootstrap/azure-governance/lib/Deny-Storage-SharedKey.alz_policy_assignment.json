@@ -8,6 +8,7 @@
     "description": "Entra ID only for storage: no account keys or SAS to leak. Also stops anyone re-enabling keys on the state accounts (docs/412).",
     "displayName": "Storage accounts should prevent shared key access",
     "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/8c6a50c6-9ffd-4ae7-986f-5fa6111f9a54",
+    "definitionVersion": "2.*.*",
     "enforcementMode": "Default",
     "nonComplianceMessages": [
       {

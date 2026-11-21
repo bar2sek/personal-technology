@@ -122,4 +122,10 @@ module "alz" {
 
   policy_assignments_to_modify      = local.policy_assignments_to_modify
   management_group_role_assignments = local.ci_role_assignments
+  # The default name is uuidv5(principal + role) WITHOUT the scope, so the same
+  # identity + role on two MGs (landingzones, sandbox) gets the same GUID, and
+  # role assignment names must be unique tenant-wide: the second create fails.
+  # Random UUIDs are generated once and kept in state. Only affects the
+  # assignments above (policy identity roles use their own naming).
+  role_assignment_name_use_random_uuid = true
 }

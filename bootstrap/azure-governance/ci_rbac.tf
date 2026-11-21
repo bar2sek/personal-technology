@@ -13,14 +13,27 @@
 # Contributor can't write role assignments, so CI also can't grant itself more.
 # ==============================================================================
 
-data "azuread_service_principal" "github_plan" {
+# Look up the APP registration by name, then its service principal by client ID.
+# Renaming an app (as M4 does to the old CI app) doesn't reliably rename its
+# service principal, so a display-name lookup on the SP could miss.
+data "azuread_application" "github_plan" {
   count        = var.ci_rbac_enabled ? 1 : 0
   display_name = "app-${var.platform}-github-actions-plan-${var.env}-${var.iteration}"
 }
 
-data "azuread_service_principal" "github_apply" {
+data "azuread_application" "github_apply" {
   count        = var.ci_rbac_enabled ? 1 : 0
   display_name = "app-${var.platform}-github-actions-apply-${var.env}-${var.iteration}"
+}
+
+data "azuread_service_principal" "github_plan" {
+  count     = var.ci_rbac_enabled ? 1 : 0
+  client_id = data.azuread_application.github_plan[0].client_id
+}
+
+data "azuread_service_principal" "github_apply" {
+  count     = var.ci_rbac_enabled ? 1 : 0
+  client_id = data.azuread_application.github_apply[0].client_id
 }
 
 locals {

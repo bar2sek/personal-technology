@@ -23,6 +23,7 @@ aliases:
 **Non-goals (for now):**
 - Replacing Google Photos. Google stays the **primary** app for browsing, editing and sharing.
 - Public sharing links or internet exposure. Immich is reachable only on the LAN and the tailnet.
+- General files. A self-hosted Google Drive replacement is planned separately in [[508-self-hosted-drive|docs/508]] and excludes photos.
 
 ### Why this is needed
 
