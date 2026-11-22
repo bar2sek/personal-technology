@@ -126,11 +126,14 @@ All `lib/*.alz_policy_assignment.json`, added through `homelab_root`'s `policy_a
 Everything starts `DoNotEnforce` (`policy_enforcement_default`). Flip per MG with `policy_enforcement_by_mg` in the governance root's `terraform.tfvars`, applying and checking after each step:
 
 1. **Read compliance** (about 30 min after M3, or `az policy state trigger-scan`). Almost nothing is deployed, so expect findings mainly on the two state accounts in management (LRS fails the zone-resiliency audit; the public endpoint fails the private-endpoint audits), both accepted in [[412-azure-lab-cost-guardrails|docs/412]]. Note anything that would be *denied* under enforcement before flipping its MG.
-2. **Empty MGs first:** `sandbox`, `decommissioned`, `landingzones`, `corp`. Nothing lives there, so enforcement can't break anything, and Phase 4 starts on enforced ground.
+2. **Empty MGs first:** `sandbox`, `decommissioned`, `landingzones`, `corp`. Nothing lives there, so enforcement can't break anything, and Phase 4 starts on enforced ground. ✅ **Applied 2026-11-21** (48 assignments, verified live).
    ```hcl
    policy_enforcement_by_mg = { sandbox = "Default", decommissioned = "Default", landingzones = "Default", corp = "Default" }
    ```
 3. **Platform MGs:** `platform`, `identity`. Re-check that the two state accounts are compliant with `Deny-Storage-SharedKey` (they're keyless) and that nothing in identity has a public IP.
+
+   > [!CAUTION] Compliance read 2026-11-21: `Enforce-GR-Storage0` (platform MG) would break Terraform state
+   > Both state accounts (`stazubootstrapprodcus001`, `stazutfciprodcus001`, management subscription) fail **5 Deny** members (`Deny-Storage-NetworkRules`, `-Restrict-NetworkRules`, `-NetworkAclsBypass`, `-CopyScope`, `-ServicesEncryption`) and **1 Modify** (`Modify-Storage-Account-PublicEndpoint`). Enforced on `platform`, the next Terraform update to either account is **denied**, and the Modify (on update, or via a remediation task) **turns off public network access**, which locks out the workstation and GitHub-hosted runners. Decide before flipping `platform`: a policy **exemption** (category `Waiver`) scoped to the two `rg-azure-tfstate-*` resource groups, recorded in code with its reason, or a private endpoint plus self-hosted runner (costs money). Everything else non-compliant (78 resources, 2026-11-21) is Audit/AuditIfNotExists: Defender plans left on Free, no activity-log export, LRS, no private link, all accepted in [[412-azure-lab-cost-guardrails|docs/412]]. The `SecurityCenterBuiltIn` rows are Defender's own subscription-level default assignment, outside Terraform.
 4. **Intermediate root last** (`homelab = "Default"`), because it carries the custom denies that reach every subscription. Then **test the Defender deny** in the security subscription with the cheapest plan (Key Vault, billed per transaction):
    ```bash
    az security pricing create -n KeyVaults --tier standard --subscription subscr-azure-security-homelab-prod-0bb5

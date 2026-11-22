@@ -137,7 +137,7 @@ graph TD
 | Phase | Scope | Monthly cost | Status |
 |---|---|---|---|
 | **0** | Budgets + anomaly alerts on all subscriptions; admin-only bootstrap state; `azurerm` 4.x; Terraform ≥ 1.9 | ~$0.05 | ✅ Complete 2026-11-09 (applied, state migrated to Azure) |
-| **1** | Management groups, Azure Policy (audit → enforce) via `avm-ptn-alz` with cost-bearing policies removed, scoped RBAC for CI, Defender Foundational CSPM only | $0 | 🔨 M2 + M3 applied 2026-11-09 (11 MGs, 98 assignments in audit mode); M4 CI identities + RBAC applied 2026-11-21; enforce (M5) next ([[416-azure-management-groups-and-policy\|docs/416]]) |
+| **1** | Management groups, Azure Policy (audit → enforce) via `avm-ptn-alz` with cost-bearing policies removed, scoped RBAC for CI, Defender Foundational CSPM only | $0 | 🔨 M2 + M3 applied 2026-11-09 (11 MGs, 98 assignments in audit mode); M4 CI identities + RBAC applied 2026-11-21; M5 enforce started (4 empty MGs enforced 2026-11-21) ([[416-azure-management-groups-and-policy\|docs/416]]) |
 | **2** | Hub-and-spoke VNets, NSGs, Azure DNS delegated from Cloudflare, Private DNS zones | ~$1 | ⏳ |
 | **3** | Key Vault, managed identities, Azure Backup with restore drills | ~$6 | ⏳ |
 | **4** | ACR, Container Apps, Functions, App Service | ~$5 | ⏳ |

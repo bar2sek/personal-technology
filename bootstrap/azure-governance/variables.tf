@@ -25,7 +25,7 @@ variable "policy_enforcement_default" {
 }
 
 variable "policy_enforcement_by_mg" {
-  description = "Per management group override of policy_enforcement_default, keyed by the <category> node (root, platform, identity, landingzones, corp, sandbox, ...). Used to flip to enforce one MG at a time (M5)."
+  description = "Per management group override of policy_enforcement_default, keyed by the <category> node (homelab, platform, identity, landingzones, corp, sandbox, ...). Used to flip to enforce one MG at a time (M5)."
   type        = map(string)
   default     = {}
 
