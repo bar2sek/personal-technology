@@ -70,7 +70,6 @@
 
       # Media & Entertainment
       "spotify"
-      "zwift" # Indoor cycling (pkg installer)
 
       # 3D Printing & Digital Fabrication
       "bambu-studio"
@@ -133,7 +132,6 @@
         "/System/Applications/Notes.app"
         "/Applications/Microsoft OneNote.app"
         "/Applications/Spotify.app"
-        "/Applications/Zwift.app"
 
         # 3. 3D Fabrication, AI & Developer Tools (Farthest Right)
         "/Applications/BambuStudio.app"
