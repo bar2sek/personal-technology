@@ -46,7 +46,13 @@ variable "allow_force_push_main" {
 
 variable "azure_client_id" {
   type        = string
-  description = "Entra ID Application (client) ID for GitHub Actions OIDC"
+  description = "APPLY app client ID (bootstrap/azure output github_apply_client_id). Published on the production environment, which takes precedence for the apply job."
+  default     = ""
+}
+
+variable "azure_plan_client_id" {
+  type        = string
+  description = "PLAN app client ID (bootstrap/azure output github_plan_client_id). Published at repository scope as AZURE_CLIENT_ID, so PR plan jobs (no environment) get the read-only identity. Same pattern as aws_plan_role_arn."
   default     = ""
 }
 
@@ -58,7 +64,7 @@ variable "azure_tenant_id" {
 
 variable "azure_subscription_id" {
   type        = string
-  description = "Azure Subscription ID"
+  description = "Workload subscription CI deploys to: must sit under the landingzones or sandbox MG, the only scopes where the CI identities hold roles (docs/418). Leave empty until one exists (Phase 4): the variable is then not published and the Azure workflow skips plan/apply."
   default     = ""
 }
 

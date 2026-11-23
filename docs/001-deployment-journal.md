@@ -989,7 +989,16 @@ The milestone entries below record how each of these got here. The section that 
 - **M5 step 4 applied 2026-11-23 00:18 UTC:** homelab root (13 assignments) `Default` after a clean gate (all root non-compliance Audit/AINE). Every MG with assignments is now enforced (74 assignments). Verified live; both roots `No changes`.
 - **Defender-deny test PASSED 2026-11-23 00:50 UTC:** enabling Defender for Key Vault (Standard) in the security subscription → `RequestDisallowedByPolicy` from `Deny-Paid-Defender`; plan stayed Free. The preventive control the Phase 0 incident lacked is proven. Policy string comparison is case-insensitive (`standard` matched `Standard`).
 - **M5 complete (option B):** `policy_enforcement_default` now defaults to `Default` in code, per-MG map removed from tfvars (plan: No changes), map kept as opt-out. New rule in docs/417: any new Deny/Modify/DINE assignment from a library upgrade soaks in audit via a per-MG opt-out before enforcing.
-- **Next (Phase 1 follow-ups):** `infra-cloud-deployments` workflow + backend update (docs/418); harden `local_user_enabled` on the CI state account; hierarchy settings (default MG = sandbox, needs Tenant Root Owner); then Phase 2 hub networking. (platform, root, Defender-deny test) per MG and the Defender-deny test; `infra-cloud-deployments` workflow update ([[418-azure-ci-rbac-and-state|docs/418]]); hierarchy settings (default MG = sandbox) need Owner at Tenant Root, so deferred.
+- **`infra-cloud-deployments` Azure workflow updated 2026-11-22 (applied and merged):**
+  - backend moved to the CI state account, data plane only (no RG or subscription, so no ARM call);
+  - azurerm 4 with `resource_provider_registrations = "none"`; Terraform 1.10.5;
+  - plan/apply identities split with the same-name/scoped-variable pattern used for AWS (repo `AZURE_CLIENT_ID` = plan app, `production` = apply app);
+  - plan uses `-lock=false`; apply is serialised with `concurrency`.
+  - **Gated:** `AZURE_SUBSCRIPTION_ID` had pointed at the identity *platform* subscription, where CI has no roles. It is now unpublished, and plan/apply are skipped until a Phase 4 workload subscription exists.
+  - **Finding:** the `production` environment had **no required reviewers**. The owner is now a required reviewer with admin bypass off. This also gates the AWS and Cloudflare applies.
+  - **`bootstrap/github` applied 2026-11-22:** 0 add / 2 change / 2 destroy. Follow-up plan: `No changes`. Verified live: no `AZURE_SUBSCRIPTION_ID`, and `production` has `required_reviewers` with admin bypass off. Workflow PR infra-cloud-deployments #13 **merged 2026-11-23 01:16 UTC**. Gate verified on both events (`pull_request` and `push`): Deployment Target Check passed, plan and apply skipped.
+  - Details: [[418-azure-ci-rbac-and-state|docs/418]].
+- **Next (Phase 1 follow-ups):** harden `local_user_enabled` on the CI state account; hierarchy settings (default MG = sandbox, needs Owner at Tenant Root); then Phase 2 hub networking. Later, possibly a separate *platform* pipeline with its own identity scoped to the platform MGs. The bootstrap roots stay admin-applied from the Mac.
 - Details: [[416-azure-management-groups-and-policy|docs/416]], [[417-azure-policy-cost-safe-alz|docs/417]], [[418-azure-ci-rbac-and-state|docs/418]].
 
 ---

@@ -120,15 +120,45 @@ done
 
 ---
 
-## 🔧 Follow-up in `infra-cloud-deployments` (separate repo, separate PR)
+## 🔧 Follow-up in `infra-cloud-deployments` (done 2026-11-22, separate PR)
 
-The `terraform/azure` root and `.github/workflows/azure-deploy.yml` there still assume the Phase 0 setup:
+The `terraform/azure` root and `.github/workflows/azure-deploy.yml` were still on the Phase 0 setup: a deleted backend account, one identity for both jobs, Terraform 1.7.0 and `azurerm ~> 3.90`. What changed, and why:
 
-1. **Backend:** `rg-azure-tfstate-ci-prod-cus-001` / `stazutfciprodcus001` / `tfstate` with `use_azuread_auth = true`. The backend's `subscription_id` is the management subscription; pass it as `ARM_SUBSCRIPTION_ID` for init only, or as `-backend-config`.
-2. **Variables:** `AZURE_CLIENT_ID_PLAN` (repo variable) for the plan job; `AZURE_CLIENT_ID` on the `production` environment for the apply job. Client IDs aren't secrets, but keep them out of committed files anyway.
-3. **Plan job:** `terraform plan -lock=false`.
-4. **Target subscription:** a workload subscription in landingzones (`subscr-azure-corp-homelab-prod-0bb5`) or sandbox (`subscr-azure-sandbox-homelab-lab-0bb5`). **None exists yet** (Phase 4), so CI has rights that cover no subscription today. That's intended.
-5. **Versions:** the workflow pins Terraform 1.7.0 and `azurerm ~> 3.90`; move to the Phase 0 baseline (Terraform ≥ 1.9, `azurerm` 4.x).
+1. **Backend, data plane only.** `stazutfciprodcus001` / `tfstate` / `azure-workloads/terraform.tfstate` with `use_azuread_auth = true` and **no** `resource_group_name` or `subscription_id`. With `lookup_blob_endpoint = false` (the default), the backend infers the blob URL from the account name and never calls ARM. So CI needs only the container-scoped Blob Data role, and no management-plane role in the management subscription.
+2. **Identities: same name, different scope.** This follows the `AWS_ROLE_TO_ASSUME` pattern instead of a new `AZURE_CLIENT_ID_PLAN`. Both jobs read `vars.AZURE_CLIENT_ID`, and GitHub precedence (environment > repository) picks the value:
+   - repo scope = the **plan** app (`bootstrap/github` var `azure_plan_client_id`);
+   - `production` env = the **apply** app (`azure_client_id`).
+3. **Plan job:** `terraform plan -lock=false`, because a lock is a blob lease (a write) and the plan identity has Blob Data Reader only. The provider sets `resource_provider_registrations = "none"`; azurerm 4 otherwise tries to register providers, which Reader can't.
+4. **Gate on a target subscription.** The workload subscription would sit in landingzones (`subscr-azure-corp-homelab-prod-0bb5`) or sandbox (`subscr-azure-sandbox-homelab-lab-0bb5`), and **none exists yet** (Phase 4). `AZURE_SUBSCRIPTION_ID` previously pointed at the identity *platform* subscription, where CI holds no roles.
+   - It is now unpublished, and plan/apply carry `if: vars.AZURE_SUBSCRIPTION_ID != ''`.
+   - A `target` job emits a `::notice` explaining the skip.
+   - Phase 4 enables CI by setting `azure_subscription_id` and applying `bootstrap/github`.
+5. **Versions:** Terraform 1.10.5 in the workflow, `required_version >= 1.10.0`, `azurerm ~> 4.0`. The lock file has `linux_amd64` and `darwin_arm64` hashes.
+6. **Apply serialised:** `concurrency: azure-production-apply` with `cancel-in-progress: false`, so a second merge queues instead of killing an apply mid-write.
+
+> [!WARNING]
+> **Finding: the `production` environment had no required reviewers.** It was gated only by a protected-branches policy. Main needs a PR, but with 0 approvals, so "merged" meant "applied" with no second look. `bootstrap/github` now sets the owner as a required reviewer (`prevent_self_review = false` for a solo maintainer, `can_admins_bypass = false`).
+>
+> This gates **every** job in `production`: the AWS and Cloudflare applies now wait for approval too. That is intended, because the environment is the only thing standing between a merge and the apply identities.
+
+```mermaid
+graph LR
+  PR[Pull request] -->|no environment| P[plan job]
+  P -->|repo var AZURE_CLIENT_ID| PA[plan app: Reader + Blob Data Reader]
+  M[Merge to main] --> A[apply job]
+  A -->|environment: production| G{Required reviewer}
+  G -->|approved| AA[apply app: Contributor + Blob Data Contributor]
+  S{AZURE_SUBSCRIPTION_ID set?} -.->|no| N[target job: notice, plan/apply skipped]
+```
+
+**Apply (user, from personal-technology):** `just tf-plan github -out=gh.tfplan`. Expect 0 to add, 2 to change, 2 to destroy:
+- the repo `AZURE_CLIENT_ID` changes to the plan app;
+- the `AZURE_SUBSCRIPTION_ID` variable is destroyed at both scopes;
+- `production` gets the reviewer and `can_admins_bypass = false`.
+
+Then `just tf-apply github gh.tfplan`, and remove the plan file. **Applied 2026-11-22**; the follow-up plan shows `No changes`.
+
+**Verify:** a PR touching `terraform/azure/**` shows **Deployment Target Check** passing, with plan skipped. Any merge that triggers an AWS or Cloudflare apply shows "Waiting for review".
 
 ### Phase 4 note: role assignments from CI
 

@@ -35,9 +35,27 @@ resource "github_repository_vulnerability_alerts" "infra_cloud_deployments" {
 }
 
 # 2. Production Deployment Environment
+#
+# The apply identities (Azure apply app, AWS apply role) are only reachable from
+# a job in this environment: their OIDC subject is `environment:production`.
+# The environment is therefore the gate between "merged to main" and "changed
+# the cloud", so it requires an explicit approval. A solo maintainer approves
+# their own deployment (prevent_self_review = false), but the approval is a
+# deliberate second look at the plan, separate from the merge. Admins can't
+# skip it, matching enforce_admins on main.
+data "github_user" "owner" {
+  username = var.github_owner
+}
+
 resource "github_repository_environment" "production" {
-  repository  = github_repository.infra_cloud_deployments.name
-  environment = "production"
+  repository          = github_repository.infra_cloud_deployments.name
+  environment         = "production"
+  can_admins_bypass   = false
+  prevent_self_review = false
+
+  reviewers {
+    users = [data.github_user.owner.id]
+  }
 
   deployment_branch_policy {
     protected_branches     = true
@@ -105,10 +123,17 @@ locals {
   ])
 }
 
-# Repository scope differs from the environment in exactly one value: pull
-# request plans assume the read-only PLAN role, while the `production`
-# environment (which takes precedence for the apply job) keeps the APPLY role.
+# Repository scope differs from the environment in the plan/apply identities:
+# pull request plans get the read-only PLAN identity, while the `production`
+# environment (which takes precedence for the apply job) keeps the APPLY one.
+#   AWS:   secret   AWS_ROLE_TO_ASSUME (plan role ARN vs apply role ARN)
+#   Azure: variable AZURE_CLIENT_ID    (plan app vs apply app, docs/418)
 locals {
+  repository_variables = merge(
+    local.actions_variables,
+    var.azure_plan_client_id == "" ? {} : { AZURE_CLIENT_ID = var.azure_plan_client_id },
+  )
+
   repository_secrets = merge(
     local.actions_secrets,
     nonsensitive(var.aws_plan_role_arn == "") ? {} : { AWS_ROLE_TO_ASSUME = var.aws_plan_role_arn },
@@ -121,7 +146,7 @@ locals {
 }
 
 resource "github_actions_variable" "shared" {
-  for_each = local.actions_variables
+  for_each = local.repository_variables
 
   repository    = github_repository.infra_cloud_deployments.name
   variable_name = each.key
