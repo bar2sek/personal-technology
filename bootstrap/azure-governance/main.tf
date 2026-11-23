@@ -62,12 +62,10 @@ locals {
   assignment_parameters = {
     # Hidden cost traps: these ALZ "guardrail" initiatives each contain a DINE
     # member that switches on a PAID per-resource Defender plan (docs/417).
-    "Enforce-GR-Storage0"    = { storageThreatProtection = jsonencode({ value = "Disabled" }) }
-    "Enforce-GR-CosmosDb0"   = { cosmosDbAtp = jsonencode({ value = "Disabled" }) }
-    "Enforce-GR-MySQL0"      = { mySqlAdvThreatProtection = jsonencode({ value = "Disabled" }) }
-    "Enforce-GR-PostgreSQL0" = { postgreSqlAdvThreatProtection = jsonencode({ value = "Disabled" }) }
-    "Enforce-GR-SQL0"        = { sqlManagedDefender = jsonencode({ value = "Disabled" }) }
-    "Enforce-GR-Synapse0"    = { synapseDefender = jsonencode({ value = "Disabled" }) }
+    # The CosmosDb/MySQL/PostgreSQL/SQL/Synapse guardrails had the same trap; they
+    # were removed in the M5 trim (lib/homelab_platform). If one is re-added,
+    # restore its Disabled override here first.
+    "Enforce-GR-Storage0" = { storageThreatProtection = jsonencode({ value = "Disabled" }) }
     # Would attach every VNet to a DDoS Network Protection plan.
     "Enforce-GR-Network0" = { vnetModifyDdos = jsonencode({ value = "Disabled" }) }
 

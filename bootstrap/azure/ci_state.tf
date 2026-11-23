@@ -47,6 +47,13 @@ resource "azurerm_storage_account" "ci_tfstate" {
   # ~$7.30/mo, so the public endpoint stays on, gated by Entra ID + RBAC.
   public_network_access_enabled = true
 
+  # Same free policy fixes as storage.tf (copy scope, no ACL bypass).
+  allowed_copy_scope = "AAD"
+  network_rules {
+    default_action = "Allow"
+    bypass         = ["None"]
+  }
+
   blob_properties {
     versioning_enabled = true
     delete_retention_policy {

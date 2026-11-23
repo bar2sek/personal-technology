@@ -50,6 +50,16 @@ resource "azurerm_storage_account" "tfstate" {
   # a data-plane role held only by the operator.
   public_network_access_enabled = true
 
+  # Free, in-place fixes for two Enforce-GR-Storage0 members (docs/417), so they
+  # don't need an exemption: copies only between accounts in this tenant, and no
+  # trusted-service bypass (moot while default_action is Allow, but compliant).
+  # The remaining network/encryption members are exempted in azure-governance.
+  allowed_copy_scope = "AAD"
+  network_rules {
+    default_action = "Allow"
+    bypass         = ["None"]
+  }
+
   blob_properties {
     versioning_enabled = true
     delete_retention_policy {

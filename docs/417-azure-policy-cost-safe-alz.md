@@ -94,7 +94,10 @@ These stay **assigned** (the other ~20 members of each are useful Deny/Modify gu
 
 ---
 
-### ⚠️ Open finding: unused privileged roles on the MCSB v2 identity (accepted 2026-11-09)
+### ✅ Resolved finding: unused privileged roles on the MCSB v2 identity (accepted 2026-11-09, removed in the M5 trim)
+
+> [!NOTE] Superseded 2026-11-22
+> The whole `Deploy-MCSB2-Monitoring` assignment is removed in [[#✂️ Trim: Privilege & Fit (M5, 2026-11-22)|the trim]], which takes its identity and all 9 grants with it. The text below is kept as the record of why.
 
 The alz provider grants each DINE/Modify assignment's managed identity every role its member definitions *declare*, whatever their effective effect. `Deploy-MCSB2-Monitoring` has no deploying members (all pinned to `AuditIfNotExists`), yet its identity received **8 roles at `mg-azure-homelab-prod-0bb5`, including User Access Administrator** (9 after Microsoft added *Guest Configuration Resource Contributor* to a built-in member in November 2026, see [[416-azure-management-groups-and-policy#🛠️ Troubleshooting & Gotchas|416]]), plus Backup Contributor and Log Analytics Contributor. Nobody can sign in as a policy assignment's system-assigned identity, but anyone able to edit the assignment (MG Owner, Resource Policy Contributor) could turn it into an escalation path, and an access review would flag standing UAA on a non-human identity.
 
@@ -121,6 +124,102 @@ All `lib/*.alz_policy_assignment.json`, added through `homelab_root`'s `policy_a
 
 ---
 
+## ✂️ Trim: Privilege & Fit (M5, 2026-11-22)
+
+The first trim (above) removed what **costs money**. The second removes what grants **standing privilege for no benefit**. It came from tracing one assignment end to end (`Enforce-GR-Storage0`, platform MG):
+
+```mermaid
+graph LR
+    D["22 member definitions<br/>effect = [parameters(...)]"] --> I["Initiative<br/>Enforce-Guardrails-Storage<br/>(defined on homelab root)"]
+    I --> A["Assignment on platform<br/>DoNotEnforce · definitionVersion 1.*.*<br/>storageThreatProtection = Disabled"]
+    A --> MI["System-assigned identity<br/>Contributor · Storage Account Contributor · Security Admin"]
+    A --> C["Compliance<br/>2 state accounts × 6 failures"]
+```
+
+What that trace taught:
+
+- **Effective effect = initiative default, unless the assignment overrides it.** Members say `[parameters('…')]`; defaults here were 18 Deny, 3 Modify, 1 DINE. One parameter on the assignment turned off the paid Defender member.
+- **Roles are granted per member, regardless of its effect.** The disabled (and deprecated) Defender for Storage *Classic* member still gave the identity **Security Admin**; one niche Azure File Sync Modify gave it **Contributor on all of platform**.
+- **Compliance evaluates even under `DoNotEnforce`,** and reports the effect as `deny`/`modify`. That's the preview of what enforcement would block.
+
+Across the lab, 120 live assignments; the ones with identities held roles like Contributor, User Access Administrator, Event Hubs/Service Bus **Data Owner** and SQL Security Manager for services the lab will never run.
+
+### The rule
+
+> [!IMPORTANT] Keep test
+> An assignment **without** a managed identity (Audit/Deny only) stays: it can only observe or block. One **with** an identity stays only if it targets a service on the roadmap ([[411-azure-mini-enterprise-architecture|docs/411]]: VNets/NSGs, Container Apps + ACR, Functions, App Service, Key Vault, Storage, Recovery Services, Log Analytics, DNS, Arc for Kubernetes). Removing an assignment keeps its definition on the root, so re-adding one is deleting a line in `lib/`.
+
+| Scope | Removed (47) | Why |
+|---|---|---|
+| homelab root | `Deploy-MCSB2-Monitoring` | UAA + Contributor at the root; MCSB already comes from `Deploy-ASC-Monitoring` (MG) and Defender's `SecurityCenterBuiltIn` (per subscription) |
+| homelab root | `Enforce-ACSB` | VM guest-config baseline, Contributor at the root; no VMs; Guest Configuration bills Arc servers |
+| platform + landingzones | `Enforce-GR-` BotService, CogServ, OpenAI, MachLearn, CosmosDb, MySQL, PostgreSQL, SQL, Synapse, DataExpl, DataFactory, EventHub, ServiceBus, EventGrid, APIM, VirtualDesk, Kubernetes (AKS), Automation, ContInst; `Enforce-Encrypt-CMK0` | services not on the roadmap |
+| platform + landingzones | `Enable-AUM-CheckUpdates`, `Deploy-GuestAttest` | VM/Arc-server only; Update Manager bills Arc servers |
+| landingzones | `Deploy-SQL-TDE` | SQL only |
+
+**Kept with identities:** `Enforce-GR-` Storage, KeyVault, KeyVaultSup, ContReg, ContApps, AppServices, Network, Compute; `Enforce-TLS-SSL-Q225`; `Deploy-ASC-Monitoring`; `Enforce-ALZ-Decomm`. The `assignment_parameters` overrides for the removed database guardrails were deleted from `main.tf`; restore one first if its guardrail is re-added.
+
+> [!TIP] Why not just block unused services?
+> An enterprise keeps every guardrail because it can't predict what teams deploy. The lab can: anything expensive is already denied by type (`Deny-Costly-ResTypes`) and region/SKU. If a removed service is ever needed, its guardrail comes back in the same PR that introduces the service.
+
+### Fix before you exempt: the state accounts
+
+The 6 failures on the two Terraform state accounts were split by cost of fixing:
+
+| Member | Resolution |
+|---|---|
+| `Deny-Storage-CopyScope` | **Fixed** in `bootstrap/azure`: `allowed_copy_scope = "AAD"` (in-place) |
+| `Deny-Storage-NetworkAclsBypass` | **Fixed**: `network_rules { default_action = "Allow", bypass = ["None"] }` (in-place; no access change) |
+| `Deny-Storage-NetworkRules`, `-Restrict-NetworkRules`, `Modify-Storage-Account-PublicEndpoint` | **Exempted**: default-deny needs a Private Endpoint (~$7.30/mo each) and a self-hosted runner |
+| `Deny-Storage-ServicesEncryption` | **Exempted**: queue/table `keyType = Account` is create-time only, so fixing it means rebuilding state accounts |
+
+The exemption (`bootstrap/azure-governance/exemptions.tf`) is one `Microsoft.Authorization/policyExemptions` per state resource group, against `Enforce-GR-Storage0` on platform, **limited to the 4 members** by `policyDefinitionReferenceIds`. The other 18 storage rules (shared keys, TLS, infrastructure encryption, etc.) still apply to the state accounts.
+
+- **Category `Waiver`, not `Mitigated`.** *Mitigated* claims the control's intent is met another way; a public endpoint is **accepted risk**, compensated (not mitigated) by Entra-only auth and data-plane RBAC.
+- **No expiry, on purpose.** An expired waiver would silently start denying state updates. Review it whenever Phase 2 networking adds Private Endpoints.
+
+### Apply order
+
+```bash
+just tf-plan azure
+just tf-apply azure
+```
+
+Expect **0 add / 2 change / 0 destroy** (the two state accounts, in-place).
+
+```bash
+just tf-plan azure-governance
+just tf-apply azure-governance
+```
+
+Expect **2 add / 0 change / 129 destroy**: 47 assignments and the 82 role assignments their identities held, plus the 2 exemptions. Both counts were confirmed by read-only plans on 2026-11-22. Then verify:
+
+```bash
+az policy exemption list --resource-group rg-azure-tfstate-ci-prod-cus-001 --subscription subscr-azure-management-homelab-prod-0bb5 --query "[].{name:name, category:exemptionCategory, members:policyDefinitionReferenceIds}" -o json
+```
+
+```bash
+az policy state trigger-scan --resource-group rg-azure-tfstate-ci-prod-cus-001 --subscription subscr-azure-management-homelab-prod-0bb5
+```
+
+```bash
+az policy state list --management-group mg-azure-platform-prod-0bb5 --filter "policyAssignmentName eq 'Enforce-GR-Storage0' and complianceState eq 'NonCompliant'" --query "[].{ref:policyDefinitionReferenceId, resource:resourceId}" -o table
+```
+
+After the scan the last command should return **nothing** (exempt resources report `Exempt`, fixed ones `Compliant`). Only then flip `platform` to `Default` (M5 step 3).
+
+> [!WARNING] `az policy exemption list --scope <rg id>` returns `[]` for these exemptions
+> Even though they exist. Use `--resource-group … --subscription …` (above) or `az policy exemption show --name Waiver-TfState-Storage-Network --resource-group …`.
+
+**Applied 2026-11-22:** `bootstrap/azure` 0/2/0, governance 2 add / 129 destroy. Verified live: both exemptions `Waiver` with the 4 members; **no User Access Administrator** left on any lab MG; the root's only policy-identity role is *Guest Configuration Resource Contributor* (`Deploy-ASC-Monitoring`); assignments homelab 13, platform 10, landingzones 19.
+
+**Compliance after a scoped scan (2026-11-22, `az policy state trigger-scan --resource-group …`, ~10 min):** each state account 12 `Compliant` + 4 `Exempt` + 0 `NonCompliant` on `Enforce-GR-Storage0`; nothing under platform is non-compliant with a Deny/Modify/DINE effect. **Platform is clear to enforce.** Check the evaluation timestamp first: a read right after the apply still showed the pre-change 6 failures.
+
+> [!NOTE] Remaining Contributor holders (accepted, kept on purpose)
+> Policy identities with Contributor at MG scope after the trim: `Enforce-GR-Storage0` (platform, landingzones; from the Azure File Sync Modify member), `Enforce-GR-ContReg0` (both), `Enforce-TLS-SSL-Q225` (landingzones). Plus the CI apply identity on landingzones, by design ([[418-azure-ci-rbac-and-state|418]]). The alz provider grants roles per member regardless of effect, so disabling the File Sync member wouldn't remove its grant; the only lever is `role_assignments_enabled = false` on the whole assignment, which would also stop its legitimate Modify members. Revisit if a library version splits File Sync out.
+
+---
+
 ## 🚦 Audit → Enforce Plan (M5)
 
 Everything starts `DoNotEnforce` (`policy_enforcement_default`). Flip per MG with `policy_enforcement_by_mg` in the governance root's `terraform.tfvars`, applying and checking after each step:
@@ -130,10 +229,16 @@ Everything starts `DoNotEnforce` (`policy_enforcement_default`). Flip per MG wit
    ```hcl
    policy_enforcement_by_mg = { sandbox = "Default", decommissioned = "Default", landingzones = "Default", corp = "Default" }
    ```
-3. **Platform MGs:** `platform`, `identity`. Re-check that the two state accounts are compliant with `Deny-Storage-SharedKey` (they're keyless) and that nothing in identity has a public IP.
+3. **Platform MGs:** `platform`, `identity`. ✅ **Applied 2026-11-22** after the trim and the compliance gate (13 assignments: platform 10, identity 3; verified live `Default`; both roots then planned `No changes` with state locking, so Terraform still reads and writes both state accounts under enforcement).
+   ```hcl
+   policy_enforcement_by_mg = { sandbox = "Default", decommissioned = "Default", landingzones = "Default", corp = "Default", platform = "Default", identity = "Default" }
+   ```
+   Re-check that the two state accounts are compliant with `Deny-Storage-SharedKey` (they're keyless) and that nothing in identity has a public IP.
 
    > [!CAUTION] Compliance read 2026-11-21: `Enforce-GR-Storage0` (platform MG) would break Terraform state
    > Both state accounts (`stazubootstrapprodcus001`, `stazutfciprodcus001`, management subscription) fail **5 Deny** members (`Deny-Storage-NetworkRules`, `-Restrict-NetworkRules`, `-NetworkAclsBypass`, `-CopyScope`, `-ServicesEncryption`) and **1 Modify** (`Modify-Storage-Account-PublicEndpoint`). Enforced on `platform`, the next Terraform update to either account is **denied**, and the Modify (on update, or via a remediation task) **turns off public network access**, which locks out the workstation and GitHub-hosted runners. Decide before flipping `platform`: a policy **exemption** (category `Waiver`) scoped to the two `rg-azure-tfstate-*` resource groups, recorded in code with its reason, or a private endpoint plus self-hosted runner (costs money). Everything else non-compliant (78 resources, 2026-11-21) is Audit/AuditIfNotExists: Defender plans left on Free, no activity-log export, LRS, no private link, all accepted in [[412-azure-lab-cost-guardrails|docs/412]]. The `SecurityCenterBuiltIn` rows are Defender's own subscription-level default assignment, outside Terraform.
+   >
+   > **Resolved in code 2026-11-22:** 2 members fixed on the accounts, 4 exempted with a scoped `Waiver` ([[#Fix before you exempt: the state accounts|Trim section]]). Flip `platform` only after the compliance check there comes back empty.
 4. **Intermediate root last** (`homelab = "Default"`), because it carries the custom denies that reach every subscription. Then **test the Defender deny** in the security subscription with the cheapest plan (Key Vault, billed per transaction):
    ```bash
    az security pricing create -n KeyVaults --tier standard --subscription subscr-azure-security-homelab-prod-0bb5

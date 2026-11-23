@@ -1,5 +1,6 @@
-# Platform MG. The Enforce-GR-* guardrail initiatives stay, with their paid
-# Defender members set to Disabled in main.tf (assignment_parameters).
+# Platform MG. The kept Enforce-GR-* guardrail initiatives (Storage, KeyVault,
+# KeyVaultSup, ContReg, ContApps, AppServices, Network, Compute) stay, with their
+# paid Defender members set to Disabled in main.tf (assignment_parameters).
 name: homelab_platform
 base_archetype: platform
 policy_assignments_to_remove:
@@ -11,3 +12,30 @@ policy_assignments_to_remove:
   - Deploy-VM-Monitoring      # VM Insights -> Log Analytics ingestion
   - Deploy-VMSS-Monitoring
   - Deploy-vmHybr-Monitoring
+  # --- M5 trim (docs/417 "Trim"): rule = an assignment WITHOUT a managed identity
+  # (Audit/Deny only) stays; one WITH an identity stays only if it targets a
+  # service on the roadmap (docs/411). Each of these held standing write roles
+  # (often Contributor) on the whole MG for services the lab will not run.
+  # Definitions stay on the root, so re-adding one is deleting its line here.
+  - Enforce-GR-BotService0
+  - Enforce-GR-CogServ0
+  - Enforce-GR-OpenAI0
+  - Enforce-GR-MachLearn0
+  - Enforce-GR-CosmosDb0      # also had a paid Defender member
+  - Enforce-GR-MySQL0         # also had a paid Defender member
+  - Enforce-GR-PostgreSQL0    # also had a paid Defender member
+  - Enforce-GR-SQL0           # also had a paid Defender member
+  - Enforce-GR-Synapse0       # also had a paid Defender member
+  - Enforce-GR-DataExpl0
+  - Enforce-GR-DataFactory0
+  - Enforce-GR-EventHub0      # identity held Event Hubs Data Owner
+  - Enforce-GR-ServiceBus0    # identity held Service Bus Data Owner
+  - Enforce-GR-EventGrid0
+  - Enforce-GR-APIM0
+  - Enforce-GR-VirtualDesk0
+  - Enforce-GR-Kubernetes0    # AKS only; the lab runs Talos + Arc
+  - Enforce-GR-Automation0
+  - Enforce-GR-ContInst0
+  - Enforce-Encrypt-CMK0      # customer-managed keys: not planned
+  - Enable-AUM-CheckUpdates   # VMs/Arc servers only; Update Manager bills Arc servers
+  - Deploy-GuestAttest        # Trusted Launch VMs only; no VMs planned

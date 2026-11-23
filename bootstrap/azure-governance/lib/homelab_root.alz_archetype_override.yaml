@@ -12,6 +12,10 @@ policy_assignments_to_remove:
   - Deploy-AzActivity-Log     # needs a Log Analytics workspace (Phase 5)
   - Deploy-Diag-LogsCat       # diagnostic logs of every resource into Log Analytics (ingestion billed)
   - Deploy-SvcHealth-BuiltIn  # creates RGs + alert rules in every sub; revisit with monitoring (Phase 5)
+  # --- M5 trim (docs/417): standing privilege at the root for no benefit.
+  - Deploy-MCSB2-Monitoring  # identity held User Access Administrator + Contributor at the root; MCSB is
+                             # already covered by Deploy-ASC-Monitoring (MG) + SecurityCenterBuiltIn (per sub)
+  - Enforce-ACSB             # VM guest-config baseline, Contributor at the root; no VMs; bills Arc servers
 policy_definitions_to_add:
   - Deny-Paid-Defender-Plans
 policy_assignments_to_add:
