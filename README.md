@@ -1,12 +1,14 @@
 ---
-title: "Enterprise Hybrid Homelab (Talos Linux + UniFi + AWS Cloud)"
+title: "Enterprise Hybrid Homelab — Talos Linux, UniFi & Multi-Cloud (Azure & AWS)"
 date: 2026-09-07
 tags:
   - talos
   - kubernetes
   - unifi
   - ceph
+  - azure
   - aws
+  - multi-cloud
   - terraform
   - homelab
   - hub
@@ -16,30 +18,32 @@ aliases:
   - "Talos Cluster"
 ---
 
-# 🚀 Enterprise Hybrid Homelab (Talos Linux + UniFi + AWS Cloud)
+# 🚀 Enterprise Hybrid Homelab — Talos Linux, UniFi & Multi-Cloud (Azure & AWS)
 
-A production-grade, declarative hybrid Kubernetes infrastructure powered by **Talos Linux**, **Sidero Omni**, **Ubiquiti UniFi**, **Rook-Ceph**, **KubeVirt**, **Authentik**, and **AWS Cloud**.
+A production-grade, declarative hybrid multi-cloud Kubernetes infrastructure powered by **Talos Linux**, **Sidero Omni**, **Ubiquiti UniFi**, **Rook-Ceph**, **KubeVirt**, **Authentik**, **Microsoft Azure** (Entra ID, Arc, Landing Zones), and **AWS**.
 
 ---
 
 ## 📊 Infrastructure Resource Overview
 
-| Resource Layer | Physical Hardware & Capacity Breakdown |
-| :--- | :--- |
-| **Physical Nodes** | **6 Nodes**: `omni-server` (Dell OptiPlex), `sm-node-01/02` (Supermicro Xeon D), `sm-node-03` (Supermicro 1U Xeon E5), `pc-node-04` (Ryzen 3800X storage PC: SSD + HDD host), `pc-node-05` (Ryzen 7600 RTX 4070 GPU PC, also an HDD host). |
-| **Total Compute** | **36 Physical Cores / 72 vCPU Threads** (`allowSchedulingOnControlPlanes: true` across all 5 cluster nodes). |
-| **Total Memory** | **320 GB DDR4 RAM**. |
-| **Total Storage** | **~40 TiB Raw Rook-Ceph Storage (20 OSDs across 5 hosts, as of 2026-11-05)**: **5.0 TiB High-IOPS NVMe Tier** (4 OSDs) + **15 TiB Replicated SATA SSD Tier** (8 OSDs) + **21 TiB Bulk HDD Tier** (8 OSDs, erasure coded 2+1). *(Storage reshuffle complete. See [110 - /var migration](docs/110-ephemeral-var-migration.md).)* |
-| **Network Fabric** | **3.5 Gbps Google Fiber WAN**, **20 Gbps LAG SFP+ Switch Backbone**, **Dual 10G SFP+ Server Uplinks**, **2.5G Multi-Gig Node Uplink**, MTU 9000 Jumbo Frames, Dual-Stack IPv4/IPv6, UniFi U7 Pro (Wi-Fi 7) & U6-Lite (Wi-Fi 6). |
+| Resource Layer     | Physical Hardware & Capacity Breakdown                                                                                                                                                                                                                                                                                         |
+| :----------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Physical Nodes** | **6 Nodes**: `omni-server` (Dell OptiPlex), `sm-node-01/02` (Supermicro Xeon D), `sm-node-03` (Supermicro 1U Xeon E5), `pc-node-04` (Ryzen 3800X storage PC: SSD + HDD host), `pc-node-05` (Ryzen 7600 RTX 4070 GPU PC, also an HDD host).                                                                                     |
+| **Total Compute**  | **36 Physical Cores / 72 vCPU Threads** (`allowSchedulingOnControlPlanes: true` across all 5 cluster nodes).                                                                                                                                                                                                                   |
+| **Total Memory**   | **320 GB DDR4 RAM**.                                                                                                                                                                                                                                                                                                           |
+| **Total Storage**  | **~40 TiB Raw Rook-Ceph Storage (20 OSDs across 5 hosts, as of 2026-11-05)**: **5.0 TiB High-IOPS NVMe Tier** (4 OSDs) + **15 TiB Replicated SATA SSD Tier** (8 OSDs) + **21 TiB Bulk HDD Tier** (8 OSDs, erasure coded 2+1). _(Storage reshuffle complete. See [110 - /var migration](docs/110-ephemeral-var-migration.md).)_ |
+| **Network Fabric** | **3.5 Gbps Google Fiber WAN**, **20 Gbps LAG SFP+ Switch Backbone**, **Dual 10G SFP+ Server Uplinks**, **2.5G Multi-Gig Node Uplink**, MTU 9000 Jumbo Frames, Dual-Stack IPv4/IPv6, UniFi U7 Pro (Wi-Fi 7) & U6-Lite (Wi-Fi 6).                                                                                                |
 
 ---
 
 ## 📚 Categorized Documentation Index
 
 ### 📋 Live Operations & State Handover
+
 - [001 - Homelab Deployment Journal & Handover Runbook](docs/001-deployment-journal.md)
 
 ### 🏗 Section 1: Hardware Architecture & Deployment Phases
+
 - [101 - Hardware Inventory & Resource Breakdown](docs/101-hardware-inventory.md)
 - [102 - Architecture Blueprint & Technology Stack](docs/102-architecture-design.md)
 - [103 - Phase 1: Sidero Omni & Talos Bootstrap Guide](docs/103-phase1-omni-talos-bootstrap.md)
@@ -56,6 +60,7 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 - [114 - sm-node-01 SATA Fault: osd.6 Missing After the 2026-11-08 Restart](docs/114-sm-node-01-sata-fault-osd6.md)
 
 ### 🌐 Section 2: UniFi Networking & Infrastructure
+
 - [201 - UniFi Physical Cabling & Logical Topology Diagrams](docs/201-unifi-network-topology.md)
 - [202 - Cloudflare Tunnel & Zero Trust Remote Access](docs/202-cloudflare-tunnel-zero-trust.md)
 - [203 - Tailscale Kubernetes Operator & Mesh VPN](docs/203-tailscale-mesh-vpn.md)
@@ -63,6 +68,7 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 - [205 - Split-Horizon DNS: Closing the IPv6 (AAAA) Leak](docs/205-split-horizon-dns-ipv6-leak.md)
 
 ### ⚙️ Section 3: Talos Linux & Cluster Administration
+
 - [301 - Network PXE Boot & Node Provisioning Instruction Manual](docs/301-pxe-boot-node-provisioning.md)
 - [302 - GitHub Actions ARC Self-Hosted CI/CD](docs/302-github-actions-runner-controller.md)
 - [303 - KubeVirt Bazzite Gaming VM (RTX 4070 Passthrough)](docs/303-kubevirt-bazzite-gpu-vm.md)
@@ -70,12 +76,13 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 - [306 - Hybrid Cloud & Remote AI Development Architecture](docs/306-hybrid-local-remote-ai-dev.md)
 - [307 - Garage Synology NAS: Tier-3 Local DR & Time Machine](docs/307-garage-synology-dr-time-machine.md)
 
-### ☁️ Section 4: Hybrid Multi-Cloud (AWS + Azure Arc & Entra ID)
-> Cloud placement (2026-11-09): what runs in AWS stays in AWS; new work goes to the best product or price, with Azure winning ties. See the placement policy in doc 411.
+### ☁️ Section 4: Hybrid Multi-Cloud (Azure & AWS)
 
-- [401 - AWS Controllers for Kubernetes (ACK) Architecture](docs/401-aws-ack-hybrid-architecture.md) *(dropped)*
-- [402 - AWS EKS Connector & Unified AWS Console Management](docs/402-aws-eks-connector.md) *(parked, replaced by Azure Arc)*
-- [403 - Authentik Master IdP & AWS SAML 2.0 Identity Federation](docs/403-identity-sso-authentik-aws.md) *(AWS federation replaced by Entra ID, doc 411 Phase 8)*
+> Cloud placement (2026-11-09): what runs in AWS stays in AWS; new work goes to the best product or price, with Azure winning ties. See the placement policy in [doc 411](docs/411-azure-mini-enterprise-architecture.md).
+
+- [401 - AWS Controllers for Kubernetes (ACK) Architecture](docs/401-aws-ack-hybrid-architecture.md) _(dropped)_
+- [402 - AWS EKS Connector & Unified AWS Console Management](docs/402-aws-eks-connector.md) _(parked, replaced by Azure Arc)_
+- [403 - Authentik Master IdP & AWS SAML 2.0 Identity Federation](docs/403-identity-sso-authentik-aws.md) _(AWS federation replaced by Entra ID, doc 411 Phase 8)_
 - [404 - AWS Multi-Account Landing Zone (Organizations, IAM Identity Center & Terraform)](docs/404-aws-landing-zone-organizations-terraform.md)
 - [405 - AWS Account Factory for Terraform (AFT) vs GitHub Actions GitOps](docs/405-aws-account-factory-terraform.md)
 - [407 - Microsoft Entra ID & Authentik Enterprise Identity Federation](docs/407-azure-entra-id-authentik-federation.md)
@@ -89,9 +96,10 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 - [416 - Azure Mini Enterprise Phase 1: Management Groups, Policy & CI RBAC](docs/416-azure-management-groups-and-policy.md)
 - [417 - Cost-Safe ALZ Policy: What Was Removed, Hidden Defender Traps & Guardrails](docs/417-azure-policy-cost-safe-alz.md)
 - [418 - Azure CI RBAC & State: Split Plan/Apply OIDC Identities](docs/418-azure-ci-rbac-and-state.md)
-- [410 - Azure Cloud & AI Transformation Roadmap: Homelab Hybrid Architecture](docs/410-azure-cloud-and-ai-transformation-roadmap.md) *(superseded by doc 411)*
+- [410 - Azure Cloud & AI Transformation Roadmap: Homelab Hybrid Architecture](docs/410-azure-cloud-and-ai-transformation-roadmap.md) _(superseded by doc 411)_
 
 ### 📦 Section 5: Self-Hosted Application Suite
+
 - [501 - TeslaMate Vehicle Telemetry & Analytics Platform](docs/501-teslamate-telemetry-deployment.md)
 - [502 - Actual Budget Self-Hosted Personal Finance Platform](docs/502-personal-finance-apps.md)
 - [503 - Mealie Recipe Manager & Meal Planner](docs/503-mealie-recipe-planner.md)
@@ -102,10 +110,12 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 - [508 - Self-Hosted Drive: Product Options & Trial Plan (Planned)](docs/508-self-hosted-drive.md)
 
 ### 🗂️ Backlog (Researched & Parked)
+
 - [Backlog Index](docs/backlog/README.md) — parked projects with decisions, parts and pickup checklists
 - [Garage Mini Split Freeze Guard (ESPHome IR)](docs/backlog/garage-mini-split-ir-control.md)
 
 ### 💻 Section 6: Mac AI Workstation Architecture & USB Bootstrap
+
 - [Workstation Map of Content](nix-mac/Index.md) — Master Workstation Index & Navigation
 - [Declarative macOS Architecture](nix-mac/README.md) — `nix-darwin`, system-as-code & clean runtime principles
 - [Offline Bootstrap Guide](nix-mac/START_HERE.html) — Standalone visual USB setup instructions
@@ -123,10 +133,11 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
 │   └── k8s-validate.yml       # YAML and Kubernetes manifest validation
 ├── terraform/                 # On-premises homelab infrastructure (applied locally from workstation)
 │   └── unifi/                 # UDM-Pro VLANs (10,20,30,40,50,60,90), firewalls, split-horizon DNS
-├── bootstrap/                 # Day-0 cloud & CI/CD bootstrap roots (before deployment repo takes over)
+├── bootstrap/                 # Day-0 multi-cloud & CI/CD bootstrap roots (before deployment repo takes over)
 │   ├── aws/                   # AWS OIDC role & remote state storage
 │   ├── aws_organization/      # Multi-account landing zone & account provisioning
 │   ├── azure/                 # Entra ID, OIDC workload identity, budgets & admin-only state
+│   ├── azure-governance/      # Management groups, cost-safe ALZ Policy & split plan/apply CI RBAC
 │   └── github/                # GitHub deployment repository, environments & multi-cloud OIDC variables
 ├── nix-mac/                   # Workstation configuration & USB bootstrap suite
 │   ├── START_HERE.html        # Offline visual bootstrap guide for new Mac setup
@@ -177,11 +188,12 @@ A production-grade, declarative hybrid Kubernetes infrastructure powered by **Ta
         ├── storage-worker.yaml# pc-node-04 storage worker
         └── gpu-worker.yaml    # pc-node-05 AM5 Ryzen 7600 + RTX 4070 VFIO passthrough
 ```
+
 ---
 
 ## 🧰 Running Terraform Locally
 
-Always go through the Justfile (`just tf-plan <dir>`, `just tf-apply <dir>`, `just tf-init <dir> [-upgrade]`, or `just tf <dir> <subcommand>`), where `<dir>` is a root under `terraform/` or `bootstrap/` (e.g. `unifi`, `aws`, `github`). The recipes set `TF_DATA_DIR` to `~/.terraform-data/personal-technology/<terraform|bootstrap>-<dir>` and share provider binaries via `TF_PLUGIN_CACHE_DIR` (`~/.terraform.d/plugin-cache`), so **no `.terraform/` directory is ever created inside the Google Drive–synced vault**. A missing cache is not an error: the first run auto-runs `terraform init` (offline from the shared cache when the provider is already there).
+Always go through the Justfile (`just tf-plan <dir>`, `just tf-apply <dir>`, `just tf-init <dir> [-upgrade]`, or `just tf <dir> <subcommand>`), where `<dir>` is a root under `terraform/` or `bootstrap/` (e.g. `unifi`, `azure`, `azure-governance`, `aws`, `github`). The recipes set `TF_DATA_DIR` to `~/.terraform-data/personal-technology/<terraform|bootstrap>-<dir>` and share provider binaries via `TF_PLUGIN_CACHE_DIR` (`~/.terraform.d/plugin-cache`), so **no `.terraform/` directory is ever created inside the Google Drive–synced vault**. A missing cache is not an error: the first run auto-runs `terraform init` (offline from the shared cache when the provider is already there).
 
 - **Verify:** `find . -name .terraform` from the repo root prints nothing.
 - **Where's my cache?** `just tf-data-dir unifi`. Delete it freely; the next run re-inits.
