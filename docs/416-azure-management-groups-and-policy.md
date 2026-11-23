@@ -188,7 +188,7 @@ Expect 4 role assignments to add.
 
 ### M5: enforce
 
-Per [[417-azure-policy-cost-safe-alz#🚦 Audit → Enforce Plan (M5)|docs/417]]: read the compliance results, then flip one MG at a time with `policy_enforcement_by_mg`.
+Per [[417-azure-policy-cost-safe-alz#🚦 Audit → Enforce Plan (M5)|docs/417]]: read the compliance results, then flip one MG at a time with `policy_enforcement_by_mg`. **Complete 2026-11-23:** all MGs enforced, `Deny-Paid-Defender` proven by test, default switched to `Default` (map now opt-out only).
 
 > [!NOTE] ALZ trim (2026-11-22)
 > Before enforcing platform, the policy layer was trimmed for **privilege and fit**: 47 assignments whose managed identities held write roles for services the lab won't run were removed (82 role grants go with them), two free fixes were made on the state accounts, and the 4 remaining failures there got a scoped `Waiver` exemption. Decision: keep `avm-ptn-alz` for the hierarchy and the CAF guardrails that fit, rather than replace it with custom policy. Details: [[417-azure-policy-cost-safe-alz#✂️ Trim: Privilege & Fit (M5, 2026-11-22)|docs/417 Trim]].

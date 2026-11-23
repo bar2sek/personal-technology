@@ -14,9 +14,9 @@ variable "policy_enabled" {
 }
 
 variable "policy_enforcement_default" {
-  description = "Enforcement mode for every policy assignment. DoNotEnforce still evaluates compliance (audit data), but Deny doesn't block and DINE/Modify don't remediate."
+  description = "Enforcement mode for every policy assignment (Default = enforce). Enforced by default since M5 completed (2026-11-23, docs/417). DoNotEnforce still evaluates compliance (audit data), but Deny doesn't block and DINE/Modify don't remediate."
   type        = string
-  default     = "DoNotEnforce"
+  default     = "Default"
 
   validation {
     condition     = contains(["Default", "DoNotEnforce"], var.policy_enforcement_default)
@@ -25,7 +25,7 @@ variable "policy_enforcement_default" {
 }
 
 variable "policy_enforcement_by_mg" {
-  description = "Per management group override of policy_enforcement_default, keyed by the <category> node (homelab, platform, identity, landingzones, corp, sandbox, ...). Used to flip to enforce one MG at a time (M5)."
+  description = "Per management group override of policy_enforcement_default, keyed by the <category> node (homelab, platform, identity, landingzones, corp, sandbox, ...). Used in M5 to enforce one MG at a time; now an explicit OPT-OUT, e.g. { connectivity = \"DoNotEnforce\" } while new assignments from a library upgrade soak in audit (docs/417)."
   type        = map(string)
   default     = {}
 

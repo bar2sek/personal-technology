@@ -239,15 +239,18 @@ Everything starts `DoNotEnforce` (`policy_enforcement_default`). Flip per MG wit
    > Both state accounts (`stazubootstrapprodcus001`, `stazutfciprodcus001`, management subscription) fail **5 Deny** members (`Deny-Storage-NetworkRules`, `-Restrict-NetworkRules`, `-NetworkAclsBypass`, `-CopyScope`, `-ServicesEncryption`) and **1 Modify** (`Modify-Storage-Account-PublicEndpoint`). Enforced on `platform`, the next Terraform update to either account is **denied**, and the Modify (on update, or via a remediation task) **turns off public network access**, which locks out the workstation and GitHub-hosted runners. Decide before flipping `platform`: a policy **exemption** (category `Waiver`) scoped to the two `rg-azure-tfstate-*` resource groups, recorded in code with its reason, or a private endpoint plus self-hosted runner (costs money). Everything else non-compliant (78 resources, 2026-11-21) is Audit/AuditIfNotExists: Defender plans left on Free, no activity-log export, LRS, no private link, all accepted in [[412-azure-lab-cost-guardrails|docs/412]]. The `SecurityCenterBuiltIn` rows are Defender's own subscription-level default assignment, outside Terraform.
    >
    > **Resolved in code 2026-11-22:** 2 members fixed on the accounts, 4 exempted with a scoped `Waiver` ([[#Fix before you exempt: the state accounts|Trim section]]). Flip `platform` only after the compliance check there comes back empty.
-4. **Intermediate root last** (`homelab = "Default"`), because it carries the custom denies that reach every subscription. Then **test the Defender deny** in the security subscription with the cheapest plan (Key Vault, billed per transaction):
+4. **Intermediate root last** (`homelab = "Default"`), because it carries the custom denies that reach every subscription. ✅ **Applied 2026-11-23 00:18 UTC** after a compliance gate (94 non-compliant rows from root assignments, all Audit/AuditIfNotExists; MCSB has no deploying members). 13 assignments `Default`, verified live; both roots plan `No changes`. Wait ~30 min for propagation before the Defender test, or a too-early test can falsely succeed. Then **test the Defender deny** in the security subscription with the cheapest plan (Key Vault, billed per transaction):
    ```bash
    az security pricing create -n KeyVaults --tier standard --subscription subscr-azure-security-homelab-prod-0bb5
    ```
    Expect `RequestDisallowedByPolicy` naming `Deny-Paid-Defender`. If it **succeeds**, the deny doesn't work on pricings: set the plan straight back and record the result here.
+
+   > [!SUCCESS] Proven 2026-11-23 00:50 UTC (32 min after enforcing the root)
+   > `az security pricing create -n KeyVaults --tier standard` → **`RequestDisallowedByPolicy`**, `policyAssignmentName: Deny-Paid-Defender`, effect `Deny`. The evaluation details show all three conditions true: `type == Microsoft.Security/pricings`, `pricingTier` `standard` equals `Standard` (**policy string comparison is case-insensitive**), and `name` `KeyVaults` not in `[Discovery, FoundationalCspm]`. The plan stayed `Free`. So a Deny **does** work on this subscription-level extension resource: the preventive control the Phase 0 incident lacked is now real, not assumed.
    ```bash
    az security pricing create -n KeyVaults --tier free --subscription subscr-azure-security-homelab-prod-0bb5
    ```
-5. Once everything is enforced, set `policy_enforcement_default = "Default"` and drop the per-MG map.
+5. Once everything is enforced, set `policy_enforcement_default = "Default"` and drop the per-MG map. ✅ **Done 2026-11-23** (option B): the committed default in `variables.tf` is now `Default`, the map is gone from `terraform.tfvars`, and the plan showed **No changes**, proof the refactor kept behaviour identical. `policy_enforcement_by_mg` stays as an explicit **opt-out**.
 
 > [!WARNING] Enforcing DINE is not retroactive
 > Flipping a DINE/Modify assignment to `Default` only affects resources created or updated afterwards. Existing resources need a **remediation task** (`az policy remediation create`). That's the step that could create cost, so run one only after re-reading the assignment.
@@ -263,6 +266,14 @@ python3 -I bootstrap/azure-governance/scripts/alz_inventory.py /tmp/alzlib/*/pla
 ```
 
 Compare `/tmp/alz-new.txt` against this note: any **new** assignment or deploying member on root, platform, landing_zones, identity, connectivity, corp, sandbox or decommissioned needs a decision. Then bump `ref` in `providers.tf`, plan, and read the diff. The plan is the second safety net, because a new assignment shows up as `will be created`.
+
+> [!IMPORTANT] Enforced-by-default rule (since 2026-11-23)
+> Every MG is enforced and new assignments inherit that, so a library upgrade or a re-added assignment is **live on apply**. Neither the default nor a per-MG map protects against this; **the plan review does**:
+> 1. For every `will be created` policy assignment, look up its effect (and its members' effects for an initiative).
+> 2. **Deny / Modify / DINE** → before applying, opt its MG out for a soak period, e.g. `policy_enforcement_by_mg = { corp = "DoNotEnforce" }`, read compliance, then remove the override.
+> 3. Audit / AuditIfNotExists → apply as is.
+>
+> Limits of the blast radius: a new Deny only blocks future writes; a new DINE/Modify only acts on resources created or updated afterwards and never remediates existing ones without an explicit `az policy remediation create`. If per-assignment soak ever matters (several workload environments), move to a per-assignment allowlist ("option C" / policy rings).
 
 ---
 
