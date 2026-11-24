@@ -69,11 +69,11 @@ Located in `templates/bootstrap.sh`, this script executes the entire workstation
 2. **Homebrew:** Installs Homebrew and sets up shell paths.
 3. **Determinate Nix:** Installs the modern, reliable Nix package manager daemon.
 4. **Nix-Darwin System Build:**
-   * Installs **Brave Browser, Microsoft Edge, Google Drive, Microsoft OneNote, Keymapp, Obsidian, AppCleaner, Visual Studio Code, Ghostty, and OrbStack**.
+   * Installs **Google Chrome, Microsoft Edge, Google Drive, Microsoft OneNote, Keymapp, Obsidian, AppCleaner, Visual Studio Code, Ghostty, and OrbStack**.
    * Installs **JetBrainsMono Nerd Font** system-wide.
    * **home-manager writes `~/.config/ghostty/config`** with matching fonts, ligatures, and the TokyoNight theme.
    * **Organizes the Dock in your custom 3-section order**:
-     * 🌐 **Left (Browsers):** Safari $\rightarrow$ Microsoft Edge $\rightarrow$ Brave Browser
+     * 🌐 **Left (Browsers):** Safari $\rightarrow$ Google Chrome $\rightarrow$ Microsoft Edge
      * 💬 **Middle (Apple Core & OneNote):** Messages $\rightarrow$ Mail $\rightarrow$ Maps $\rightarrow$ Photos $\rightarrow$ FaceTime $\rightarrow$ Calendar $\rightarrow$ Contacts $\rightarrow$ Reminders $\rightarrow$ Notes $\rightarrow$ Microsoft OneNote
      * 💻 **Right (Developer & AI):** Gemini $\rightarrow$ Antigravity $\rightarrow$ Ghostty $\rightarrow$ Visual Studio Code $\rightarrow$ Obsidian $\rightarrow$ OrbStack
    * Enforces local file saving defaults (disables iCloud file routing).

@@ -40,8 +40,8 @@ What this single command does automatically:
 • Installs JetBrainsMono Nerd Font system-wide.
 • Auto-configures Ghostty & Zsh with Powerlevel10k (Apple icon , Git status, Eza file icons, Bat syntax colors).
 • Arranges your Dock in your exact 3-section layout:
-  [Safari] [Edge] [Brave] | [Messages]...[OneNote] | [Gemini] [Antigravity] [Ghostty] [VS Code] [Obsidian] [OrbStack]
-• Disables browser telemetry on Edge/Brave and sets Google as default search.
+  [Safari] [Chrome] [Edge] | [Messages]...[OneNote] | [Gemini] [Antigravity] [Ghostty] [VS Code] [Obsidian] [OrbStack]
+• Disables browser telemetry on Edge and sets Google as default search.
 • Purges GarageBand and iMovie bloatware to reclaim ~5–8 GB of SSD space.
 
 --------------------------------------------------------------------------------

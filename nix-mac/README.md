@@ -43,7 +43,7 @@ bash templates/bootstrap.sh
 * Auto-configures **Visual Studio Code** (Tokyo Night theme, JetBrainsMono Nerd Font, Material Icons, and declarative extensions) and writes the Continue multi-model config (`~/.continue/config.yaml`).
 * Installs the **Antigravity CLI (`agy`)** (`bootstrap.sh`).
 * Configures **Ghostty** and **Zsh** with Powerlevel10k (colors, icons, Git status).
-* Arranges the macOS Dock in a tidy 3-tier layout and eliminates telemetry from Edge and Brave.
+* Arranges the macOS Dock in a tidy 3-tier layout and eliminates telemetry from Microsoft Edge.
 * Purges GarageBand, iMovie, and sound libraries to reclaim **~5–8 GB** of SSD space.
 
 ---

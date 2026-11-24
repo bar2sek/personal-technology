@@ -55,7 +55,6 @@
     # GUI Applications
     casks = [
       # Browsers
-      "brave-browser"
       "google-chrome"
       "microsoft-edge"
 
@@ -118,7 +117,6 @@
         "/System/Cryptexes/App/System/Applications/Safari.app"
         "/Applications/Google Chrome.app"
         "/Applications/Microsoft Edge.app"
-        "/Applications/Brave Browser.app"
 
         # 2. Apple Core Productivity, Google Photos, OneNote & Music (Middle)
         "/System/Applications/Messages.app"
@@ -214,16 +212,6 @@
         StageManagerHideWidgets = true;          # Show items in Stage Manager: OFF
         GloballyEnabled = false;                 # Stage Manager: OFF
         AppWindowGroupingBehavior = 1;           # Show windows from an app: All at Once
-      };
-
-      # Brave Browser (Zero Telemetry + Google Default Search)
-      "com.brave.Browser" = {
-        BraveRewardsP3AEnabled = false;          # Disable P3A product analytics
-        BraveStatsPing = false;                  # Disable stats ping
-        MetricsReportingEnabled = false;         # Disable metrics reporting
-        DefaultSearchProviderEnabled = true;
-        DefaultSearchProviderSearchURL = "https://www.google.com/search?q={searchTerms}";
-        DefaultSearchProviderName = "Google";
       };
 
       # Microsoft Edge (Zero Telemetry + Google Default Search)
