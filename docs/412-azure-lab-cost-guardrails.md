@@ -90,7 +90,7 @@ This root's state holds the **Authentik client secret** in plaintext (Terraform 
 | CI must not have management-plane rights over it | It lives in the **management** subscription. The GitHub Actions SP has Contributor on **identity** only. (Contributor on the account could re-enable shared keys, list them, and read every blob.) |
 | Versioning + purge of old versions, no immutability | Versioning on; lifecycle rule deletes noncurrent versions after 30 days; 30-day blob and container soft delete |
 | Destroy protection | `prevent_destroy` on the account, plus a `CanNotDelete` resource lock on the RG |
-| Second access gate | Shared keys disabled; only the operator holds `Storage Blob Data Contributor` (even an Owner gets 403 without it) |
+| Second access gate | Shared keys disabled; only the operator holds `Storage Blob Data Contributor` (even an Owner gets 403 without it) ; local users disabled (`local_user_enabled = false`, 2026-11-24, [[418-azure-ci-rbac-and-state#🗄️ CI State Account\|418]]) |
 
 > [!WARNING] Keep CI away from it in Phase 1
 > When CI RBAC is redesigned, **never** grant the pipeline any role on the management subscription that covers `rg-azure-tfstate-bootstrap-*`. Phase 1 adds the policy "Storage accounts should prevent shared key access" with a Deny effect, which blocks re-enabling keys whatever any role allows.

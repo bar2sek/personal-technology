@@ -66,13 +66,40 @@ graph LR
 
 ## 🗄️ CI State Account
 
-`rg-azure-tfstate-ci-prod-cus-001` / `stazutfciprodcus001`, **management** subscription, same hardening as the bootstrap account ([[412-azure-lab-cost-guardrails#🔐 Admin-Only Bootstrap State|docs/412]]): shared keys off, TLS 1.2, infrastructure encryption, versioning with 30-day purge, soft delete, `CanNotDelete` lock, `prevent_destroy`. A few cents a month.
+`rg-azure-tfstate-ci-prod-cus-001` / `stazutfciprodcus001`, **management** subscription, same hardening as the bootstrap account ([[412-azure-lab-cost-guardrails#🔐 Admin-Only Bootstrap State|docs/412]]): shared keys off, local users off, TLS 1.2, infrastructure encryption, versioning with 30-day purge, soft delete, `CanNotDelete` lock, `prevent_destroy`. A few cents a month.
 
 Why a **separate** account, and why **container-scope data roles** only:
 
 - **Separate:** bootstrap state holds the Authentik client secret. If CI and admin shared an account, anyone who can open a PR could read it ([[409-github-cloud-oidc-gitops|docs/409]] finding 1).
 - **Data plane only:** Contributor (management plane) on a storage account can re-enable shared keys and list them, which bypasses every data-plane role. A `Storage Blob Data *` role on one container can't.
 - **Plan can't lock:** a Terraform lock on the azurerm backend is a **blob lease**, which is a write. Giving the plan job write access to take a lease would also let a PR overwrite the state. PR plans are speculative, so they run with `-lock=false`; the apply job takes the lock.
+
+### Local users off (2026-11-24)
+
+**Local users** are a second identity system on a storage account, separate from Entra ID. Each one is a username on the account with an SSH key or an Azure-generated password. They exist for SFTP (and NFSv3/SMB on some account types). Azure turns `isLocalUserEnabled` on by default, and **`shared_access_key_enabled = false` doesn't cover them**. Both state accounts had it on, with no local users created. **Applied 2026-11-24** (0 add / 2 change / 0 destroy); verified live: `False` on both; follow-up plan `No changes`.
+
+Why turn it off when SFTP is off and HNS is off:
+
+- **No Entra in the loop.** A local user's credential doesn't go through Conditional Access, MFA or sign-in logs, and Entra can't revoke it. It's the same class of risk as an account key, which we already turned off.
+- **Who could add one.** Creating a local user is a management-plane write (`Microsoft.Storage/storageAccounts/localUsers/write`), so anyone with Contributor or Storage Account Contributor on the account could add one. With `local_user_enabled = false`, that person also has to change the account setting first. That change shows in the activity log, and Terraform reverts it as drift on the next plan.
+- **It's free and nothing uses it.** The change is in place, with no data movement and no downtime.
+
+Applied to **both** state accounts (`ci_state.tf`, `storage.tf`), because the bootstrap one holds the Authentik secret and the two accounts are meant to stay identical.
+
+```bash
+just tf-plan azure      # expect 0 to add, 2 to change (local_user_enabled true -> false), 0 to destroy
+just tf-apply azure
+```
+
+**Verify** (expect `False` on both; local-user list empty):
+
+```bash
+sub=$(az account list --query "[?contains(name,'management')].id | [0]" -o tsv)
+az storage account list --subscription "$sub" --query "[?starts_with(name,'stazu')].{name:name, localUser:isLocalUserEnabled, sharedKey:allowSharedKeyAccess}" -o table
+```
+
+> [!TIP] Gotcha
+> The ARM property is `isLocalUserEnabled`, the Terraform argument is `local_user_enabled`. If you ever need SFTP, set it back to true and also enable HNS. HNS can be enabled on an existing account, but only one way; it can't be turned off again.
 
 > [!NOTE] Is the management subscription off-limits to CI?
 > Management-plane, yes: CI has no role on any management-group or subscription scope that covers `rg-azure-tfstate-*`. The only access is the two container-scoped blob roles on the CI container, which is the narrowest scope Azure RBAC offers.

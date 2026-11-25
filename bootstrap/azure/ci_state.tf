@@ -41,6 +41,11 @@ resource "azurerm_storage_account" "ci_tfstate" {
   default_to_oauth_authentication = true
   allow_nested_items_to_be_public = false
 
+  # No local users (SFTP/SSH-key or password identities that live on the
+  # account, outside Entra ID). Azure defaults this to true; none exist, and
+  # off means a Contributor can't quietly add a non-Entra credential (docs/418).
+  local_user_enabled = false
+
   infrastructure_encryption_enabled = true
 
   # GitHub-hosted runners have no fixed IPs and a Private Endpoint costs
