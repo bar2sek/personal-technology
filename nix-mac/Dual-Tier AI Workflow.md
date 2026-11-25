@@ -12,22 +12,22 @@ aliases: []
 
 # ⚡ The Unified Agentic Developer Workflow
 
-Routing work across **frontier cloud providers** inside a single unified canvas (**VS Code** with the Antigravity, Claude Code and Continue extensions) balances speed, cost, and depth of reasoning. The tiers below are ordered by how often you should reach for them, not by capability — escalate only when the cheaper tier stalls.
+Routing work across **frontier cloud providers** inside a single unified canvas (**VS Code** with the Antigravity and Claude Code extensions, plus optional VS Code native BYOK) balances speed, cost, and depth of reasoning. The tiers below are ordered by how often you should reach for them, not by capability — escalate only when the cheaper tier stalls.
 
 ```
-┌────────────────────────────────────────────────────────────────────────┐
-│                      HYBRID AGENTIC ARCHITECTURE                       │
-├────────────────────────────────────────────────────────────────────────┤
-│                   WORKSPACE CANVAS: VISUAL STUDIO CODE                 │
-├────────────────────────────┬────────────────────────────┬──────────────┤
-│ PRIMARY: Native AGY Agent  │ EXTENSION: Claude Code     │ CONTINUE     │
-├────────────────────────────┼────────────────────────────┼──────────────┤
-│ • Gemini Flash/Pro (Cloud) │ • Claude 3.7 / Sonnet      │ • Grok (xAI) │
-│ • Native Tab Autocomplete  │ • Claude.ai Subscription   │ • Local MLX  │
-│ • Multi-file Planning      │ • Zero per-token API fees  │   (Qwen 27B) │
-│ • Terminal Sandbox Tools   │ • Deep code refactoring    │ • AWS Bedrock│
-│ • Autonomous Subagents     │ • Graphical chat & diffs   │   (Hosted)   │
-└────────────────────────────┴────────────────────────────┴──────────────┘
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│                           HYBRID AGENTIC ARCHITECTURE                            │
+├──────────────────────────────────────────────────────────────────────────────────┤
+│                       WORKSPACE CANVAS: VISUAL STUDIO CODE                       │
+├────────────────────────────┬──────────────────────────┬──────────────────────────┤
+│ PRIMARY: Native AGY Agent  │ EXTENSION: Claude Code   │ VS CODE BYOK             │
+├────────────────────────────┼──────────────────────────┼──────────────────────────┤
+│ • Gemini (Cloud)           │ • Claude Sonnet / Opus   │ • Copilot Free commits   │
+│ • Multi-file Planning      │ • Claude.ai Subscription │ • Azure AI Foundry       │
+│ • Terminal Sandbox Tools   │ • Zero per-token API fees│ • AWS Bedrock            │
+│ • Autonomous Subagents     │ • Deep code refactoring  │ • Local MLX (Qwen 27B)   │
+│ • Visual diff overlays     │ • Graphical chat & diffs │   (on-demand :8080)      │
+└────────────────────────────┴──────────────────────────┴──────────────────────────┘
 ```
 
 ---
@@ -35,46 +35,37 @@ Routing work across **frontier cloud providers** inside a single unified canvas 
 ## Tier 1: Primary Orchestrator (Native Antigravity Agent)
 * **Goal:** High-level planning, complex multi-repo orchestration, and autonomous execution.
 * **Platform:** Antigravity extension agent panel in VS Code.
-* **Model:** Gemini 3.8 Flash / Gemini Pro + Native Antigravity Tab (speculative decoding).
+* **Model:** Gemini (Cloud).
 * **Capabilities:**
   1. Inspecting file structures, reading docs, and drafting implementation plans.
   2. Executing terminal commands (`talosctl`, `kubectl`, `nix`).
   3. Spawning subagents for concurrent tasks.
   4. Visual diff overlays and inline diagnostic auto-fixes.
-  5. Built-in low-latency ghost-text tab autocomplete.
 
 ---
 
-## Tier 2: Subscription Frontier Reasoning (Claude Code Extension)
-* **Goal:** Top-tier reasoning, deep codebase comprehension, and multi-turn pair programming.
-* **Platform:** Official Claude Code extension in the VS Code sidebar (`anthropic.claude-code`).
+## Tier 2: Subscription Frontier Reasoning (Claude Code Extension & Desktop)
+* **Goal:** Top-tier reasoning, deep codebase comprehension, and multi-agent / heavy refactoring work.
+* **Platform:** Official Claude Code extension in the VS Code sidebar (`anthropic.claude-code`) and Claude Desktop app.
 * **Authentication:** **Claude.ai paid subscription** (Pro/Team/Enterprise).
 * **Cost Advantage:** Billed under your existing monthly Claude subscription — **zero per-token Anthropic API charges**.
 * **Capabilities:** Full workspace indexing, interactive chat, inline diff application, and git status awareness.
 
 ---
 
-## Tier 3: Real-Time & High-Velocity Coding (xAI Grok via Continue)
-* **Goal:** Fast, state-of-the-art coding and real-time knowledge queries without burning primary quotas.
-* **Provider:** xAI API (`grok-2` / `grok-code`).
-* **Environment:** Configured in `~/.continue/config.yaml`.
+## Tier 3: On-Demand Cloud APIs (Azure AI Foundry & AWS Bedrock via VS Code BYOK)
+* **Goal:** Enterprise cloud API testing, provisioned models, and alternative provider evaluation without extra extensions.
+* **Platform:** VS Code built-in **Chat: Manage Language Models** (BYOK) alongside Copilot Free for Git commit messages and optional Tab completions.
+* **Providers:** **Azure AI Foundry** (endpoint + key or Entra ID) and **AWS Bedrock** (IAM credentials or AWS profile).
 
 ---
 
-## Tier 4: Local Playground & Offline Coder (Apple MLX via Continue)
+## Tier 4: Local Playground & Offline Coder (Apple MLX via VS Code BYOK)
 * **Goal:** Zero-cost experimentation, offline coding, and playing with open-weights without cloud quotas.
-* **Provider:** Apple MLX running on Apple Silicon Metal GPU via `uvx` (`http://localhost:8080/v1`).
+* **Provider:** Apple MLX running on Apple Silicon Metal GPU via `uvx` (`http://localhost:8080/v1`), connected via VS Code BYOK.
 * **Model:** `mlx-community/Qwen3.8-27B-4bit` (~18–19 GB footprint active).
 * **Lifecycle:** On-demand via `just serve-qwen-27b` — memory is freed immediately upon exiting.
 * **Guide:** see [[Local LLMs with MLX]] for server commands and hardware sizing.
-
----
-
-## Tier 5: Enterprise Cloud Inference (AWS Bedrock via Continue)
-* **Goal:** Enterprise security boundary, provisioned models, and private cloud quota.
-* **Provider:** AWS Bedrock (IAM credentials or AWS profile from `~/.aws/credentials`).
-* **Model Roadmap:** Current foundation models, with future plans to host and route **OpenAI models inside AWS Bedrock** (via Bedrock provisioned throughput / custom model import ARNs).
-* **Environment:** Configured in `~/.continue/config.yaml` (`us-east-2`).
 
 ---
 

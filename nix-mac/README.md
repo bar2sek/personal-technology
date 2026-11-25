@@ -40,7 +40,7 @@ bash templates/bootstrap.sh
 * Installs modern CLI utilities: `git`, `uv`, `ripgrep`, `fd`, `jq`, `just`, `eza`, `bat`, `zoxide`, `fzf`, and `p10k`.
 * Installs cloud infrastructure CLIs: `awscli`, `aws-cdk`, `azure-cli`, `terraform`, `node`, and `typescript`.
 * Deploys **JetBrainsMono Nerd Font** system-wide.
-* Auto-configures **Visual Studio Code** (Tokyo Night theme, JetBrainsMono Nerd Font, Material Icons, and declarative extensions) and writes the Continue multi-model config (`~/.continue/config.yaml`).
+* Auto-configures **Visual Studio Code** (Tokyo Night theme, JetBrainsMono Nerd Font, Material Icons, and declarative extensions).
 * Installs the **Antigravity CLI (`agy`)** (`bootstrap.sh`).
 * Configures **Ghostty** and **Zsh** with Powerlevel10k (colors, icons, Git status).
 * Arranges the macOS Dock in a tidy 3-tier layout and eliminates telemetry from Microsoft Edge.
@@ -57,7 +57,7 @@ This workstation is **cloud-first**: day-to-day inference is remote, which keeps
 * **`claude-sonnet-5`** — daily driver for implementation, review, and tests.
 * **`claude-opus-5`** — deep reasoning, multi-file refactors, architecture decisions.
 
-Gemini is reached through the Antigravity extension in VS Code (plus Antigravity Desktop and the `agy` CLI); Claude through the Claude Code extension, CLI and desktop app; xAI Grok through the Continue switcher. See [[Cloud AI Providers & Models]] for the full routing table and credential handling.
+Gemini is reached through the Antigravity extension in VS Code (plus Antigravity Desktop and the `agy` CLI); Claude through the Claude Code extension, CLI and desktop app; optional Azure AI Foundry, AWS Bedrock, and local MLX models through VS Code's built-in BYOK picker. See [[Cloud AI Providers & Models]] for the full routing table and credential handling.
 
 ---
 
@@ -80,14 +80,14 @@ This repository includes a [`Justfile`](templates/Justfile) with handy shortcuts
 
 Visual Studio Code is configured with a curated suite of extensions managed declaratively in `flake.nix`:
 
-* **AI agents:** Antigravity (`Google.google-antigravity`), Claude Code (`anthropic.claude-code`), and Continue (`continue.continue`).
+* **AI agents:** Antigravity (`Google.google-antigravity`) and Claude Code (`anthropic.claude-code`).
 * **Containers:** Docker (pairs natively with [OrbStack](https://orbstack.dev)).
 * **Cloud & DevOps:** AWS Toolkit, Azure Resource Groups, Kubernetes Tools, and HashiCorp Terraform.
 * **Languages & Formatting:** ESLint, Prettier, Python, Go, YAML, and Nix IDE.
 * **Themes:** Tokyo Night and Material Icon Theme.
 
 > [!NOTE]
-> Claude runs through the Claude Code extension under the Claude.ai subscription; Continue holds the Grok, local MLX and AWS Bedrock profiles.
+> Claude runs through the Claude Code extension under the Claude.ai subscription; VS Code's built-in Copilot Free handles commit messages and optional BYOK testing (Azure AI Foundry, AWS Bedrock, and on-demand local MLX).
 
 ---
 
@@ -101,7 +101,7 @@ The root of this repository contains an Obsidian-compatible documentation vault 
 * [[Hardware & Memory Budget]] — Unified memory allocation (48GB) and headroom math.
 * [[Hardware Protection & Keyboard Care]] — Step-by-step Barekey decal application & screen buffer setup.
 * [[Container Strategy]] — Why OrbStack replaces Docker Desktop for minimal CPU/RAM overhead.
-* [[IDE Configuration Guide]] — Step-by-step configuration for VS Code and its Antigravity, Claude Code and Continue extensions.
+* [[IDE Configuration Guide]] — Step-by-step configuration for VS Code and its Antigravity and Claude Code extensions, plus optional BYOK testing.
 * [[AWS CDK & TypeScript Workstation Guide]] — Declarative AWS CDK v2 & TypeScript toolchain, aliases, and workflows.
 * [[Cloud AI Providers & Models]] — Model tiering, provider routing per tool, and credential hygiene.
 * [[Mac Cleanliness & Anti-Bloat Guide]] — Best practices for keeping macOS pristine (`uv`, Homebrew zap, cache pruning).

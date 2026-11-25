@@ -4,7 +4,6 @@ date: 2026-09-20
 tags:
   - ide
   - vscode
-  - continue
   - configuration
   - macos
 status: evergreen
@@ -14,11 +13,12 @@ aliases: []
 
 # ⚡ Visual Studio Code + Antigravity Multi-Model Setup
 
-**Visual Studio Code** (`visual-studio-code`) paired with the **Antigravity extension** (`Google.google-antigravity`) is your primary development environment on macOS—combining official VS Code with Google's native agentic architecture, **Claude Code**, and **Continue** as a multi-model backup switcher.
+**Visual Studio Code** (`visual-studio-code`) paired with the **Antigravity extension** (`Google.google-antigravity`) and **Claude Code** (`anthropic.claude-code`) is your primary development environment on macOS—combining official VS Code with Google's and Anthropic's native agentic extensions, plus VS Code's built-in Copilot Free (for Git commit messages / optional Tab completions) and native **BYOK** for ad-hoc cloud or local API testing.
 
-- **Unified Agent Canvas:** Seamlessly integrates native Antigravity agent workflows (Gemini Flash/Pro) directly inside VS Code alongside visual diffs and the integrated terminal.
-- **Multi-Model Switcher (Claude Code + Continue):** Provides instant access to Claude via your subscription (`anthropic.claude-code`) plus xAI Grok, Local MLX, and AWS Bedrock via Continue.
-- **Single-IDE Footprint:** VS Code is the only editor; every agent runs as an extension inside it.
+- **Unified Agent Canvas:** Seamlessly integrates native Antigravity agent workflows (Gemini) directly inside VS Code alongside visual diffs and the integrated terminal.
+- **Claude Code Panel:** Provides instant access to Claude via your Claude.ai subscription (`anthropic.claude-code`) without per-token API charges.
+- **Built-In Copilot Free + BYOK:** Handles Git commit message generation natively and lets you plug in Azure AI Foundry, AWS Bedrock, or on-demand local MLX via **Chat: Manage Language Models** without third-party switcher bloat.
+- **Single-IDE Footprint:** VS Code is the only editor; every agent runs natively inside it.
 
 ---
 
@@ -45,7 +45,7 @@ Extensions are owned by home-manager (`programs.vscode` in `templates/home.nix`)
 
 | Group | Extensions |
 |---|---|
-| AI assistants | `google.google-antigravity`, `anthropic.claude-code` (Claude.ai subscription, no per-token charges), `continue.continue` (Grok, local MLX, AWS Bedrock) |
+| AI assistants | `google.google-antigravity`, `anthropic.claude-code` (Claude.ai subscription, no per-token charges) |
 | Theme & icons | `enkia.tokyo-night`, `pkief.material-icon-theme` |
 | Infrastructure & cloud | `jnoortheen.nix-ide`, `hashicorp.terraform`, `ms-azuretools.vscode-docker` (+ `vscode-containers`), `ms-kubernetes-tools.vscode-kubernetes-tools`, `redhat.vscode-yaml` |
 | Languages & formatting | `dbaeumer.vscode-eslint`, `esbenp.prettier-vscode`, `golang.go`, `ms-python.python` (+ `vscode-pylance`, `debugpy`, `vscode-python-envs`) |
@@ -55,41 +55,16 @@ Extensions are owned by home-manager (`programs.vscode` in `templates/home.nix`)
 
 ---
 
-## 🤖 Step 3: Configuring Continue as the Alternative Model Switcher
+## 🤖 Step 3: Optional Cloud & Local Testing via VS Code Built-In BYOK
 
-> [!NOTE] Why Claude is NOT in Continue
-> Rather than incurring per-token Anthropic API billing in Continue, **Claude is accessed via the official Claude Code VS Code extension** (`anthropic.claude-code`), which authenticates against your existing **Claude.ai paid subscription** (Pro/Team/Enterprise).
->
-> Continue is reserved exclusively as a multi-model switchboard for **xAI Grok**, your **local MLX model**, and **AWS Bedrock**.
+VS Code's built-in **Copilot Free** handles one-click Git commit messages and optional inline Tab completions out of the box (no extra extensions declared in `home.nix`). When you want to test external cloud endpoints or local weights inside VS Code without adding a third-party switcher extension, use VS Code's native **Bring Your Own Key (BYOK)** model picker (`Cmd + Shift + P` $\rightarrow$ **Chat: Manage Language Models**):
 
-Continue models are managed **declaratively** via `~/.continue/config.yaml` (written by home-manager, read-only), with `continue.enableTabAutocomplete = false` and `continue.telemetryEnabled = false`.
+- **Azure AI Foundry:** First-class provider in the BYOK model picker (supports endpoint URL + API key or Entra ID credentials).
+- **AWS Bedrock:** Supported via the Bedrock BYOK provider / AWS credential chain.
+- **Local MLX (Qwen 3.8 27B Playground):** Start on-demand via `just serve-qwen-27b`, then point a custom OpenAI-compatible BYOK entry to `http://localhost:8080/v1/chat/completions` (see [[Local LLMs with MLX]]).
 
-### Profile 1: Grok (xAI Real-Time & Velocity)
-
-- **Provider:** `xAI`
-- **API Key:** Resolved via Continue secrets (`${{ secrets.XAI_API_KEY }}`)
-- **Model ID:** `grok-2`
-- **Use Case:** High-speed code generation, live web-grounded queries, and an alternative reasoning perspective.
-
-### Profile 2: Local MLX (Qwen 3.8 27B Playground)
-
-- **Provider:** `openai` (OpenAI-Compatible)
-- **Base URL (`apiBase`):** `http://localhost:8080/v1`
-- **API Key:** `local`
-- **Model ID:** `mlx-community/Qwen3.8-27B-4bit`
-- **Lifecycle:** Start on-demand via `just serve-qwen-27b` (see [[Local LLMs with MLX]])
-- **Use Case:** Offline coding, zero-cost experimentation, open-weights testing without internet or quotas.
-
-### Profile 3: AWS Bedrock (Enterprise Cloud Inference)
-
-- **Provider:** `bedrock`
-- **Authentication:** AWS Profile (`default` or `bedrock`) or AWS environment variables
-- **Region:** `us-east-2`
-- **Model ID:** `anthropic.claude-3-5-sonnet-20241022-v2:0` (or private deployed model ARN)
-- **Use Case:** Enterprise VPC isolation, corporate accounts, private cloud quota, and routing to foundation models inside AWS Bedrock.
-
-> [!TIP] Native Antigravity Tab Autocomplete
-> In-editor inline code completion as you type is handled seamlessly by **Antigravity Tab** (Google's native speculative decoding). Continue's own tab autocomplete is disabled so local MLX is preserved purely for conversational reasoning, tests, and refactors.
+> [!NOTE] Retirement of Continue (`continue.continue`)
+> Continue was retired from `nix-mac` in November 2026 after the upstream `continuedev/continue` project was archived in June 2026. Antigravity and Claude Code cover day-to-day chat/agent panels, while VS Code's built-in BYOK replaces multi-provider API testing with zero extra extension overhead.
 
 ---
 
@@ -129,23 +104,22 @@ User settings (`~/Library/Application Support/Code/User/settings.json`) are owne
 │                    DAILY CODING ROUTINE                     │
 │                                                             │
 │ 1. Confirm credentials are ready in your environment:       │
-│    • Claude.ai Subscription logged into Claude extension    │
-│    • XAI_API_KEY · AWS Credentials / Profile                │
+│    • Antigravity Google sign-in + Claude.ai subscription    │
+│    • Optional: Azure Foundry / AWS Bedrock credentials      │
 │                                                             │
 │ 2. Primary Daily Driver in VISUAL STUDIO CODE:              │
 │    • Use Native Antigravity Agent extension for tasks       │
 │    • Autonomous builds, tests, and multi-repo planning      │
-│    • Native Antigravity Tab for inline ghost-text           │
+│    • Built-in Copilot Free for commit messages & Tab        │
 │                                                             │
 │ 3. Deep Frontier Reasoning & Claude Pair-Programming:       │
-│    • Open CLAUDE CODE sidebar extension                     │
+│    • Open CLAUDE CODE sidebar extension (or Desktop app)    │
 │    • Authenticated via Claude.ai subscription (no API fees) │
 │    • Full repo indexing, interactive chat, and diffs        │
 │                                                             │
-│ 4. Alternative Models, Offline Coding & AWS in CONTINUE:    │
-│    • Toggle Grok (xAI) for rapid second opinions            │
-│    • Toggle Local MLX (Qwen 3.8 27B) for offline/zero quota │
-│    • Toggle AWS Bedrock for enterprise & hosted Claude      │
+│ 4. Optional Cloud / Local API Testing (VS Code BYOK):       │
+│    • Chat: Manage Language Models -> Azure Foundry / Bedrock│
+│    • On-demand Local MLX (just serve-qwen-27b) on :8080     │
 └─────────────────────────────────────────────────────────────┘
 ```
 

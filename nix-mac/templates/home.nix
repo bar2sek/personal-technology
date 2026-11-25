@@ -254,7 +254,7 @@
   };
 
   # ----------------------------------------------------------------------
-  # 6. VS Code & Multi-Model Agent Configuration
+  # 6. VS Code Configuration
   # ----------------------------------------------------------------------
   # The cask installs the app; home-manager owns settings.json and the
   # extensions dir (read-only). UI setting changes and in-app extension installs
@@ -272,7 +272,6 @@
         # AI assistants
         google.google-antigravity
         anthropic.claude-code
-        continue.continue
 
         # Theme & icons
         enkia.tokyo-night
@@ -318,8 +317,6 @@
         "scm.alwaysShowRepositories" = true;
         "scm.repositories.visible" = 10;
         "scm.repositories.selectionMode" = "multiple";
-        "continue.telemetryEnabled" = false;
-        "continue.enableTabAutocomplete" = false; # Handled by Antigravity Tab
         "files.watcherExclude" = {
           "**/.git/objects/**" = true;
           "**/.git/subtree-cache/**" = true;
@@ -331,56 +328,4 @@
       };
     };
   };
-
-  # Continue multi-model config: local MLX (Qwen 3.8 27B on port 8080),
-  # Grok (xAI), AWS Bedrock. Claude runs through the Claude Code extension instead.
-  # No API keys here: anything in Nix is readable by every user via /nix/store.
-  home.file.".continue/config.yaml".text = ''
-    name: Mac AI Workstation
-    version: 1.0.0
-    schema: v1
-
-    models:
-      - name: Local MLX (Qwen 3.8 27B)
-        provider: openai
-        model: mlx-community/Qwen3.8-27B-4bit
-        apiBase: http://localhost:8080/v1
-        apiKey: local
-        contextLength: 65536
-        # Match mlx_lm.server flags in Justfile; without maxTokens here,
-        # Continue defaults to 4096 and overrides the server's --max-tokens 8192.
-        defaultCompletionOptions:
-          maxTokens: 8192
-          temperature: 0.7
-          topP: 0.8
-        # mlx_lm.server returns native OpenAI tool_calls for Qwen; without this,
-        # Continue can't tell and falls back to text-based tool prompts, which
-        # the model prints instead of executing in Agent mode.
-        capabilities:
-          - tool_use
-        roles:
-          - chat
-          - edit
-          - apply
-
-      - name: Grok (xAI)
-        provider: xAI
-        model: grok-2
-        apiKey: ''${{ secrets.XAI_API_KEY }}
-        roles:
-          - chat
-          - edit
-          - apply
-
-      - name: AWS Bedrock (Claude)
-        provider: bedrock
-        model: anthropic.claude-3-5-sonnet-20241022-v2:0
-        env:
-          region: us-east-2
-          profile: default
-        roles:
-          - chat
-          - edit
-          - apply
-  '';
 }

@@ -15,7 +15,7 @@ aliases: []
 
 This guide documents the workstation's setup for running **local open-weight LLMs** on Apple Silicon using [Apple MLX](https://github.com/ml-explore/mlx) and serving them on-demand via `mlx-lm` and **Astral `uvx`**.
 
-While frontier cloud models (Gemini Flash/Pro, Claude 3.7/Sonnet 5, xAI Grok) power deep orchestration and complex architecture audits, a dedicated local model provides an offline, zero-quota playground for conversational coding, refactoring, and experimentation without touching cloud rate limits.
+While frontier cloud models (Gemini, Claude) power deep orchestration and complex architecture audits, a dedicated local model provides an offline, zero-quota playground for conversational coding, refactoring, and experimentation without touching cloud rate limits.
 
 ---
 
@@ -25,7 +25,7 @@ For the **Apple M5 Pro with 48 GB Unified Memory**, the selected local model is:
 
 * **Model:** `mlx-community/Qwen3.8-27B-4bit` (Apache 2.0)
 * **Architecture:** 27 Billion parameters (dense hybrid Gated DeltaNet with native vision encoder)
-* **Context Window:** 262,144 tokens native (Continue config sets `contextLength: 65536` to give Agent mode comfortable headroom while keeping KV cache bounded)
+* **Context Window:** 262,144 tokens native (configure `maxInputTokens` around `65536` in your client to give Agent mode comfortable headroom while keeping KV cache bounded)
 * **VRAM / Unified Memory Footprint:**
   * Model Weights: **~16.1 GB** (`14.97 GiB` on disk across 3 safetensors shards)
   * KV Cache (at 64k context): **~4–6 GB**
@@ -85,42 +85,44 @@ uvx --from mlx-lm mlx_lm.generate \
 
 ---
 
-## 🤖 Connecting to Continue in VS Code
+## 🤖 Connecting to VS Code via Native BYOK
 
-Continue (`continue.continue`) inside **VS Code** is pre-configured with the **`Local MLX (Qwen 3.8 27B)`** model entry.
+VS Code's built-in **Bring Your Own Key (BYOK)** model picker can connect directly to your local `mlx_lm.server` instance with zero extra extensions required.
 
 ### Configuration Specification
-Declared in `templates/home.nix` (`home.file`) and linked read-only to `~/.continue/config.yaml`:
+Open the Command Palette (`Cmd + Shift + P`) $\rightarrow$ **Chat: Manage Language Models** (or configure `chatLanguageModels.json`) and add a custom OpenAI-compatible endpoint:
 
-```yaml
-- name: Local MLX (Qwen 3.8 27B)
-  provider: openai
-  model: mlx-community/Qwen3.8-27B-4bit
-  apiBase: http://localhost:8080/v1
-  apiKey: local
-  contextLength: 65536
-  defaultCompletionOptions:
-    maxTokens: 8192
-    temperature: 0.7
-    topP: 0.8
-  capabilities:
-    - tool_use
-  roles:
-    - chat
-    - edit
-    - apply
+```json
+[
+  {
+    "name": "Local MLX (Qwen 3.8 27B)",
+    "vendor": "customendpoint",
+    "apiKey": "local",
+    "apiType": "chat-completions",
+    "models": [
+      {
+        "id": "mlx-community/Qwen3.8-27B-4bit",
+        "name": "Local MLX (Qwen 3.8 27B)",
+        "url": "http://localhost:8080/v1/chat/completions",
+        "toolCalling": true,
+        "vision": false,
+        "maxInputTokens": 65536,
+        "maxOutputTokens": 8192
+      }
+    ]
+  }
+]
 ```
 
 ### How to Use
 1. Start the server in a terminal: `just serve-qwen-27b`.
-2. Open **Continue** in the VS Code sidebar.
-3. In the model dropdown selector, choose **`Local MLX (Qwen 3.8 27B)`**.
-4. Chat, prompt refactors, generate tests, or execute tasks offline.
+2. Open the VS Code Chat panel and select **`Local MLX (Qwen 3.8 27B)`** from the model picker.
+3. Chat, prompt refactors, generate tests, or execute tasks offline.
 
 > [!WARNING] Agent mode prints tool calls instead of running them
 > **Symptom:** in Agent mode the model replies with text like `TOOL_NAME: run_terminal_command` / `BEGIN_ARG: command ...` and nothing executes.
-> **Cause:** with `provider: openai` and a model name Continue doesn't recognize, Continue assumes no native tool support and falls back to a text-based tool protocol in the system prompt. Qwen doesn't follow that format reliably.
-> **Fix:** `capabilities: [tool_use]` (above) makes Continue send standard OpenAI `tools`; `mlx_lm.server` turns them into native `tool_calls` through Qwen's chat template.
+> **Cause:** if an OpenAI-compatible client assumes no native tool support, it falls back to a text-based tool protocol in the system prompt, which Qwen does not follow reliably.
+> **Fix:** ensure `"toolCalling": true` is enabled in your VS Code BYOK entry so standard OpenAI `tools` are sent; `mlx_lm.server` turns them into native `tool_calls` through Qwen's chat template.
 > **Verify the server side:**
 > ```bash
 > curl -s http://localhost:8080/v1/chat/completions -H 'Content-Type: application/json' \
@@ -128,10 +130,10 @@ Declared in `templates/home.nix` (`home.file`) and linked read-only to `~/.conti
 >        "tools":[{"type":"function","function":{"name":"ls","parameters":{"type":"object","properties":{"dirPath":{"type":"string"}}}}}]}'
 > ```
 > A healthy response has `"finish_reason": "tool_calls"`.
-> **Context budget:** an Agent-mode request (system prompt + 13 tool schemas + `AGENTS.md` rules) uses ~18–20k of the 64k `contextLength`, leaving ~45k for files and multi-turn tool loops. Chat mode is much lighter.
+> **Context budget:** an Agent-mode request (system prompt + tool schemas + workspace rules) uses ~18–20k of the 64k `maxInputTokens` budget, leaving ~45k for files and multi-turn tool loops. Chat mode is much lighter.
 
-> [!NOTE] Tab Autocomplete vs. Conversational Coding
-> Continue handles conversational chat, edits, and applies. Real-time inline ghost-text code completion as you type is handled seamlessly by **Antigravity Tab** (Google's native speculative decoding engine, with `continue.enableTabAutocomplete = false`). This preserves local MLX resources purely for conversational reasoning and refactoring.
+> [!NOTE] Local BYOK, Zero Quotas & Inline Completions
+> Local BYOK requests stay 100% on `localhost`—they work offline and consume zero Copilot Free credits. Inline ghost-text completions and Git commit message generation stay on VS Code's built-in Copilot Free, preserving local MLX resources purely for conversational reasoning and refactoring.
 
 ---
 

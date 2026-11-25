@@ -21,7 +21,7 @@ The workstation is a **thin client for inference and a heavy host for builds**. 
 │                                                             │
 │   ┌──────────────────────────────────────────────────────┐  │
 │   │  Editors & Agents (thin clients, no model weights)   │  │
-│   │  • VS Code + Antigravity / Claude Code / Continue    │  │
+│   │  • VS Code + Antigravity / Claude Code (+ BYOK)      │  │
 │   │  • Antigravity Desktop + agy CLI (agent missions)    │  │
 │   │  • Claude Code (terminal-native agent)               │  │
 │   └──────────────────────────┬───────────────────────────┘  │
@@ -36,7 +36,7 @@ The workstation is a **thin client for inference and a heavy host for builds**. 
                               │
                               │ HTTPS
                               ▼
-        Anthropic · Google · xAI  (see [[Cloud AI Providers & Models]])
+        Anthropic · Google · Azure AI Foundry / AWS Bedrock  (see [[Cloud AI Providers & Models]])
 ```
 
 ---

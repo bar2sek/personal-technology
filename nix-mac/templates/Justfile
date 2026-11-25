@@ -52,7 +52,7 @@ gc:
 # Local LLM Serving (Apple MLX via uvx - Zero Bloat)
 # ------------------------------------------------------------------------------
 
-# Launch Qwen 3.8 27B (4-bit) MLX Server for Continue chat & refactoring (port 8080)
+# Launch Qwen 3.8 27B (4-bit) MLX Server for VS Code BYOK / OpenAI-compatible clients (port 8080)
 # Disable thinking mode + set Qwen instruct sampling so responses stream straight to delta.content
 serve-qwen-27b:
     uvx --from mlx-lm mlx_lm.server \

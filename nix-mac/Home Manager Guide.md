@@ -32,7 +32,7 @@ graph TD
 - **3-File Modular Architecture:**
   - [[templates/flake.nix|flake.nix]] — Flake inputs (`nixpkgs`, `nix-darwin`, `home-manager`, `nix-vscode-extensions`) and system outputs.
   - [[templates/darwin.nix|darwin.nix]] — Machine-level state, Homebrew casks/brews, macOS `system.defaults`, and hardware/printer activation.
-  - [[templates/home.nix|home.nix]] — User-level packages (`home.packages`), shell integrations, SSH/Git/GitHub configs, Ghostty, VS Code, and Continue.
+  - [[templates/home.nix|home.nix]] — User-level packages (`home.packages`), shell integrations, SSH/Git/GitHub configs, Ghostty, and VS Code.
 - **Automated Flake Sync (`just switch` & `just update`):**
   - `~/.config/nix-darwin/` lives outside the Google Drive–synced vault so Nix builds never contend with Drive file locks.
   - Running `just switch` automatically invokes `just sync` first, copying `flake.nix`, `darwin.nix`, `home.nix`, `Justfile`, `p10k.zsh`, and `flake.lock` from `nix-mac/templates/` into `~/.config/nix-darwin/` before activating.
@@ -57,7 +57,7 @@ graph TD
 | `~/Justfile` and `~/.local/bin/tailscale` | User | `home.nix` (`home.file`) |
 | Git (`~/.config/git/config`), GitHub CLI (`~/.config/gh/config.yml`), SSH (`~/.ssh/config`) | User | `home.nix` (`programs.git`, `programs.gh`, `programs.ssh`) |
 | Zsh, Powerlevel10k, `fzf`, `eza`, `bat`, `zoxide`, `direnv` | User | `home.nix` (`programs.zsh` + native HM modules) |
-| Ghostty, VS Code, Continue config (cask-installed apps) | User | `home.nix` (`programs.ghostty`, `programs.vscode`, `home.file`) |
+| Ghostty and VS Code config (cask-installed apps) | User | `home.nix` (`programs.ghostty`, `programs.vscode`) |
 | Heavy disk cleanup (GarageBand/iMovie purge, APFS snapshot thinning) | On-Demand | `just debloat` / `just prune-all` |
 | Secrets (`~/.zshrc.local`, `~/.ssh/id_ed25519`, `~/.config/gh/hosts.yml`) | User | **Never in Nix.** Local untracked files |
 
@@ -74,10 +74,10 @@ graph TD
 - home-manager writes `~/.zshenv`, `~/.zprofile`, `~/.zshrc`, and `~/.p10k.zsh`.
 - `darwin.nix` keeps `programs.zsh.enable = true` so `/etc/zshenv` puts Nix tools and their completions on `PATH`, while turning off system `compinit` and prompt so nothing loads twice.
 
-## Milestone 2: Ghostty, VS Code, Continue (2026-10-19; swapped from Roo Code 2026-11-17)
+## Milestone 2: Ghostty & VS Code (2026-10-19; Continue retired 2026-11-24)
 - `programs.ghostty` (`package = null`) manages `~/.config/ghostty/config`.
-- `programs.vscode` (`package = null`, `mutableExtensionsDir = false`) manages `~/Library/Application Support/Code/User/settings.json` and `~/.vscode/extensions/` using the daily `nix-vscode-extensions` marketplace mirror (`vscode-marketplace-release`).
-- `home.file` manages `~/.continue/config.yaml` (declarative multi-model config for Local MLX, xAI Grok, and AWS Bedrock).
+- `programs.vscode` (`package = null`, `mutableExtensionsDir = false`) manages `~/Library/Application Support/Code/User/settings.json` and `~/.vscode/extensions/` using the daily `nix-vscode-extensions` marketplace mirror (`vscode-marketplace-release`), leaving Antigravity and Claude Code as the declared VS Code AI extensions.
+- `~/.continue/config.yaml` and `continue.continue` were removed after upstream `continuedev/continue` was archived in June 2026 (replaced by VS Code's built-in BYOK when needed).
 
 ## Milestone 3: 3-File Modular Split, Auto-Sync & Native HM Modules (2026-10-20)
 1. **Split into `flake.nix`, `darwin.nix`, and `home.nix`:**
