@@ -82,7 +82,7 @@ Visual Studio Code is configured with a curated suite of extensions managed decl
 
 * **AI agents:** Antigravity (`Google.google-antigravity`) and Claude Code (`anthropic.claude-code`).
 * **Containers:** Docker (pairs natively with [OrbStack](https://orbstack.dev)).
-* **Cloud & DevOps:** AWS Toolkit, Azure Resource Groups, Kubernetes Tools, and HashiCorp Terraform.
+* **Cloud & DevOps:** HashiCorp Terraform, Kubernetes Tools, GitHub Pull Requests & Actions, and the actively maintained Azure suite (Resources, Functions, App Service, Storage, Container Apps, Cosmos DB, Bicep, and MSSQL).
 * **Languages & Formatting:** ESLint, Prettier, Python, Go, YAML, and Nix IDE.
 * **Themes:** Tokyo Night and Material Icon Theme.
 

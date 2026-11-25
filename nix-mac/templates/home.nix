@@ -285,6 +285,23 @@
         ms-kubernetes-tools.vscode-kubernetes-tools
         redhat.vscode-yaml
 
+        # Azure (actively maintained; omits deprecated Azure Account/ARM Tools and stale Azure CLI Tools)
+        ms-azuretools.vscode-azureresourcegroups # Required by Azure service extensions
+        ms-azuretools.vscode-azurefunctions
+        ms-azuretools.vscode-azureappservice
+        ms-azuretools.vscode-azurestorage
+        ms-azuretools.vscode-azurecontainerapps
+        ms-azuretools.vscode-cosmosdb
+        # Strip unused nix-vscode-extensions buildInputs (pkgs.bicep fails to compile on
+        # aarch64-darwin due to x86_64 protoc in NuGet); the VSIX runs natively via dotnet-runtime.
+        (ms-azuretools.vscode-bicep.overrideAttrs (_: { buildInputs = [ ]; }))
+        ms-dotnettools.vscode-dotnet-runtime # Required by vscode-bicep
+        ms-mssql.mssql
+
+        # GitHub (official; skips built-in Copilot and Codespaces/RemoteHub)
+        github.vscode-pull-request-github
+        github.vscode-github-actions
+
         # Languages & formatting
         dbaeumer.vscode-eslint
         esbenp.prettier-vscode
@@ -309,6 +326,12 @@
         "workbench.iconTheme" = "material-icon-theme";
         "telemetry.telemetryLevel" = "off";
         "update.mode" = "default"; # VS Code updates itself (the cask is auto_updates, so brew skips it)
+        # Prebuilt .NET 10 runtime for VS Code extensions (MSSQL, Bicep).
+        # ms-dotnettools.vscode-dotnet-runtime cannot chmod its bundled dotnet-install.sh
+        # inside the read-only /nix/store, and ms-mssql.mssql requests exact patch "10.0.0"
+        # (rejecting 10.0.15 unless allowInvalidPaths is enabled; its runtimeconfig rolls forward).
+        "dotnetAcquisitionExtension.sharedExistingDotnetPath" = "${pkgs.dotnetCorePackages.runtime_10_0-bin}/bin/dotnet";
+        "dotnetAcquisitionExtension.allowInvalidPaths" = true;
         "git.enableSmartCommit" = true;
         "git.confirmSync" = false;
         "git.autorefresh" = true;

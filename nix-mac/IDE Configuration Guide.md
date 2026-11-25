@@ -48,10 +48,17 @@ Extensions are owned by home-manager (`programs.vscode` in `templates/home.nix`)
 | AI assistants | `google.google-antigravity`, `anthropic.claude-code` (Claude.ai subscription, no per-token charges) |
 | Theme & icons | `enkia.tokyo-night`, `pkief.material-icon-theme` |
 | Infrastructure & cloud | `jnoortheen.nix-ide`, `hashicorp.terraform`, `ms-azuretools.vscode-docker` (+ `vscode-containers`), `ms-kubernetes-tools.vscode-kubernetes-tools`, `redhat.vscode-yaml` |
+| Azure | `ms-azuretools.vscode-azureresourcegroups`, `vscode-azurefunctions`, `vscode-azureappservice`, `vscode-azurestorage`, `vscode-azurecontainerapps`, `vscode-cosmosdb`, `vscode-bicep` (+ `ms-dotnettools.vscode-dotnet-runtime`), `ms-mssql.mssql` |
+| GitHub | `github.vscode-pull-request-github`, `github.vscode-github-actions` |
 | Languages & formatting | `dbaeumer.vscode-eslint`, `esbenp.prettier-vscode`, `golang.go`, `ms-python.python` (+ `vscode-pylance`, `debugpy`, `vscode-python-envs`) |
 
 > [!IMPORTANT]
 > **Adding an extension:** add it to the list in the flake, sync, and `just switch`. Installing from the VS Code Extensions panel fails because the folder is read-only. Dependencies are not pulled in automatically, so list them too (that's why Pylance and Containers appear above).
+
+> [!NOTE]
+> - Deprecated `ms-vscode.azure-account`, legacy ARM Tools, and stale `ms-vscode.azurecli` are intentionally omitted (VS Code's built-in Microsoft auth + `vscode-azureresourcegroups` replace Azure Account, and Bicep replaces ARM Tools).
+> - `ms-azuretools.vscode-bicep` uses `.overrideAttrs (_: { buildInputs = [ ]; })` in `templates/home.nix` because `nix-vscode-extensions` attaches unused `pkgs.bicep`, `pkgs.bicep-lsp`, and `pkgs.azure-cli` `buildInputs`; building `pkgs.bicep` from source fails on Apple Silicon (`aarch64-darwin`) when NuGet's `grpc.tools` invokes an `x86_64` `protoc` binary (`Bad CPU type in executable`), whereas the unpacked `.vsix` runs natively via `ms-dotnettools.vscode-dotnet-runtime`.
+> - `"dotnetAcquisitionExtension.sharedExistingDotnetPath"` is pinned to `${pkgs.dotnetCorePackages.runtime_10_0-bin}/bin/dotnet` alongside `"dotnetAcquisitionExtension.allowInvalidPaths" = true` in `templates/home.nix` because `ms-dotnettools.vscode-dotnet-runtime` cannot `chmod` its bundled `dotnet-install.sh` inside the read-only `/nix/store`, and `ms-mssql.mssql` requests exact `"10.0.0"` while Nix supplies `10.0.15` (whose `runtimeconfig.json` rolls forward cleanly).
 
 ---
 
