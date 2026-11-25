@@ -282,6 +282,7 @@
         hashicorp.terraform
         ms-azuretools.vscode-docker
         ms-azuretools.vscode-containers # Required by vscode-docker
+        ms-vscode-remote.remote-containers
         ms-kubernetes-tools.vscode-kubernetes-tools
         redhat.vscode-yaml
 

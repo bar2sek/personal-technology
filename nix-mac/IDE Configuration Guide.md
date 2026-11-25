@@ -47,7 +47,7 @@ Extensions are owned by home-manager (`programs.vscode` in `templates/home.nix`)
 |---|---|
 | AI assistants | `google.google-antigravity`, `anthropic.claude-code` (Claude.ai subscription, no per-token charges) |
 | Theme & icons | `enkia.tokyo-night`, `pkief.material-icon-theme` |
-| Infrastructure & cloud | `jnoortheen.nix-ide`, `hashicorp.terraform`, `ms-azuretools.vscode-docker` (+ `vscode-containers`), `ms-kubernetes-tools.vscode-kubernetes-tools`, `redhat.vscode-yaml` |
+| Infrastructure & cloud | `jnoortheen.nix-ide`, `hashicorp.terraform`, `ms-azuretools.vscode-docker` (+ `vscode-containers`), `ms-vscode-remote.remote-containers`, `ms-kubernetes-tools.vscode-kubernetes-tools`, `redhat.vscode-yaml` |
 | Azure | `ms-azuretools.vscode-azureresourcegroups`, `vscode-azurefunctions`, `vscode-azureappservice`, `vscode-azurestorage`, `vscode-azurecontainerapps`, `vscode-cosmosdb`, `vscode-bicep` (+ `ms-dotnettools.vscode-dotnet-runtime`), `ms-mssql.mssql` |
 | GitHub | `github.vscode-pull-request-github`, `github.vscode-github-actions` |
 | Languages & formatting | `dbaeumer.vscode-eslint`, `esbenp.prettier-vscode`, `golang.go`, `ms-python.python` (+ `vscode-pylance`, `debugpy`, `vscode-python-envs`) |

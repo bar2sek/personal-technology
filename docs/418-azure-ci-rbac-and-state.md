@@ -193,6 +193,44 @@ Contributor can't create role assignments, so CI can't give a Container App `Acr
 
 ---
 
+## 🏗️ Planned: Platform Pipeline (Phase 2)
+
+**Decided 2026-11-24 (option B).** Hub networking (Phase 2) is applied by a **separate platform pipeline**, not by the workload identities above and not from the Mac. It mirrors an enterprise split: a platform team owns the hub, and app teams own the spokes.
+
+| Option | Verdict |
+|---|---|
+| A. Admin-applied from the Mac | Simplest for a solo operator; rejected, because the goal includes learning pipeline-driven platform delivery |
+| **B. Separate platform pipeline** | **Chosen**: own identities, own environment and reviewers, own state container |
+| C. Give the workload apply identity network rights on connectivity | Rejected: one identity spanning platform and workloads is the blast radius M4 removed |
+
+**What stays human (unchanged):** the platform identities, their OIDC trust, their RBAC and their state container are **created by `bootstrap/*`** from the Mac. The pipeline deploys the hub; it never manages its own permissions. Tenant Root and MG/policy changes stay human-only.
+
+**Design sketch (to be refined before building):**
+
+```mermaid
+graph LR
+    subgraph GH["GitHub"]
+        PP["PR / main<br/>plan job"]
+        PE["environment: platform-production<br/>(reviewers) apply job"]
+    end
+    PP -->|OIDC| PPL["app-…-platform-plan-prod-001<br/>Reader"]
+    PE -->|OIDC| PAP["app-…-platform-apply-prod-001<br/>Network Contributor"]
+    PPL --> CONN["connectivity subscription<br/>(platform MG)"]
+    PAP --> CONN
+    PAP -->|Blob Data Contributor| ST["CI state account<br/>container tfstate-platform"]
+    PPL -->|Blob Data Reader| ST
+```
+
+- Same plan/apply split and `-lock=false` PR plans as the workload pipeline.
+- Narrowest useful roles: Reader and **Network Contributor** on the connectivity subscription only. Widen only for a concrete resource that needs it.
+- A separate state container, so workload identities can't read hub state and the reverse.
+- Policy still applies to the pipeline: cost guardrails deny paid Defender plans, premium SKUs and so on, whoever deploys.
+
+**Open decisions:**
+1. Same repo (`infra-cloud-deployments` with path filters and a second environment) or a dedicated platform repo with CODEOWNERS.
+2. Scope the roles to the connectivity subscription, or to the platform connectivity MG.
+3. Hub design and cost: Azure Firewall is roughly $900/month, so the hub needs a cost-safe design (e.g., NSGs, or a NAT gateway only when needed) before any pipeline applies it.
+
 ## 🔗 Related
 
 - [[416-azure-management-groups-and-policy|416 - Phase 1 Hub & Runbook]] · [[417-azure-policy-cost-safe-alz|417 - Cost-Safe ALZ Policy]]
